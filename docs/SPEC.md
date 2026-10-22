@@ -95,16 +95,10 @@ availability shown on product pages.
 
 ## 2. Pricing engine
 
-2.1 **Blank garment price = supplier cost × markup tier** [O]. Beeze's tiers
-(pricing group 11671) [B]:
-
-| Wholesale cost | Markup |
-|---------------|--------|
-| $0.00–2.99 | 60% |
-| $3.00–9.99 | 55% |
-| $10.00–14.99 | 40% |
-| $15.00–19.99 | 30% |
-| $20.00+ | 20% |
+2.1 **Blank garment price = supplier cost × markup** [O]. Beeze's markup is
+a **flat 40% on wholesale cost** (price = cost × 1.40) for every product [B].
+Cost-based tiers stay supported and editable per pricing group (the old
+storefront used 60/55/40/30/20% tiers by cost), as does margin mode.
 
 2.2 **Pricing groups** [O]: separate price lists per customer group/store
 (several group IDs observed). Customer-specific discount % [O].

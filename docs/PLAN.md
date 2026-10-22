@@ -21,7 +21,7 @@
 
 Each phase ends with something usable.
 
-1. **Foundation + catalog + pricing engine.** Repo, database schema, staff
+1. ✅ **Foundation + catalog + pricing engine.** Repo, database schema, staff
    auth and roles, products/colors/sizes/views/areas, categories, decoration
    methods, markup tiers, quantity breaks, fees, and taxes. Pricing engine
    unit-tested against your current prices.
@@ -50,3 +50,12 @@ Each phase ends with something usable.
 Supplier catalog connectors (SanMar and S&S first, then Charles River and
 Pennant) start alongside phase 1 once you have API credentials, because
 phases 1–3 need real product data.
+
+## Progress
+
+- **Phase 1 (done):** schema, pricing engine, staff sign-in with roles, and
+  admin screens for products, categories, suppliers, decoration methods and
+  price tables, markup and quantity discounts, shop settings and tax, staff,
+  and a price check tool. Still to do before launch: real decoration prices
+  (entered in admin), supplier catalog connections (waiting on SanMar/S&S
+  API credentials), and rate limiting on staff sign-in.

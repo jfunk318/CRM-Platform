@@ -37,6 +37,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="border-t border-gray-100 px-4 py-3 text-xs text-gray-500">
           <div className="truncate font-medium text-gray-700">{staff.name}</div>
           <div className="truncate">{staff.email}</div>
+          <Link href="/admin/account" className="mt-1 block text-amber-700 hover:underline">My account</Link>
           <form action={logout} className="mt-2">
             <button className="text-amber-700 hover:underline">Sign out</button>
           </form>
