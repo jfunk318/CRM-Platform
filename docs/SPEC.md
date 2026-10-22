@@ -342,9 +342,14 @@ production run when the store closes [D].
 14.7 **Store owner portal** [B]: the store owner signs in at their store's
 address and sees, read-only: sales and order counts over time, items with
 their prices, open/close dates, and earnings (commission or markup share,
-earned and paid). They can send **requests** (add an item, change a price,
-reopen the store, help) that arrive in the root store's back office linked to
-the store and customer. They can't change anything themselves.
+earned and paid). They can send **requests** and can't change anything themselves. Requests
+are routed for tracking [B] (direction agreed, details open):
+- **Update requests** (add an item, change a price, reopen the store)
+  automatically create a **draft quote** for the store's customer, linked to
+  the store and assigned to its manager, so changes go through the normal
+  quote flow and are priced before they're applied.
+- **Help requests** notify the store's manager, e.g. by **Slack** message,
+  and are logged on the store and customer timeline.
 14.8 Optional password or access-code protected stores (team/corporate) [R].
 14.9 **Store subdomains** [B]: each store lives at its own subdomain of the
 main site, e.g. `lincoln-hockey.<main domain>`. The business is rebranding,
@@ -405,6 +410,24 @@ site sells the shop's goods and promotes its affiliate stores: a directory
 of stores and featured items from them. Each affiliate store chooses
 whether it's listed (team or company stores may want to stay private).
 
+14.15 **Store settings with inheritance** [B]: store behavior is set at
+three levels, each inheriting from the one above unless overridden:
+**business-wide defaults → store group → individual store**. The stores
+dashboard shows where each effective value comes from. Settings include:
+- Shopper accounts: optional (default), required, or guest checkout only
+- Password / access code required to enter the store
+- Show or hide prices
+- Delivery methods offered (ship to buyer, pick up, deliver to the
+  organization in one batch) and their costs
+- Promo codes accepted (codes can be business-wide, per group or per store)
+- Listed in the root storefront's showcase or private (14.14)
+- Further behaviors added the same way as needs come up
+
+14.16 **Shoppers** [B]: affiliate store buyers can create an account (order
+history, saved addresses) or check out as guests, as the store's settings
+allow. Either way they're recorded as customers in the root store's CRM,
+linked to the store they bought from.
+
 ## 15. Invoicing & accounting
 
 [D]: invoices from quotes and orders; custom layout, numbering and prefixes;
@@ -428,6 +451,9 @@ admin.
 
 ## 18. Integrations & API
 
+[B]: **Slack** notifications (store help requests to the store's manager;
+later other alerts such as new orders or approvals), configured per business
+with each staff member's Slack user or a channel.
 [D]: public REST API for orders; QuickBooks/Xero; Mailchimp; Zoho CRM;
 ShipStation/Stamps/carriers; Google Ads/Analytics; Meta Pixel; Shopify.
 Shopify product sync was observed in the admin code (`manage_site/shopify/*`) [O].
