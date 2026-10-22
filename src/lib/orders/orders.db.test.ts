@@ -133,6 +133,12 @@ describe("quotes and orders", () => {
     ).rejects.toThrow(/whole numbers/);
   });
 
+  it("won't convert a quote while an item has pricing problems", async () => {
+    const id = await addLine(quoteId, { productId: ids.product, colorId: ids.navy, quantities: { [size.S]: 1 }, decorations: [{ methodId: ids.method, location: "Sleeve", colors: 1 }] }, null);
+    await expect(convertQuote(quoteId, null)).rejects.toThrow(/pricing problems/);
+    await removeLine(id, null);
+  });
+
   it("converts a quote to an order once, sharing designs until edited", async () => {
     const orderId = await convertQuote(quoteId, null);
     const [quote, order] = await Promise.all([

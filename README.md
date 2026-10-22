@@ -18,7 +18,7 @@ npm run db:migrate          # create tables
 npm run db:seed             # Beeze starting config (safe to re-run);
                             # set SEED_ADMIN_EMAIL/PASSWORD in .env first
                             # to create the first admin
-npm test                    # pricing engine tests
+npm test                    # unit tests + database tests (need DATABASE_URL)
 npm run dev                 # admin at http://localhost:3000/admin
 ```
 
@@ -30,7 +30,8 @@ npm run dev                 # admin at http://localhost:3000/admin
 | `prisma/seed-data.ts` | Beeze starting configuration (methods, markup tiers, discounts, suppliers, categories) |
 | `src/lib/pricing/` | Pricing engine (pure functions) and `load.ts`, which builds engine input from the database |
 | `src/lib/auth/` | Staff passwords, sessions and roles |
-| `src/app/admin/` | Back office: catalog, methods and price tables, pricing, tax, staff, price check |
+| `src/lib/orders/` | Quotes and orders: numbering, line/design editing, conversion, repricing |
+| `src/app/admin/` | Back office: quotes and orders, customers, catalog, methods and price tables, pricing, tax, statuses, staff, price check |
 
 ## Importing data later
 

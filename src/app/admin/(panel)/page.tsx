@@ -1,14 +1,21 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
+import { OrderTable, orderTableInclude } from "@/components/admin/order-table";
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string }> }) {
   const staff = await requireStaff();
   const { denied } = await searchParams;
-  const [products, methods, placeholderTables] = await Promise.all([
+  const [products, methods, placeholderTables, mine] = await Promise.all([
     db.product.count(),
     db.decorationMethod.count({ where: { active: true } }),
     db.decorationPriceTable.count({ where: { isPlaceholder: true } }),
+    db.order.findMany({
+      where: { assignedToId: staff.id, status: { isClosed: false } },
+      orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }, { createdAt: "desc" }],
+      take: 20,
+      include: orderTableInclude,
+    }),
   ]);
 
   return (
@@ -29,6 +36,10 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           before taking orders.
         </div>
       )}
+      <section className="space-y-2">
+        <h2 className="font-semibold">Assigned to me</h2>
+        <OrderTable orders={mine} empty="Nothing open is assigned to you." />
+      </section>
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat label="Products" value={products} href="/admin/products" />
         <Stat label="Active decoration methods" value={methods} href="/admin/methods" />

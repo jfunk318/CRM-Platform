@@ -25,7 +25,7 @@ orders come before the public storefront.
 1. ✅ **Foundation + catalog + pricing engine.** Schema, staff sign-in and
    roles, catalog, decoration methods and price tables, markup, discounts,
    taxes, price check.
-2. **Customers, quotes and orders.** Customers and companies, quotes and
+2. ✅ **Customers, quotes and orders.** Customers and companies, quotes and
    orders built from catalog products and decorations with live pricing,
    reusable designs, editable order statuses, staff assignment, activity
    timeline and notes, quote-to-order conversion.
@@ -62,3 +62,9 @@ phases 1–3 need real product data.
   and a price check tool. Still to do before launch: real decoration prices
   (entered in admin), supplier catalog connections (waiting on SanMar/S&S
   API credentials), and rate limiting on staff sign-in.
+- **Phase 2 (done):** customers and companies with addresses, pricing group
+  and tax-exempt settings; quotes and orders with items built from catalog
+  products and decorations, live repricing, editable statuses, assignment,
+  activity timeline and notes; quote-to-order conversion (blocked while
+  items have pricing problems); "assigned to me" on the dashboard. Lines
+  point at reusable designs, ready for publishing to stores in phase 7.

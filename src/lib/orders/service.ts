@@ -234,6 +234,10 @@ export async function convertQuote(quoteId: string, staffId: string | null): Pro
     if (quote.type !== "QUOTE") throw new OrderError("Only quotes can be converted");
     if (quote.convertedTo) throw new OrderError(`Already converted to order ${orderRef(quote.convertedTo)}`);
     if (quote.lines.length === 0) throw new OrderError("Add at least one item before converting");
+    const problems = quote.lines.filter((l) => (l.issues as { severity: string }[]).some((i) => i.severity === "error"));
+    if (problems.length) {
+      throw new OrderError(`Fix the pricing problems on ${problems.length} item(s) before converting`);
+    }
     const [orderStatus, convertedStatus] = await Promise.all([
       tx.orderStatus.findFirst({ where: { type: "ORDER", isDefault: true } }),
       tx.orderStatus.findFirst({ where: { type: "QUOTE", isConversion: true } }),

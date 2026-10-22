@@ -9,6 +9,9 @@ export const metadata: Metadata = { title: "Admin · Beeze Tees" };
 
 const NAV: { href: string; label: string; roles: StaffRole[] }[] = [
   { href: "/admin", label: "Dashboard", roles: [] },
+  { href: "/admin/orders?type=ORDER", label: "Orders", roles: [] },
+  { href: "/admin/orders?type=QUOTE", label: "Quotes", roles: ["SALES"] },
+  { href: "/admin/customers", label: "Customers", roles: ["SALES"] },
   { href: "/admin/products", label: "Products", roles: ["SALES", "PURCHASING"] },
   { href: "/admin/categories", label: "Categories", roles: ["SALES"] },
   { href: "/admin/suppliers", label: "Suppliers", roles: ["PURCHASING"] },
@@ -16,6 +19,7 @@ const NAV: { href: string; label: string; roles: StaffRole[] }[] = [
   { href: "/admin/pricing", label: "Pricing", roles: ["SALES"] },
   { href: "/admin/price-check", label: "Price check", roles: ["SALES"] },
   { href: "/admin/settings", label: "Shop & tax", roles: ["ADMIN"] },
+  { href: "/admin/order-statuses", label: "Order statuses", roles: ["ADMIN"] },
   { href: "/admin/staff", label: "Staff", roles: ["ADMIN"] },
 ];
 
