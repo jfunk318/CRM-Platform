@@ -394,10 +394,29 @@ decorations, artwork, placement) as a reusable **design** record, not as
 one-off order data. Store products point at the same designs [R].
 
 14.12 **Stores dashboard** [B]: in the root store's back office, every
-affiliate store at a glance: status (draft, open, closed), open/close dates,
-sales and orders, assigned staff manager, with the old store list's useful
-columns consolidated. Stores can be grouped (e.g. Schools, Teams, Corporate,
-Fundraisers) and filtered by group, status and manager.
+affiliate store at a glance. The old DecoNetwork store list had: URL, store
+type, added date, visitors, orders, total value, commissions paid / cleared /
+held, group (e.g. "Short Term - Commission", "Long Term - No Commission"),
+a "send notice" button and Manage. Consolidated into:
+
+| Column | Shows |
+|--------|-------|
+| Store | name; address and type on one line; group as a tag |
+| Status | open / scheduled / closed with the next relevant date (closes Oct 30); replaces "short/long term" wording |
+| Activity | visits · orders |
+| Sales | total value |
+| Commission | non-zero amounts only (e.g. "$180 held · $40 cleared"); full paid/cleared/held on hover |
+| Requests | request flags (below) |
+| Manager | assigned staff member |
+| Actions | Manage; ⋯ menu with "send notice to owner" and other actions |
+
+Old groups map onto store groups: term becomes open/close dates, and
+commission on/off becomes a group setting inherited by its stores (14.15).
+Views: newest, most recent request, highest sales, closing soon. Rows with
+unseen requests get a highlight bar. Bulk actions: export CSV, move to
+group, open/close, notify owners. Search by store, owner, email or phone.
+Stores can be grouped (e.g. Schools, Teams, Corporate, Fundraisers) and
+filtered by group, status and manager.
 
 **Request flags** [B]: each row has a space for small emoji-style flags, one
 per kind of action needed (e.g. new item requested, price change, reopen
