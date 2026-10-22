@@ -122,6 +122,9 @@ model Business {
   shipments              Shipment[]
   shipmentItems          ShipmentItem[]
   stores                 Store[]
+  storeGroups            StoreGroup[]
+  promoCodeStores        PromoCodeStore[]
+  giftCodeStores         GiftCodeStore[]
   storeDeliveryMethods   StoreDeliveryMethod[]
   storePages             StorePage[]
   storeItems             StoreItem[]
@@ -169,6 +172,7 @@ enum StaffRole {
   PURCHASING
   SHIPPING
   REFUNDS
+  STORE_MANAGER // affiliate stores area
 }
 
 model StaffUser {
@@ -190,6 +194,7 @@ model StaffUser {
   proofsCreated  Proof[]
   payments       Payment[]
   assignedJobs   ProductionJob[]     @relation("JobAssignee")
+  managedStores  Store[]             @relation("StoreManager")
   jobStepsDone   ProductionJobStep[]
   purchaseOrders PurchaseOrder[]
   stockMovements StockMovement[]
@@ -710,6 +715,7 @@ model Customer {
   sessions        CustomerSession[]
   tokens          CustomerToken[]
   carts           Cart[]
+  stores          Store[]           @relation("StoreCustomer")
   externalSource  String?
   externalId      String?
   createdAt       DateTime          @default(now())
@@ -1451,6 +1457,20 @@ model Store {
   announcement          String? // bar across the top of every page
   footerText            String?
   active                Boolean               @default(true)
+  // Affiliate stores: the customer the store is for, the staff member who
+  // looks after it, its group, and when it's open.
+  customerId            String?
+  customer              Customer?             @relation("StoreCustomer", fields: [businessId, customerId], references: [businessId, id], onDelete: NoAction)
+  managerId             String?
+  manager               StaffUser?            @relation("StoreManager", fields: [businessId, managerId], references: [businessId, id], onDelete: NoAction)
+  groupId               String?
+  group                 StoreGroup?           @relation(fields: [businessId, groupId], references: [businessId, id], onDelete: NoAction)
+  opensAt               DateTime?
+  closesAt              DateTime?
+  // Listed in store showcases (owners can opt out later).
+  showcase              Boolean               @default(true)
+  promoCodes            PromoCodeStore[]
+  giftCodes             GiftCodeStore[]
   accountMode           AccountMode?
   accessCode            String? // shoppers must enter it to see the store
   showPrices            Boolean?
@@ -1623,22 +1643,25 @@ enum PromoKind {
 
 // Business-wide promo codes.
 model PromoCode {
-  id          String    @id @default(cuid())
+  id          String           @id @default(cuid())
   businessId  String
-  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business    Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
   code        String // stored upper case
   description String?
   kind        PromoKind
-  value       Decimal   @default(0) @db.Decimal(10, 2) // percent (10 = 10%) or amount
-  minSubtotal Decimal?  @db.Decimal(10, 2)
+  value       Decimal          @default(0) @db.Decimal(10, 2) // percent (10 = 10%) or amount
+  minSubtotal Decimal?         @db.Decimal(10, 2)
   startsAt    DateTime?
   endsAt      DateTime?
   maxUses     Int?
-  usedCount   Int       @default(0)
-  active      Boolean   @default(true)
+  usedCount   Int              @default(0)
+  // Accepted in every store, or only the stores listed.
+  allStores   Boolean          @default(true)
+  stores      PromoCodeStore[]
+  active      Boolean          @default(true)
   orders      Order[]
   carts       Cart[]
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime         @default(now())
 
   @@unique([businessId, id])
   @@unique([businessId, code])
@@ -1646,18 +1669,20 @@ model PromoCode {
 
 // Business-wide gift codes with a balance, spent like a payment.
 model GiftCode {
-  id            String        @id @default(cuid())
+  id            String          @id @default(cuid())
   businessId    String
-  business      Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business      Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   code          String // stored upper case
-  initialAmount Decimal       @db.Decimal(10, 2)
-  balance       Decimal       @db.Decimal(10, 2)
+  initialAmount Decimal         @db.Decimal(10, 2)
+  balance       Decimal         @db.Decimal(10, 2)
   expiresAt     DateTime?
-  active        Boolean       @default(true)
+  active        Boolean         @default(true)
+  allStores     Boolean         @default(true)
+  stores        GiftCodeStore[]
   note          String? // who it was for
   uses          GiftCodeUse[]
   carts         Cart[]
-  createdAt     DateTime      @default(now())
+  createdAt     DateTime        @default(now())
 
   @@unique([businessId, id])
   @@unique([businessId, code])
@@ -1704,4 +1729,47 @@ model CustomerToken {
   createdAt  DateTime  @default(now())
 
   @@index([businessId, email])
+}
+
+// Stores grouped for management (Schools, Teams, Fundraisers…). A group's
+// settings apply to its stores unless a store sets its own.
+model StoreGroup {
+  id            String       @id @default(cuid())
+  businessId    String
+  business      Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name          String
+  description   String?
+  sortOrder     Int          @default(0)
+  accountMode   AccountMode?
+  showPrices    Boolean?
+  allowPayLater Boolean?
+  markupKind    MarkupKind?
+  markupValue   Decimal?     @db.Decimal(10, 2)
+  stores        Store[]
+  createdAt     DateTime     @default(now())
+
+  @@unique([businessId, id])
+  @@unique([businessId, name])
+}
+
+model PromoCodeStore {
+  businessId  String
+  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  promoCodeId String
+  promoCode   PromoCode @relation(fields: [businessId, promoCodeId], references: [businessId, id], onDelete: Cascade)
+  storeId     String
+  store       Store     @relation(fields: [businessId, storeId], references: [businessId, id], onDelete: Cascade)
+
+  @@id([promoCodeId, storeId])
+}
+
+model GiftCodeStore {
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  giftCodeId String
+  giftCode   GiftCode @relation(fields: [businessId, giftCodeId], references: [businessId, id], onDelete: Cascade)
+  storeId    String
+  store      Store    @relation(fields: [businessId, storeId], references: [businessId, id], onDelete: Cascade)
+
+  @@id([giftCodeId, storeId])
 }

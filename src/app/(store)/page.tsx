@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
+import { getRequestBusiness } from "@/lib/business";
 import type { Metadata } from "next";
 import { PLATFORM_NAME } from "@/lib/platform";
 import { getRequestStore } from "@/lib/store/resolve";
-import { Markdown } from "@/components/store/markdown";
+import { PageBody } from "@/components/store/showcase";
 import { ItemGrid, shopItemsInclude } from "@/components/store/items";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -14,6 +16,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function Home() {
   const rs = await getRequestStore();
+  // A business address with no store here (e.g. an unknown subdomain).
+  if (!rs && (await getRequestBusiness())) notFound();
   if (!rs) {
     return (
       <main className="mx-auto max-w-2xl px-4 py-16">
@@ -34,7 +38,7 @@ export default async function Home() {
   ]);
   return (
     <div className="space-y-10">
-      {home ? <Markdown source={home.body} /> : <h1 className="text-3xl font-bold">{rs.store.name}</h1>}
+      {home ? <PageBody body={home.body} db={rs.db} currentStoreId={rs.store.id} /> : <h1 className="text-3xl font-bold">{rs.store.name}</h1>}
       {featured.length > 0 && (
         <section className="space-y-4">
           <div className="flex items-baseline justify-between">

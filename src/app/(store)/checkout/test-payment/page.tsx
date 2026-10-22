@@ -19,7 +19,7 @@ export default async function TestPayment() {
       <h1 className="text-xl font-bold">Test payment</h1>
       <p className="text-sm text-gray-600">
         This store has no Stripe keys yet, so this development-only page stands in for the card payment. Add keys under
-        Storefront → Payments to use real Stripe Checkout.
+        Affiliate stores → Defaults &amp; payments to use real Stripe Checkout.
       </p>
       <div className="text-2xl font-semibold" data-testid="test-amount">{money(cart.amountDue)}</div>
       <ActionForm action={testPaymentAction} submitLabel="Pay (test)" className="flex flex-col items-center gap-2">

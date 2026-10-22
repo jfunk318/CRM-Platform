@@ -57,17 +57,17 @@ export async function applyCode(rs: RequestStore, cart: CartWithItems, raw: stri
   const code = normalizeCode(raw);
   if (!code) throw new OrderError("Enter a code");
   const reset = { status: "OPEN" as const, checkoutSessionId: null, amountDue: null };
-  const promo = await rs.db.promoCode.findUnique({ where: { businessId_code: { businessId: rs.business.id, code } } });
+  const promo = await rs.db.promoCode.findUnique({ where: { businessId_code: { businessId: rs.business.id, code } }, include: { stores: true } });
   if (promo) {
     const t = await cartTotals(rs.db, rs, cart);
-    const problem = promoProblem(promo, t.merchandise);
+    const problem = promoProblem(promo, t.merchandise, rs.store.id);
     if (problem) throw new OrderError(problem);
     await rs.db.cart.update({ where: { id: cart.id }, data: { promoCodeId: promo.id, ...reset } });
     return `Code ${code} applied`;
   }
-  const gift = await rs.db.giftCode.findUnique({ where: { businessId_code: { businessId: rs.business.id, code } } });
+  const gift = await rs.db.giftCode.findUnique({ where: { businessId_code: { businessId: rs.business.id, code } }, include: { stores: true } });
   if (gift) {
-    const problem = giftProblem(gift);
+    const problem = giftProblem(gift, rs.store.id);
     if (problem) throw new OrderError(problem);
     await rs.db.cart.update({ where: { id: cart.id }, data: { giftCodeId: gift.id, ...reset } });
     return `Gift code applied: $${gift.balance.toFixed(2)} available`;

@@ -1,20 +1,20 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireStaff } from "@/lib/auth/session";
 import { ActionForm } from "@/components/admin/action-form";
-import { Markdown } from "@/components/store/markdown";
-import { deletePageAction, savePageAction } from "../../actions";
+import { PageBody } from "@/components/store/showcase";
+import { loadAdminStore } from "@/lib/store/admin";
+import { deletePageAction, savePageAction } from "../../../actions";
 
-export default async function EditPage({ params }: { params: Promise<{ id: string }> }) {
-  const { db } = await requireStaff(["SALES"]);
-  const { id } = await params;
-  const page = await db.storePage.findUnique({ where: { id } });
+export default async function EditPage({ params }: { params: Promise<{ id: string; pageId: string }> }) {
+  const { id, pageId } = await params;
+  const { db, url } = await loadAdminStore(id);
+  const page = await db.storePage.findUnique({ where: { id: pageId, storeId: id } });
   if (!page) notFound();
   const home = page.slug === "home";
   const parents = await db.storePage.findMany({ where: { storeId: page.storeId, parentId: null, id: { not: page.id }, slug: { not: "home" } }, orderBy: { title: "asc" } });
   return (
     <div className="space-y-5">
-      <Link href="/admin/storefront/pages" className="text-sm text-amber-700 hover:underline">← Pages</Link>
+      <Link href={`/admin/stores/${id}/pages`} className="text-sm text-amber-700 hover:underline">← Pages</Link>
       <div className="grid gap-6 xl:grid-cols-2">
         <section className="card">
           <ActionForm action={savePageAction} className="space-y-4">
@@ -34,6 +34,8 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
               <textarea className="input min-h-96 font-mono text-sm" id="body" name="body" defaultValue={page.body} />
               <p className="mt-1 text-xs text-gray-500">
                 Markdown: <code># Heading</code>, <code>**bold**</code>, <code>*italic*</code>, <code>- list</code>, <code>[link](/catalog)</code>, <code>![picture](https://…)</code>, <code>&gt; quote</code>, <code>---</code>.
+                <br />
+                Store showcase: a line with <code>[[stores]]</code>, optionally <code>[[stores group=&quot;Schools&quot; sort=sales limit=6 columns=3]]</code> (sort: newest, oldest, sales, name; add <code>status=all</code> to include closed stores).
               </p>
             </div>
             {!home && (
@@ -72,9 +74,9 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
         <section className="card">
           <div className="mb-2 flex items-center justify-between text-sm">
             <span className="font-semibold">Preview (as saved)</span>
-            <a href={home ? "/" : `/${page.slug}`} target="_blank" className="text-amber-700 hover:underline">Open ↗</a>
+            <a href={home ? url : `${url}/${page.slug}`} target="_blank" className="text-amber-700 hover:underline">Open ↗</a>
           </div>
-          <Markdown source={page.body} />
+          <PageBody body={page.body} db={db} currentStoreId={id} />
         </section>
       </div>
     </div>

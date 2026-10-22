@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { requireStaff } from "@/lib/auth/session";
 import { ActionForm } from "@/components/admin/action-form";
-import { createPageAction } from "../actions";
+import { loadAdminStore } from "@/lib/store/admin";
+import { createPageAction } from "../../actions";
 
-export default async function PagesPage() {
-  const { db } = await requireStaff(["SALES"]);
-  const store = await db.store.findFirstOrThrow({ where: { kind: "ROOT" } });
+export default async function PagesPage({ params }: { params: Promise<{ id: string }> }) {
+  const { db, store } = await loadAdminStore((await params).id);
   const pages = await db.storePage.findMany({ where: { storeId: store.id }, include: { parent: true }, orderBy: [{ navOrder: "asc" }, { title: "asc" }] });
   const sorted = [...pages.filter((p) => p.slug === "home"), ...pages.filter((p) => p.slug !== "home")];
   return (
@@ -24,7 +23,7 @@ export default async function PagesPage() {
             {sorted.map((p) => (
               <tr key={p.id}>
                 <td>
-                  <Link href={`/admin/storefront/pages/${p.id}`} className="font-medium text-amber-700 hover:underline">{p.title}</Link>
+                  <Link href={`/admin/stores/${store.id}/pages/${p.id}`} className="font-medium text-amber-700 hover:underline">{p.title}</Link>
                   {p.parent && <span className="text-xs text-gray-500"> in {p.parent.title}</span>}
                 </td>
                 <td className="font-mono text-xs">{p.slug === "home" ? "/" : `/${p.slug}`}</td>
@@ -36,6 +35,7 @@ export default async function PagesPage() {
         </table>
       </div>
       <ActionForm action={createPageAction} submitLabel="New page" className="card flex flex-wrap items-end gap-3">
+        <input type="hidden" name="storeId" value={store.id} />
         <div>
           <label className="label" htmlFor="new-title">Title</label>
           <input className="input" id="new-title" name="title" required placeholder="About us" />

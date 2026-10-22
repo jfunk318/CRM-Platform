@@ -11,10 +11,13 @@ import { slugify } from "@/lib/catalog/products";
 import { encryptSecret } from "@/lib/crypto";
 import { formFiles, saveUpload, UploadError } from "@/lib/files/storage";
 import { isImage } from "@/lib/files/types";
+import { isValidSlug } from "@/lib/hosts";
 import { OrderError } from "@/lib/orders/service";
-import { createStoreItem, repriceStoreItem } from "@/lib/store/items";
 import { normalizeCode } from "@/lib/store/cart";
+import { createStoreItem, repriceStoreItem } from "@/lib/store/items";
 import { ACCOUNT_MODE_LABELS } from "@/lib/store/settings";
+
+type Db = Awaited<ReturnType<typeof requireStaff>>["db"];
 
 async function run(fn: () => Promise<string | void>): Promise<ActionResult> {
   return runAction(async () => {
@@ -27,14 +30,15 @@ async function run(fn: () => Promise<string | void>): Promise<ActionResult> {
   });
 }
 
+/** Store pages in the back office and the public storefronts. */
 const refresh = () => {
-  revalidatePath("/admin/storefront", "layout");
+  revalidatePath("/admin/stores", "layout");
   revalidatePath("/", "layout");
 };
 
-const rootStore = async (db: Awaited<ReturnType<typeof requireStaff>>["db"]) => db.store.findFirstOrThrow({ where: { kind: "ROOT" } });
+const storeOf = (db: Db, form: FormData) => db.store.findUniqueOrThrow({ where: { id: text(form, "storeId") } });
 
-/** "" = inherit; "on"/"off" = this store's own choice. */
+/** "" = inherit; "on"/"off" = this level's own choice. */
 const triState = (form: FormData, name: string) => {
   const v = String(form.get(name) ?? "");
   return v === "on" ? true : v === "off" ? false : null;
@@ -46,20 +50,75 @@ function accountMode(raw: string, allowInherit: boolean): AccountMode | null {
   return raw as AccountMode;
 }
 
-// ─── Store settings ─────────────────────────────────────────────────────
+function markup(form: FormData) {
+  const kind = (optionalText(form, "markupKind") as MarkupKind | null) ?? null;
+  if (kind && kind !== "AMOUNT" && kind !== "PERCENT") throw new FormError("Choose a markup type");
+  const value = optionalDecimal(String(form.get("markupValue") ?? ""), "Markup");
+  return { markupKind: kind && value ? kind : null, markupValue: kind && value ? value : null };
+}
+
+const dateOrNull = (raw: string | null, label: string) => {
+  if (!raw) return null;
+  const d = new Date(`${raw}T00:00:00`);
+  if (Number.isNaN(d.getTime())) throw new FormError(`${label} must be a date`);
+  return d;
+};
+
+// Subdomains the platform itself needs.
+const RESERVED_SUBDOMAINS = new Set(["www", "admin", "api", "app", "mail", "shop", "store", "stores", "platform", "static", "media"]);
+
+// ─── Stores ─────────────────────────────────────────────────────────────
+
+export async function createStoreAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  let id = "";
+  const r = await run(async () => {
+    const name = text(form, "name", "Store name");
+    const slug = (optionalText(form, "slug") ?? slugify(name)).toLowerCase();
+    if (!isValidSlug(slug)) throw new FormError("The address can use lowercase letters, numbers and hyphens");
+    if (RESERVED_SUBDOMAINS.has(slug)) throw new FormError(`"${slug}" is reserved; choose another address`);
+    if (await db.store.findFirst({ where: { slug } })) throw new FormError(`${slug} is already taken`);
+    const store = await db.store.create({
+      data: {
+        businessId: db.$businessId,
+        kind: "AFFILIATE",
+        name,
+        slug,
+        groupId: optionalText(form, "groupId"),
+        managerId: optionalText(form, "managerId"),
+        customerId: optionalText(form, "customerId"),
+        pages: { create: { slug: "home", title: "Home", body: `# ${name}\n\nWelcome to the ${name} store. Pick your gear below.` } },
+      },
+    });
+    id = store.id;
+    refresh();
+  });
+  if (r.error) return r;
+  redirect(`/admin/stores/${id}`);
+}
 
 export async function saveStoreAction(_: ActionResult, form: FormData): Promise<ActionResult> {
-  const { db } = await requireStaff(["ADMIN"]);
+  const { db } = await requireStaff(["STORE_MANAGER"]);
   return run(async () => {
-    const store = await rootStore(db);
+    const store = await storeOf(db, form);
+    const affiliate = store.kind === "AFFILIATE";
+    const slug = affiliate ? text(form, "slug", "Address").toLowerCase() : null;
+    if (slug !== null) {
+      if (!isValidSlug(slug)) throw new FormError("The address can use lowercase letters, numbers and hyphens");
+      if (RESERVED_SUBDOMAINS.has(slug)) throw new FormError(`"${slug}" is reserved; choose another address`);
+      if (await db.store.findFirst({ where: { slug, id: { not: store.id } } })) throw new FormError(`${slug} is already taken`);
+    }
     const accent = optionalText(form, "accentColor");
     if (accent && !/^#[0-9a-f]{6}$/i.test(accent)) throw new FormError("Accent color must look like #d97706");
     const ga4Id = optionalText(form, "ga4Id");
     if (ga4Id && !/^G-[A-Z0-9]{4,15}$/.test(ga4Id)) throw new FormError("Google Analytics ID should look like G-XXXXXXX");
     const metaPixelId = optionalText(form, "metaPixelId");
     if (metaPixelId && !/^\d{5,20}$/.test(metaPixelId)) throw new FormError("Meta Pixel ID should be digits only");
-    const markupKind = (optionalText(form, "markupKind") as MarkupKind | null) ?? null;
-    const markupValue = optionalDecimal(String(form.get("markupValue") ?? ""), "Markup");
+    const opensAt = dateOrNull(optionalText(form, "opensAt"), "Opening date");
+    const closesRaw = optionalText(form, "closesAt");
+    // Closes at the end of that day.
+    const closesAt = closesRaw ? new Date(dateOrNull(closesRaw, "Closing date")!.getTime() + 86_399_000) : null;
+    if (opensAt && closesAt && closesAt < opensAt) throw new FormError("The store can't close before it opens");
     const methodIds = form.getAll("deliveryMethodIds").map(String);
     const custom = checkbox(form, "customDeliveryMethods");
     if (custom && methodIds.length === 0) throw new FormError("Choose at least one delivery method, or offer them all");
@@ -68,16 +127,27 @@ export async function saveStoreAction(_: ActionResult, form: FormData): Promise<
         where: { id: store.id },
         data: {
           name: text(form, "name", "Store name"),
+          ...(slug !== null ? { slug } : {}),
           tagline: optionalText(form, "tagline"),
           accentColor: accent,
           announcement: optionalText(form, "announcement"),
           footerText: optionalText(form, "footerText"),
+          ...(affiliate
+            ? {
+                groupId: optionalText(form, "groupId"),
+                customerId: optionalText(form, "customerId"),
+                opensAt,
+                closesAt,
+                active: checkbox(form, "active"),
+                showcase: checkbox(form, "showcase"),
+              }
+            : {}),
+          managerId: optionalText(form, "managerId"),
           accountMode: accountMode(String(form.get("accountMode") ?? ""), true),
           showPrices: triState(form, "showPrices"),
           allowPayLater: triState(form, "allowPayLater"),
           accessCode: optionalText(form, "accessCode"),
-          markupKind: markupKind && markupValue ? markupKind : null,
-          markupValue: markupKind && markupValue ? markupValue : null,
+          ...markup(form),
           customDeliveryMethods: custom,
           ga4Id,
           metaPixelId,
@@ -91,28 +161,75 @@ export async function saveStoreAction(_: ActionResult, form: FormData): Promise<
 }
 
 export async function uploadLogoAction(_: ActionResult, form: FormData): Promise<ActionResult> {
-  const staff = await requireStaff(["ADMIN"]);
+  const staff = await requireStaff(["STORE_MANAGER"]);
   return run(async () => {
+    const store = await storeOf(staff.db, form);
     const [file] = formFiles(form, "logo");
     if (!file) throw new FormError("Choose an image");
     if (!isImage(file.name)) throw new FormError("The logo must be a PNG, JPG, GIF or WebP image");
     const saved = await saveUpload(staff.db, file, staff.id);
-    const store = await rootStore(staff.db);
     await staff.db.store.update({ where: { id: store.id }, data: { logoFileId: saved.id } });
     refresh();
     return "Logo updated";
   });
 }
 
-export async function removeLogoAction(): Promise<ActionResult> {
-  const { db } = await requireStaff(["ADMIN"]);
+export async function removeLogoAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["STORE_MANAGER"]);
   return run(async () => {
-    const store = await rootStore(db);
+    const store = await storeOf(db, form);
     await db.store.update({ where: { id: store.id }, data: { logoFileId: null } });
     refresh();
     return "Logo removed";
   });
 }
+
+/** Only stores nobody has ordered from can be deleted; others are closed instead. */
+export async function deleteStoreAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  const r = await run(async () => {
+    const store = await storeOf(db, form);
+    if (store.kind === "ROOT") throw new FormError("The main site can't be deleted");
+    if (await db.order.count({ where: { storeId: store.id } })) throw new FormError("This store has orders, so it can't be deleted. Close it instead.");
+    await db.$transaction([db.orderLine.updateMany({ where: { storeItem: { storeId: store.id } }, data: { storeItemId: null } }), db.store.delete({ where: { id: store.id } })]);
+    refresh();
+  });
+  if (r.error) return r;
+  redirect("/admin/stores");
+}
+
+// ─── Groups ─────────────────────────────────────────────────────────────
+
+export async function saveGroupAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  return run(async () => {
+    const id = optionalText(form, "id");
+    const data = {
+      name: text(form, "name", "Group name"),
+      description: optionalText(form, "description"),
+      accountMode: accountMode(String(form.get("accountMode") ?? ""), true),
+      showPrices: triState(form, "showPrices"),
+      allowPayLater: triState(form, "allowPayLater"),
+      ...markup(form),
+    };
+    if (id) await db.storeGroup.update({ where: { id }, data });
+    else await db.storeGroup.create({ data: { ...data, businessId: db.$businessId, sortOrder: await db.storeGroup.count() } });
+    refresh();
+    return id ? "Saved" : `Added ${data.name}`;
+  });
+}
+
+export async function deleteGroupAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  return run(async () => {
+    const id = text(form, "id");
+    await db.$transaction([db.store.updateMany({ where: { groupId: id }, data: { groupId: null } }), db.storeGroup.delete({ where: { id } })]);
+    refresh();
+    return "Deleted";
+  });
+}
+
+// ─── Defaults and payments (admins) ─────────────────────────────────────
 
 export async function saveDefaultsAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   const { db } = await requireStaff(["ADMIN"]);
@@ -129,8 +246,6 @@ export async function saveDefaultsAction(_: ActionResult, form: FormData): Promi
   });
 }
 
-// ─── Payments ───────────────────────────────────────────────────────────
-
 export async function savePaymentsAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   const { db } = await requireStaff(["ADMIN"]);
   return run(async () => {
@@ -146,7 +261,7 @@ export async function savePaymentsAction(_: ActionResult, form: FormData): Promi
         ...(webhook ? { stripeWebhookSecretEnc: encryptSecret(webhook) } : {}),
       },
     });
-    revalidatePath("/admin/storefront");
+    revalidatePath("/admin/stores/settings");
     return "Saved";
   });
 }
@@ -155,7 +270,7 @@ export async function removePaymentsAction(): Promise<ActionResult> {
   const { db } = await requireStaff(["ADMIN"]);
   return run(async () => {
     await db.business.update({ where: { id: db.$businessId }, data: { stripeSecretKeyEnc: null, stripeWebhookSecretEnc: null } });
-    revalidatePath("/admin/storefront");
+    revalidatePath("/admin/stores/settings");
     return "Stripe disconnected";
   });
 }
@@ -163,29 +278,30 @@ export async function removePaymentsAction(): Promise<ActionResult> {
 // ─── Pages ──────────────────────────────────────────────────────────────
 
 export async function createPageAction(_: ActionResult, form: FormData): Promise<ActionResult> {
-  const { db } = await requireStaff(["SALES"]);
-  let id = "";
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  let path = "";
   const r = await run(async () => {
-    const store = await rootStore(db);
+    const store = await storeOf(db, form);
     const title = text(form, "title", "Title");
     const slug = slugify(optionalText(form, "slug") ?? title);
     if (!slug) throw new FormError("Give the page an address");
+    if (RESERVED_PAGES.has(slug)) throw new FormError(`"/${slug}" is used by the store itself; choose another address`);
     const page = await db.storePage.create({ data: { businessId: db.$businessId, storeId: store.id, title, slug, body: `# ${title}\n\n` } });
-    id = page.id;
+    path = `/admin/stores/${store.id}/pages/${page.id}`;
   });
   if (r.error) return r;
-  redirect(`/admin/storefront/pages/${id}`);
+  redirect(path);
 }
 
-const RESERVED = new Set(["admin", "platform", "api", "c", "proof", "media", "shop", "catalog", "cart", "checkout", "account", "quote", "search", "track", "sitemap.xml", "robots.txt"]);
+const RESERVED_PAGES = new Set(["admin", "platform", "api", "c", "proof", "media", "shop", "catalog", "cart", "checkout", "account", "quote", "search", "track", "sitemap.xml", "robots.txt"]);
 
 export async function savePageAction(_: ActionResult, form: FormData): Promise<ActionResult> {
-  const { db } = await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["STORE_MANAGER"]);
   return run(async () => {
     const id = text(form, "id");
     const page = await db.storePage.findUniqueOrThrow({ where: { id } });
     const slug = page.slug === "home" ? "home" : slugify(text(form, "slug", "Address"));
-    if (RESERVED.has(slug)) throw new FormError(`"/${slug}" is used by the store itself; choose another address`);
+    if (RESERVED_PAGES.has(slug)) throw new FormError(`"/${slug}" is used by the store itself; choose another address`);
     const parentId = optionalText(form, "parentId");
     if (parentId === id) throw new FormError("A page can't be inside itself");
     if (parentId && (await db.storePage.findUniqueOrThrow({ where: { id: parentId } })).parentId) throw new FormError("Pages can be nested one level deep");
@@ -208,27 +324,29 @@ export async function savePageAction(_: ActionResult, form: FormData): Promise<A
 }
 
 export async function deletePageAction(_: ActionResult, form: FormData): Promise<ActionResult> {
-  const { db } = await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  let storeId = "";
   const r = await run(async () => {
     const id = text(form, "id");
     const page = await db.storePage.findUniqueOrThrow({ where: { id } });
     if (page.slug === "home") throw new FormError("The home page can't be deleted");
+    storeId = page.storeId;
     await db.$transaction([db.storePage.updateMany({ where: { parentId: id }, data: { parentId: null } }), db.storePage.delete({ where: { id } })]);
     refresh();
   });
   if (r.error) return r;
-  redirect("/admin/storefront/pages");
+  redirect(`/admin/stores/${storeId}/pages`);
 }
 
-// ─── Shop items ─────────────────────────────────────────────────────────
+// ─── Items ──────────────────────────────────────────────────────────────
 
 export async function createItemAction(_: ActionResult, form: FormData): Promise<ActionResult> {
-  const { db } = await requireStaff(["SALES"]);
-  let id = "";
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  let path = "";
   const r = await run(async () => {
-    const store = await rootStore(db);
+    const store = await storeOf(db, form);
     const line = parseLine(form);
-    id = await createStoreItem(db, store.id, {
+    const id = await createStoreItem(db, store.id, {
       name: text(form, "name", "Item name"),
       description: optionalText(form, "description"),
       productId: line.productId,
@@ -237,21 +355,19 @@ export async function createItemAction(_: ActionResult, form: FormData): Promise
       decorations: line.decorations,
       batchQty: int(String(form.get("batchQty") ?? "") || "24", "Batch quantity"),
     });
+    path = `/admin/stores/${store.id}/items/${id}`;
     refresh();
   });
   if (r.error) return r;
-  redirect(`/admin/storefront/items/${id}`);
+  redirect(path);
 }
 
 export async function saveItemAction(_: ActionResult, form: FormData): Promise<ActionResult> {
-  const { db } = await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["STORE_MANAGER"]);
   return run(async () => {
-    const id = text(form, "id");
-    const item = await db.storeItem.findUniqueOrThrow({ where: { id } });
+    const item = await db.storeItem.findUniqueOrThrow({ where: { id: text(form, "id") } });
     const slug = slugify(text(form, "slug", "Address"));
     if (!slug) throw new FormError("Give the item an address");
-    const markupKind = (optionalText(form, "markupKind") as MarkupKind | null) ?? null;
-    const markupValue = optionalDecimal(String(form.get("markupValue") ?? ""), "Markup");
     await db.storeItem.update({
       where: { id: item.id },
       data: {
@@ -261,8 +377,7 @@ export async function saveItemAction(_: ActionResult, form: FormData): Promise<A
         published: checkbox(form, "published"),
         featured: checkbox(form, "featured"),
         sortOrder: optionalNumber(String(form.get("sortOrder") ?? ""), "Order", true) ?? 0,
-        markupKind: markupKind && markupValue ? markupKind : null,
-        markupValue: markupKind && markupValue ? markupValue : null,
+        ...markup(form),
       },
     });
     refresh();
@@ -270,7 +385,7 @@ export async function saveItemAction(_: ActionResult, form: FormData): Promise<A
 }
 
 export async function saveItemPricesAction(_: ActionResult, form: FormData): Promise<ActionResult> {
-  const { db } = await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["STORE_MANAGER"]);
   return run(async () => {
     const item = await db.storeItem.findUniqueOrThrow({ where: { id: text(form, "id") }, include: { prices: true } });
     await db.$transaction(
@@ -289,7 +404,7 @@ export async function saveItemPricesAction(_: ActionResult, form: FormData): Pro
 }
 
 export async function repriceItemAction(_: ActionResult, form: FormData): Promise<ActionResult> {
-  const { db } = await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["STORE_MANAGER"]);
   return run(async () => {
     await repriceStoreItem(db, text(form, "id"), int(String(form.get("batchQty") ?? ""), "Batch quantity"));
     refresh();
@@ -298,7 +413,7 @@ export async function repriceItemAction(_: ActionResult, form: FormData): Promis
 }
 
 export async function uploadItemImageAction(_: ActionResult, form: FormData): Promise<ActionResult> {
-  const staff = await requireStaff(["SALES"]);
+  const staff = await requireStaff(["STORE_MANAGER"]);
   return run(async () => {
     const [file] = formFiles(form, "image");
     if (!file) throw new FormError("Choose an image");
@@ -311,29 +426,33 @@ export async function uploadItemImageAction(_: ActionResult, form: FormData): Pr
 }
 
 export async function deleteItemAction(_: ActionResult, form: FormData): Promise<ActionResult> {
-  const { db } = await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  let storeId = "";
   const r = await run(async () => {
-    const id = text(form, "id");
+    const item = await db.storeItem.findUniqueOrThrow({ where: { id: text(form, "id") } });
+    storeId = item.storeId;
     // Orders keep their lines; they just lose the link to the item.
-    await db.$transaction([db.orderLine.updateMany({ where: { storeItemId: id }, data: { storeItemId: null } }), db.storeItem.delete({ where: { id } })]);
+    await db.$transaction([db.orderLine.updateMany({ where: { storeItemId: item.id }, data: { storeItemId: null } }), db.storeItem.delete({ where: { id: item.id } })]);
     refresh();
   });
   if (r.error) return r;
-  redirect("/admin/storefront/items");
+  redirect(`/admin/stores/${storeId}/items`);
 }
 
 // ─── Promo and gift codes ───────────────────────────────────────────────
 
 const PROMO_KINDS: PromoKind[] = ["PERCENT", "AMOUNT", "FREE_SHIPPING"];
-const dateOrNull = (raw: string | null, label: string) => {
-  if (!raw) return null;
-  const d = new Date(`${raw}T00:00:00`);
-  if (Number.isNaN(d.getTime())) throw new FormError(`${label} must be a date`);
-  return d;
-};
+
+/** "All stores", or the stores ticked. */
+function scope(form: FormData) {
+  const allStores = form.get("scope") !== "some";
+  const storeIds = allStores ? [] : form.getAll("storeIds").map(String);
+  if (!allStores && storeIds.length === 0) throw new FormError("Tick at least one store, or choose all stores");
+  return { allStores, storeIds };
+}
 
 export async function savePromoAction(_: ActionResult, form: FormData): Promise<ActionResult> {
-  const { db } = await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["STORE_MANAGER"]);
   return run(async () => {
     const id = optionalText(form, "id");
     const kind = String(form.get("kind")) as PromoKind;
@@ -341,6 +460,7 @@ export async function savePromoAction(_: ActionResult, form: FormData): Promise<
     const value = kind === "FREE_SHIPPING" ? decimal("0", "Value") : decimal(String(form.get("value") ?? ""), "Value");
     if (kind === "PERCENT" && value.gt(100)) throw new FormError("A percentage can't be over 100");
     const endsRaw = optionalText(form, "endsAt");
+    const { allStores, storeIds } = scope(form);
     const data = {
       code: normalizeCode(text(form, "code", "Code")),
       description: optionalText(form, "description"),
@@ -348,40 +468,70 @@ export async function savePromoAction(_: ActionResult, form: FormData): Promise<
       value,
       minSubtotal: optionalDecimal(String(form.get("minSubtotal") ?? ""), "Minimum"),
       startsAt: dateOrNull(optionalText(form, "startsAt"), "Start date"),
-      // Ends at the end of that day.
       endsAt: endsRaw ? new Date(dateOrNull(endsRaw, "End date")!.getTime() + 86_399_000) : null,
       maxUses: optionalNumber(String(form.get("maxUses") ?? ""), "Uses", true),
       active: id ? checkbox(form, "active") : true,
+      allStores,
     };
     if (!/^[A-Z0-9_-]{3,30}$/.test(data.code)) throw new FormError("Codes are 3–30 letters, numbers, - or _");
     if (await db.giftCode.findUnique({ where: { businessId_code: { businessId: db.$businessId, code: data.code } } })) throw new FormError("A gift code already uses that code");
-    if (id) await db.promoCode.update({ where: { id }, data });
-    else await db.promoCode.create({ data: { ...data, businessId: db.$businessId } });
-    revalidatePath("/admin/promo-codes");
+    await db.$transaction(async (tx) => {
+      const promo = id ? await tx.promoCode.update({ where: { id }, data }) : await tx.promoCode.create({ data: { ...data, businessId: tx.$businessId } });
+      await tx.promoCodeStore.deleteMany({ where: { promoCodeId: promo.id } });
+      if (storeIds.length) await tx.promoCodeStore.createMany({ data: storeIds.map((storeId) => ({ businessId: tx.$businessId, promoCodeId: promo.id, storeId })) });
+    });
+    refresh();
     return id ? "Saved" : `Added ${data.code}`;
   });
 }
 
 export async function saveGiftAction(_: ActionResult, form: FormData): Promise<ActionResult> {
-  const { db } = await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["STORE_MANAGER"]);
   return run(async () => {
     const id = optionalText(form, "id");
     const expiresAt = dateOrNull(optionalText(form, "expiresAt"), "Expiry date");
-    if (id) {
-      await db.giftCode.update({
-        where: { id },
-        data: { note: optionalText(form, "note"), expiresAt, active: checkbox(form, "active"), balance: decimal(String(form.get("balance") ?? ""), "Balance") },
-      });
-      revalidatePath("/admin/gift-codes");
-      return "Saved";
+    const { allStores, storeIds } = scope(form);
+    await db.$transaction(async (tx) => {
+      let giftId = id;
+      if (id) {
+        await tx.giftCode.update({
+          where: { id },
+          data: { note: optionalText(form, "note"), expiresAt, active: checkbox(form, "active"), balance: decimal(String(form.get("balance") ?? ""), "Balance"), allStores },
+        });
+      } else {
+        const amount = decimal(String(form.get("amount") ?? ""), "Amount");
+        if (amount.lte(0)) throw new FormError("Amount must be more than zero");
+        const code = normalizeCode(optionalText(form, "code") ?? `GIFT-${randomBytes(4).toString("hex").toUpperCase()}`);
+        if (!/^[A-Z0-9_-]{4,30}$/.test(code)) throw new FormError("Codes are 4–30 letters, numbers, - or _");
+        if (await tx.promoCode.findUnique({ where: { businessId_code: { businessId: tx.$businessId, code } } })) throw new FormError("A promo code already uses that code");
+        giftId = (await tx.giftCode.create({ data: { businessId: tx.$businessId, code, initialAmount: amount, balance: amount, expiresAt, note: optionalText(form, "note"), allStores } })).id;
+      }
+      await tx.giftCodeStore.deleteMany({ where: { giftCodeId: giftId! } });
+      if (storeIds.length) await tx.giftCodeStore.createMany({ data: storeIds.map((storeId) => ({ businessId: tx.$businessId, giftCodeId: giftId!, storeId })) });
+    });
+    refresh();
+    return id ? "Saved" : "Gift code created";
+  });
+}
+
+/** From a store's Codes tab: accept (or stop accepting) a code limited to chosen stores. */
+export async function toggleStoreCodeAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  return run(async () => {
+    const store = await storeOf(db, form);
+    const codeId = text(form, "codeId");
+    const on = form.get("on") === "1";
+    if (form.get("kind") === "gift") {
+      const gift = await db.giftCode.findUniqueOrThrow({ where: { id: codeId } });
+      if (gift.allStores) throw new FormError("This code works in every store; change that on the Gift codes page");
+      if (on) await db.giftCodeStore.upsert({ where: { giftCodeId_storeId: { giftCodeId: gift.id, storeId: store.id } }, create: { businessId: db.$businessId, giftCodeId: gift.id, storeId: store.id }, update: {} });
+      else await db.giftCodeStore.deleteMany({ where: { giftCodeId: gift.id, storeId: store.id } });
+    } else {
+      const promo = await db.promoCode.findUniqueOrThrow({ where: { id: codeId } });
+      if (promo.allStores) throw new FormError("This code works in every store; change that on the Promo codes page");
+      if (on) await db.promoCodeStore.upsert({ where: { promoCodeId_storeId: { promoCodeId: promo.id, storeId: store.id } }, create: { businessId: db.$businessId, promoCodeId: promo.id, storeId: store.id }, update: {} });
+      else await db.promoCodeStore.deleteMany({ where: { promoCodeId: promo.id, storeId: store.id } });
     }
-    const amount = decimal(String(form.get("amount") ?? ""), "Amount");
-    if (amount.lte(0)) throw new FormError("Amount must be more than zero");
-    const code = normalizeCode(optionalText(form, "code") ?? `GIFT-${randomBytes(4).toString("hex").toUpperCase()}`);
-    if (!/^[A-Z0-9_-]{4,30}$/.test(code)) throw new FormError("Codes are 4–30 letters, numbers, - or _");
-    if (await db.promoCode.findUnique({ where: { businessId_code: { businessId: db.$businessId, code } } })) throw new FormError("A promo code already uses that code");
-    await db.giftCode.create({ data: { businessId: db.$businessId, code, initialAmount: amount, balance: amount, expiresAt, note: optionalText(form, "note") } });
-    revalidatePath("/admin/gift-codes");
-    return `Created gift code ${code}`;
+    refresh();
   });
 }

@@ -116,3 +116,16 @@ phases 1–3 need real product data.
   payments and create production jobs. Deferred: store groups and affiliate
   subdomains (phase 6), name/number personalization (phase 6), ShipStation
   rates (phase 8), the customer designer (phase 9).
+- **Phase 6 (in progress):** the storefront built in phase 5 became the
+  first affiliate store (Affiliate Store 1 at store1.<domain>) and every
+  business got a fresh main site. Done so far: store subdomains (platform
+  and custom domains), a role-based back-office switcher (Store manager
+  role), the stores dashboard (search, group/status/manager filters, newest /
+  highest sales / closing soon views), per-store dashboards (overview,
+  items, pages, codes, settings), store groups with inherited settings and
+  markups, open/close dates, main site managed like a store with
+  `[[stores]]` showcase blocks, global promo and gift codes limited to all or
+  chosen stores. Still to do: publish a quote/order to a new or existing
+  store, the store owner portal with requests and live request flags,
+  name/number personalization, commissions, batching orders at store close,
+  visit counts, drag-and-drop showcase editor.

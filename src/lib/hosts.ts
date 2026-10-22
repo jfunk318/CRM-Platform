@@ -16,9 +16,18 @@ export const isLocalHost = (host: string) => LOCAL_HOSTS.has(host);
 
 export type ParsedHost =
   | { kind: "platform" }
-  | { kind: "slug"; slug: string }
+  // <slug>.<platform> or <store>.<slug>.<platform> (same with .localhost)
+  | { kind: "slug"; slug: string; store?: string }
   | { kind: "domain"; domain: string }
   | { kind: "local" };
+
+/** "companyname" → slug; "store1.companyname" → store of slug; anything deeper isn't ours. */
+function slugAndStore(labels: string): ParsedHost | null {
+  const parts = labels.split(".");
+  if (parts.length === 1) return { kind: "slug", slug: parts[0] };
+  if (parts.length === 2) return { kind: "slug", slug: parts[1], store: parts[0] };
+  return null;
+}
 
 /** Classify a request host. Pure, so it can be unit tested. */
 export function parseHost(
@@ -30,11 +39,11 @@ export function parseHost(
   // localhost conveniences only exist in development.
   if (allowLocal) {
     if (!host || isLocalHost(host)) return { kind: "local" };
-    if (host.endsWith(".localhost")) return { kind: "slug", slug: host.slice(0, -".localhost".length) };
+    if (host.endsWith(".localhost")) return slugAndStore(host.slice(0, -".localhost".length)) ?? { kind: "domain", domain: host };
   }
   if (platformDomain) {
     if (host === platformDomain) return { kind: "platform" };
-    if (host.endsWith(`.${platformDomain}`)) return { kind: "slug", slug: host.slice(0, -platformDomain.length - 1) };
+    if (host.endsWith(`.${platformDomain}`)) return slugAndStore(host.slice(0, -platformDomain.length - 1)) ?? { kind: "domain", domain: host };
   }
   return { kind: "domain", domain: host };
 }

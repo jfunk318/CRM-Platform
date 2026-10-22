@@ -10,6 +10,13 @@ describe("parseHost", () => {
     expect(parseHost("companyname.com", P)).toEqual({ kind: "domain", domain: "companyname.com" });
     expect(parseHost("www.companyname.com", P)).toEqual({ kind: "domain", domain: "companyname.com" });
   });
+  it("recognizes affiliate store subdomains", () => {
+    expect(parseHost("store1.companyname.nametbd.com", P)).toEqual({ kind: "slug", slug: "companyname", store: "store1" });
+    expect(parseHost("store1.companyname.localhost:3000", null)).toEqual({ kind: "slug", slug: "companyname", store: "store1" });
+    // Stores of a custom domain are worked out against the database.
+    expect(parseHost("store1.companyname.com", P)).toEqual({ kind: "domain", domain: "store1.companyname.com" });
+    expect(parseHost("a.b.companyname.localhost", null)).toEqual({ kind: "domain", domain: "a.b.companyname.localhost" });
+  });
   it("handles local development", () => {
     expect(parseHost("localhost:3000", P)).toEqual({ kind: "local" });
     expect(parseHost("127.0.0.1:3000", null)).toEqual({ kind: "local" });

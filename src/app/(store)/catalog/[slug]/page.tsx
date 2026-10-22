@@ -7,7 +7,7 @@ import { QuoteForm } from "@/components/store/quote-form";
 
 async function load(slug: string) {
   const rs = await getRequestStore();
-  if (!rs) return null;
+  if (!rs || rs.store.kind !== "ROOT") return null;
   const product = await rs.db.product.findFirst({
     where: { slug, status: "ACTIVE" },
     include: {

@@ -30,7 +30,8 @@ export const DEFAULT_ORDER_STATUSES: {
 /**
  * What every new business starts with: quote/order statuses, an Apparel
  * product type, a Retail pricing group (flat 40% markup), two delivery
- * methods and its root storefront with a home page. Safe to run again; it
+ * methods and its main site (root store) with a home page that showcases
+ * its affiliate stores. Safe to run again; it
  * only fills in what's missing.
  */
 export async function setUpBusiness(db: BusinessDb): Promise<void> {
@@ -80,4 +81,8 @@ export async function setUpBusiness(db: BusinessDb): Promise<void> {
 
 const DEFAULT_HOME_PAGE = `# Custom apparel, printed in-house
 
-Screen printing, embroidery and more. Browse the [catalog](/catalog) or [request a quote](/quote).`;
+Screen printing, embroidery and more. Browse the [catalog](/catalog) or [request a quote](/quote).
+
+## Team and organization stores
+
+[[stores]]`;

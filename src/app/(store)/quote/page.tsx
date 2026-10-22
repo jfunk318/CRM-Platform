@@ -7,7 +7,7 @@ export const metadata = { title: "Request a quote" };
 
 export default async function QuotePage() {
   const rs = await getRequestStore();
-  if (!rs) notFound();
+  if (!rs || rs.store.kind !== "ROOT") notFound();
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <h1 className="text-3xl font-bold">Request a quote</h1>

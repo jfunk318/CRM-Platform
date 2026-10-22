@@ -1,0 +1,76 @@
+import Link from "next/link";
+import { loadAdminStore } from "@/lib/store/admin";
+import { OrderTable, orderTableInclude } from "@/components/admin/order-table";
+
+const money = (v: { toFixed(n: number): string }) => `$${v.toFixed(2)}`;
+const day = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+
+/** One store at a glance: sales, setup and its latest orders. */
+export default async function StoreOverview({ params }: { params: Promise<{ id: string }> }) {
+  const { db, store, url } = await loadAdminStore((await params).id);
+  const [sales, items, published, pages, orders] = await Promise.all([
+    db.order.aggregate({ where: { storeId: store.id, type: "ORDER" }, _sum: { total: true }, _count: true, _max: { placedAt: true } }),
+    db.storeItem.count({ where: { storeId: store.id } }),
+    db.storeItem.count({ where: { storeId: store.id, published: true } }),
+    db.storePage.count({ where: { storeId: store.id } }),
+    db.order.findMany({ where: { storeId: store.id }, include: orderTableInclude, orderBy: { createdAt: "desc" }, take: 15 }),
+  ]);
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-4" data-testid="store-stats">
+        <Stat label="Orders" value={String(sales._count)} />
+        <Stat label="Sales" value={money(sales._sum.total ?? 0)} />
+        <Stat label="Items on sale" value={`${published} of ${items}`} href={`/admin/stores/${store.id}/items`} />
+        <Stat label="Last order" value={sales._max.placedAt ? day(sales._max.placedAt) : "—"} />
+      </div>
+      <section className="card grid gap-3 text-sm sm:grid-cols-3">
+        <div>
+          <div className="label">Address</div>
+          <a href={url} target="_blank" className="font-mono text-amber-700 hover:underline">{url.replace(/^https?:\/\//, "")}</a>
+        </div>
+        <div>
+          <div className="label">{store.kind === "ROOT" ? "Site" : "Store for"}</div>
+          {store.customer ? (
+            <Link href={`/admin/customers/${store.customer.id}`} className="text-amber-700 hover:underline">{store.customer.firstName} {store.customer.lastName}</Link>
+          ) : (
+            <span className="text-gray-500">{store.kind === "ROOT" ? "Your own main site" : "No customer set"}</span>
+          )}
+        </div>
+        <div>
+          <div className="label">Manager</div>
+          {store.manager?.name ?? <span className="text-gray-500">Nobody</span>}
+        </div>
+        <div>
+          <div className="label">Dates</div>
+          {store.opensAt || store.closesAt ? (
+            <>{store.opensAt ? `Opens ${day(store.opensAt)}` : "Open"}{store.closesAt ? ` · closes ${day(store.closesAt)}` : ""}</>
+          ) : (
+            <span className="text-gray-500">Always open</span>
+          )}
+        </div>
+        <div>
+          <div className="label">Pages</div>
+          <Link href={`/admin/stores/${store.id}/pages`} className="text-amber-700 hover:underline">{pages} page{pages === 1 ? "" : "s"}</Link>
+        </div>
+        <div>
+          <div className="label">Showcase</div>
+          {store.kind === "ROOT" ? "Shows the other stores" : store.showcase ? "Included" : <span className="text-gray-500">Left out</span>}
+        </div>
+      </section>
+      <section className="space-y-2">
+        <h2 className="font-semibold">Latest orders</h2>
+        <OrderTable orders={orders} empty="No orders from this store yet." />
+      </section>
+    </div>
+  );
+}
+
+function Stat({ label, value, href }: { label: string; value: string; href?: string }) {
+  const body = (
+    <>
+      <div className="text-2xl font-semibold">{value}</div>
+      <div className="text-sm text-gray-500">{label}</div>
+    </>
+  );
+  return href ? <Link href={href} className="card block hover:border-amber-300">{body}</Link> : <div className="card">{body}</div>;
+}

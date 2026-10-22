@@ -18,9 +18,13 @@ const hash = (t: string) => createHash("sha256").update(t).digest("hex");
 
 export const normalizeCode = (raw: string) => raw.trim().toUpperCase().replace(/\s+/g, "");
 
+/** Codes limited to some stores only work in those stores. */
+export const codeWorksIn = (c: { allStores: boolean; stores: { storeId: string }[] }, storeId: string) => c.allStores || c.stores.some((s) => s.storeId === storeId);
+
 /** Why a promo code can't be used right now, or null if it can. */
-export function promoProblem(p: PromoCode, merchandise: Prisma.Decimal, now = new Date()): string | null {
+export function promoProblem(p: PromoCode & { stores: { storeId: string }[] }, merchandise: Prisma.Decimal, storeId: string, now = new Date()): string | null {
   if (!p.active) return "That code isn't active";
+  if (!codeWorksIn(p, storeId)) return "That code isn't valid in this store";
   if (p.startsAt && p.startsAt > now) return "That code isn't active yet";
   if (p.endsAt && p.endsAt < now) return "That code has expired";
   if (p.maxUses !== null && p.usedCount >= p.maxUses) return "That code has been used up";
@@ -34,8 +38,9 @@ export function promoDiscount(p: PromoCode, merchandise: Prisma.Decimal): Prisma
   return ZERO;
 }
 
-export function giftProblem(g: GiftCode, now = new Date()): string | null {
+export function giftProblem(g: GiftCode & { stores: { storeId: string }[] }, storeId: string, now = new Date()): string | null {
   if (!g.active) return "That gift code isn't active";
+  if (!codeWorksIn(g, storeId)) return "That gift code isn't valid in this store";
   if (g.expiresAt && g.expiresAt < now) return "That gift code has expired";
   if (g.balance.lte(0)) return "That gift code has no balance left";
   return null;
@@ -50,8 +55,8 @@ const cartInclude = {
       storeItem: { include: { prices: true, image: true, design: { include: { product: true, color: true } } } },
     },
   },
-  promoCode: true,
-  giftCode: true,
+  promoCode: { include: { stores: true } },
+  giftCode: { include: { stores: true } },
   deliveryMethod: true,
 } satisfies Prisma.CartInclude;
 
@@ -133,10 +138,11 @@ export type CartTotals = Awaited<ReturnType<typeof cartTotals>>;
  * and what's left to pay.
  */
 export async function cartTotals(db: BusinessDb | BusinessTx, rs: { business: Business; store: Store }, cart: CartWithItems) {
+  const store = await db.store.findUniqueOrThrow({ where: { id: rs.store.id }, include: { deliveryMethods: true, group: true } });
   const sizes = await db.productSize.findMany({ where: { id: { in: cart.items.map((i) => i.sizeId) } } });
   const lines: CartLine[] = cart.items.map((i) => {
     const price = i.storeItem.prices.find((p) => p.sizeId === i.sizeId);
-    const unit = price ? itemPrice(price, i.storeItem, rs.store) : ZERO;
+    const unit = price ? itemPrice(price, i.storeItem, store) : ZERO;
     const available = !!price && i.storeItem.published;
     return {
       id: i.id,
@@ -158,14 +164,13 @@ export async function cartTotals(db: BusinessDb | BusinessTx, rs: { business: Bu
   let discount = ZERO;
   let freeShipping = false;
   if (cart.promoCode) {
-    promoError = promoProblem(cart.promoCode, merchandise);
+    promoError = promoProblem(cart.promoCode, merchandise, store.id);
     if (!promoError) {
       discount = promoDiscount(cart.promoCode, merchandise);
       freeShipping = cart.promoCode.kind === "FREE_SHIPPING";
     }
   }
 
-  const store = await db.store.findUniqueOrThrow({ where: { id: rs.store.id }, include: { deliveryMethods: true } });
   const methods = offeredMethods(store, await db.deliveryMethod.findMany({ orderBy: { sortOrder: "asc" } }));
   const method = methods.find((m) => m.id === cart.deliveryMethodId) ?? null;
   const shipping =
@@ -193,7 +198,7 @@ export async function cartTotals(db: BusinessDb | BusinessTx, rs: { business: Bu
   let giftError: string | null = null;
   let gift = ZERO;
   if (cart.giftCode) {
-    giftError = giftProblem(cart.giftCode);
+    giftError = giftProblem(cart.giftCode, store.id);
     if (!giftError) gift = Prisma.Decimal.min(cart.giftCode.balance, total);
   }
 

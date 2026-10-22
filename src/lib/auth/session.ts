@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { type BusinessDb, forBusiness, prisma } from "@/lib/db";
-import { getRequestBusiness } from "@/lib/business";
+import { getRequestBusiness, getRequestStoreSlug } from "@/lib/business";
 import { hasAnyRole } from "./roles";
 
 export const SESSION_COOKIE = "staff_session";
@@ -66,7 +66,8 @@ const scopedDb = cache((businessId: string) => forBusiness(businessId));
  */
 export async function requireStaff(roles: StaffRole[] = []): Promise<StaffContext> {
   const business = await getRequestBusiness();
-  if (!business) notFound();
+  // The back office lives on the business's own address, not on store subdomains.
+  if (!business || (await getRequestStoreSlug())) notFound();
   if (business.status !== "ACTIVE") redirect("/admin/login?suspended=1");
   const staff = await getCurrentStaff();
   if (!staff) redirect("/admin/login");

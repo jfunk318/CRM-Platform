@@ -1,30 +1,31 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireStaff } from "@/lib/auth/session";
-import { itemPrice } from "@/lib/store/settings";
+import { effectiveMarkup, itemPrice } from "@/lib/store/settings";
 import { ActionForm } from "@/components/admin/action-form";
-import { deleteItemAction, repriceItemAction, saveItemAction, saveItemPricesAction, uploadItemImageAction } from "../../actions";
+import { loadAdminStore } from "@/lib/store/admin";
+import { deleteItemAction, repriceItemAction, saveItemAction, saveItemPricesAction, uploadItemImageAction } from "../../../actions";
 
 const money = (v: { toFixed(n: number): string }) => `$${v.toFixed(2)}`;
 
-export default async function ItemPage({ params }: { params: Promise<{ id: string }> }) {
-  const { db } = await requireStaff(["SALES"]);
-  const { id } = await params;
+export default async function ItemPage({ params }: { params: Promise<{ id: string; itemId: string }> }) {
+  const { id, itemId } = await params;
+  const { db, url } = await loadAdminStore(id);
   const item = await db.storeItem.findUnique({
-    where: { id },
+    where: { id: itemId, storeId: id },
     include: {
-      store: true,
+      store: { include: { group: true } },
       prices: { include: { size: true }, orderBy: { size: { sortOrder: "asc" } } },
       design: { include: { product: true, color: true, decorations: { include: { method: true }, orderBy: { sortOrder: "asc" } } } },
     },
   });
   if (!item) notFound();
-  const storeMarkup = item.store.markupKind ? `${item.store.markupKind === "PERCENT" ? `${item.store.markupValue}%` : money(item.store.markupValue!)}` : "none";
+  const inherited = effectiveMarkup({ markupKind: null, markupValue: null }, item.store);
+  const storeMarkup = inherited.markupKind ? `${inherited.markupKind === "PERCENT" ? `${inherited.markupValue}%` : money(inherited.markupValue!)}` : "none";
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Link href="/admin/storefront/items" className="text-sm text-amber-700 hover:underline">← Shop items</Link>
-        {item.published && <a href={`/shop/${item.slug}`} target="_blank" className="text-sm text-amber-700 hover:underline">View in the store ↗</a>}
+        <Link href={`/admin/stores/${id}/items`} className="text-sm text-amber-700 hover:underline">← Items</Link>
+        {item.published && <a href={`${url}/shop/${item.slug}`} target="_blank" className="text-sm text-amber-700 hover:underline">View in the store ↗</a>}
       </div>
       <div className="grid gap-6 xl:grid-cols-2">
         <section className="card space-y-3">

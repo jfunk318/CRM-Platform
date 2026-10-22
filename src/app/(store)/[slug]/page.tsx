@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getRequestStore } from "@/lib/store/resolve";
-import { Markdown } from "@/components/store/markdown";
+import { PageBody } from "@/components/store/showcase";
 
 async function load(slug: string) {
   const rs = await getRequestStore();
@@ -27,7 +27,7 @@ export default async function ContentPage({ params }: { params: Promise<{ slug: 
     <article className="mx-auto max-w-3xl">
       {page.parent?.published && <Link href={`/${page.parent.slug}`} className="text-sm text-[var(--accent)] hover:underline">← {page.parent.title}</Link>}
       {!/^#\s/.test(page.body.trimStart()) && <h1 className="mb-4 text-3xl font-bold">{page.title}</h1>}
-      <Markdown source={page.body} />
+      <PageBody body={page.body} db={found.rs.db} currentStoreId={found.rs.store.id} />
       {page.children.length > 0 && (
         <ul className="mt-8 grid gap-3 sm:grid-cols-2">
           {page.children.map((c) => (

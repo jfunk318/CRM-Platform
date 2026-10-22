@@ -6,6 +6,8 @@ type NavPage = Pick<StorePage, "id" | "slug" | "title"> & { children: Pick<Store
 
 /** Header: logo or name, navigation with dropdowns, search, account and cart. */
 export function StoreHeader({ store, pages, cartCount, signedIn, accounts, hasItems }: { store: Store; pages: NavPage[]; cartCount: number; signedIn: boolean; accounts: boolean; hasItems: boolean }) {
+  // The blank catalog and quote requests are the business's own services, on its main site only.
+  const main = store.kind === "ROOT";
   const href = (slug: string) => (slug === "home" ? "/" : `/${slug}`);
   return (
     <header className="border-b border-gray-200 bg-white">
@@ -20,7 +22,7 @@ export function StoreHeader({ store, pages, cartCount, signedIn, accounts, hasIt
         </Link>
         <nav className="flex flex-1 flex-wrap items-center gap-x-5 gap-y-1 text-sm font-medium" aria-label="Main">
           {hasItems && <Link href="/shop" className="hover:text-[var(--accent)]">Shop</Link>}
-          <Link href="/catalog" className="hover:text-[var(--accent)]">Catalog</Link>
+          {main && <Link href="/catalog" className="hover:text-[var(--accent)]">Catalog</Link>}
           {pages.map((p) =>
             p.children.length ? (
               <div key={p.id} className="group relative">
@@ -35,7 +37,7 @@ export function StoreHeader({ store, pages, cartCount, signedIn, accounts, hasIt
               <Link key={p.id} href={href(p.slug)} className="hover:text-[var(--accent)]">{p.title}</Link>
             ),
           )}
-          <Link href="/quote" className="hover:text-[var(--accent)]">Request a quote</Link>
+          {main && <Link href="/quote" className="hover:text-[var(--accent)]">Request a quote</Link>}
         </nav>
         <div className="flex items-center gap-4 text-sm">
           <form action="/search" className="hidden sm:block">

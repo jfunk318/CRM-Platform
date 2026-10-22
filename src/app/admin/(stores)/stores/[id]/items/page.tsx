@@ -1,15 +1,14 @@
 import Link from "next/link";
-import { requireStaff } from "@/lib/auth/session";
 import { itemPrice } from "@/lib/store/settings";
 import { ActionForm } from "@/components/admin/action-form";
 import { LineEditor } from "@/components/admin/line-editor";
-import { createItemAction } from "../actions";
+import { loadAdminStore } from "@/lib/store/admin";
+import { createItemAction } from "../../actions";
 
 const money = (v: { toFixed(n: number): string }) => `$${v.toFixed(2)}`;
 
-export default async function ItemsPage() {
-  const { db } = await requireStaff(["SALES"]);
-  const store = await db.store.findFirstOrThrow({ where: { kind: "ROOT" } });
+export default async function ItemsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { db, store } = await loadAdminStore((await params).id);
   const [items, products] = await Promise.all([
     db.storeItem.findMany({
       where: { storeId: store.id },
@@ -45,7 +44,7 @@ export default async function ItemsPage() {
               return (
                 <tr key={i.id}>
                   <td>
-                    <Link href={`/admin/storefront/items/${i.id}`} className="font-medium text-amber-700 hover:underline">{i.name}</Link>
+                    <Link href={`/admin/stores/${store.id}/items/${i.id}`} className="font-medium text-amber-700 hover:underline">{i.name}</Link>
                     {i.featured && <span className="ml-1 rounded bg-amber-100 px-1 text-xs">Featured</span>}
                   </td>
                   <td className="text-sm">{i.design.product.styleCode} · {i.design.color.name}</td>
@@ -63,6 +62,7 @@ export default async function ItemsPage() {
       <details className="card" open={items.length === 0}>
         <summary className="cursor-pointer font-medium text-amber-700">+ Add an item</summary>
         <ActionForm action={createItemAction} submitLabel="Create item" className="mt-4 space-y-4">
+          <input type="hidden" name="storeId" value={store.id} />
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="sm:col-span-2">
               <label className="label" htmlFor="item-name">Name shoppers see</label>

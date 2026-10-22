@@ -7,11 +7,12 @@ import { makeTestBusiness } from "@/test/fixtures";
 import { setUpBusiness } from "@/lib/platform/setup";
 import { repriceOrder } from "@/lib/orders/pricing";
 import { updateLine } from "@/lib/orders/service";
-import { cartTotals, findCartById } from "@/lib/store/cart";
+import { cartTotals, findCartById, promoProblem } from "@/lib/store/cart";
+import { hostTarget } from "@/lib/business";
 import { placeOrderFromCart } from "@/lib/store/checkout";
 import { createStoreItem } from "@/lib/store/items";
 import { createQuoteRequest } from "@/lib/store/quote-request";
-import { effectiveSettings, itemPrice } from "@/lib/store/settings";
+import { effectiveSettings, itemPrice, storeStatus } from "@/lib/store/settings";
 
 let t: Awaited<ReturnType<typeof makeTestBusiness>>;
 const origin = "http://shop.localhost:3000";
@@ -164,7 +165,7 @@ describe("quote requests", () => {
   it("lands as a quote with the requested sizes and a note", async () => {
     const store = await rootStore();
     const business = await t.db.business.findUniqueOrThrow({ where: { id: t.business.id } });
-    const rs = { business, db: t.db, store: { ...store, deliveryMethods: [], logo: null }, settings: effectiveSettings(business, store) };
+    const rs = { business, db: t.db, store: { ...store, deliveryMethods: [], logo: null, group: null }, settings: effectiveSettings(business, store), status: storeStatus(store) };
     const quote = await createQuoteRequest(rs, {
       name: "Sam Coach",
       email: "sam@team.example",
@@ -183,5 +184,41 @@ describe("quote requests", () => {
     expect(q.lines[0].sizes[0].qty).toBe(20);
     expect(q.events.some((e) => e.body.includes("Logo on the front"))).toBe(true);
     expect(q.customer.lastName).toBe("Coach");
+  });
+});
+
+describe("affiliate stores", () => {
+  it("takes markup from the group when the store and item don't set one", async () => {
+    const group = await t.db.storeGroup.create({ data: { businessId: t.business.id, name: "Teams", markupKind: "AMOUNT", markupValue: "4" } });
+    const store = await t.db.store.create({ data: { businessId: t.business.id, kind: "AFFILIATE", slug: "lincoln", name: "Lincoln Hockey", groupId: group.id }, include: { group: true } });
+    const price = { basePrice: D("10.00"), overridePrice: null };
+    const none = { markupKind: null, markupValue: null };
+    expect(itemPrice(price, none, store).toFixed(2)).toBe("14.00");
+    expect(itemPrice(price, none, { ...store, markupKind: "PERCENT", markupValue: D("10") }).toFixed(2)).toBe("11.00");
+    const business = await t.db.business.findUniqueOrThrow({ where: { id: t.business.id } });
+    await t.db.storeGroup.update({ where: { id: group.id }, data: { accountMode: "REQUIRED" } });
+    const withGroup = await t.db.store.findUniqueOrThrow({ where: { id: store.id }, include: { group: true } });
+    expect(effectiveSettings(business, withGroup, withGroup.group).accountMode).toBe("REQUIRED");
+    expect(effectiveSettings(business, { ...withGroup, accountMode: "GUEST_ONLY" }, withGroup.group).accountMode).toBe("GUEST_ONLY");
+  });
+
+  it("only accepts a code in the stores it's for", async () => {
+    const lincoln = await t.db.store.findFirstOrThrow({ where: { slug: "lincoln" } });
+    const root = await rootStore();
+    const promo = await t.db.promoCode.create({
+      data: { businessId: t.business.id, code: "HOCKEY", kind: "AMOUNT", value: "5", allStores: false, stores: { create: { storeId: lincoln.id } } },
+      include: { stores: true },
+    });
+    expect(promoProblem(promo, D("50"), lincoln.id)).toBeNull();
+    expect(promoProblem(promo, D("50"), root.id)).toMatch(/isn't valid in this store/);
+  });
+
+  it("finds a store at <store>.<custom domain>", async () => {
+    await prisma.business.update({ where: { id: t.business.id }, data: { customDomain: `shop-${t.business.slug}.example` } });
+    const target = await hostTarget(`lincoln.shop-${t.business.slug}.example`);
+    expect(target.business?.id).toBe(t.business.id);
+    expect(target.store).toBe("lincoln");
+    expect((await hostTarget(`shop-${t.business.slug}.example`)).store).toBeNull();
+    expect((await hostTarget(`a.lincoln.shop-${t.business.slug}.example`)).business).toBeNull();
   });
 });

@@ -94,35 +94,48 @@ Every business table has a `businessId`, and:
   for pickup / shipping" and "Completed" on their own, and only forward
   (Order statuses → Set automatically).
 
-## Storefront and checkout
+## Main site, affiliate stores and checkout
 
-- **The store** is the business's own address (e.g. http://companyname.localhost:3000/):
-  home page, content pages, Shop (decorated items for sale), Catalog (blank
-  garments with "request a quote"), search, cart, checkout, order tracking
-  and shopper accounts. Affiliate stores (phase 6) use the same engine.
-- **Back office → Storefront:** shop items (pick a garment, colors and
-  decoration; base prices per size come from your pricing as a batch, with
-  overrides and markups), pages (Markdown), and settings: branding, shopper
-  accounts (optional / required / guest only), show prices, pay later,
-  access code, delivery methods offered, analytics IDs.
-- **Promo codes and gift codes** are business-wide lists (Promo codes, Gift
-  codes). Discounts come off before tax; gift codes are recorded as payments.
-- **Card payments** use the business's own Stripe account (Storefront →
-  Settings & payments: secret key and webhook signing secret, stored
-  encrypted with `APP_SECRET`). Without keys, development shows a test
-  payment page; production won't take card orders until keys are added.
-  Customers can also pay deposits and balances from their order link.
-- **Online orders** land in Orders tagged "Online", with the store's prices
-  kept, payments recorded, artwork counted as approved and production jobs
-  created. Quote requests land in Quotes tagged "Web request".
-- **Shopper accounts** sign in with an emailed one-time link (which also
-  creates the account), and can set a password afterwards.
+- **Two areas in the back office.** "Business" is the CRM, orders,
+  production, purchasing and shipping. "Affiliate stores" is where stores
+  are run. The switcher at the top only appears for staff with the **Store
+  manager** role (and admins).
+- **Affiliate stores** are stores the business runs for its customers, each
+  at its own subdomain: `store1.companyname.com` (in development
+  `http://store1.companyname.localhost:3000`). Affiliate stores → All stores
+  lists them with search, filters (group, status, manager) and views
+  (newest, highest sales, closing soon). Each store has a dashboard:
+  Overview (sales, latest orders), Items, Pages, Codes and Settings
+  (address, customer, manager, group, open/close dates, branding, accounts,
+  prices, pay later, access code, markup, delivery methods, showcase).
+- **Store groups** (Schools, Teams…) carry settings their stores inherit:
+  business defaults → group → store.
+- **The main site** (the business's own address) is managed the same way
+  under Affiliate stores → Main site. It sells the business's own items,
+  offers the blank catalog and quote requests, and shows the stores: put a
+  line like `[[stores]]` or `[[stores group="Schools" sort=sales limit=6
+  columns=3]]` on any page.
+- **Items** are priced per size from your pricing as a batch (base), with
+  overrides and item, store or group markups.
+- **Promo and gift codes** are one list for all stores (Affiliate stores →
+  Promo codes / Gift codes); each works in every store or only chosen ones,
+  and each store's Codes tab shows what it accepts and how they were used.
+- **Checkout**: cart, codes, delivery methods, tax, Stripe on the business's
+  own account (Affiliate stores → Defaults & payments; keys encrypted with
+  `APP_SECRET`), optional pay later, a test payment page in development.
+  Orders from every store land in Orders tagged "Online" with the store's
+  name; quote requests from the main site land in Quotes as "Web request".
+- **Shopper accounts** sign in with an emailed one-time link and can set a
+  password. Accounts, carts and sign-ins are per store address.
+- The back office only opens on the business's own address, never on a
+  store subdomain.
 
 ## Production notes
 
 - Set `PLATFORM_DOMAIN`. `localhost` shortcuts are off in production.
 - Point `PLATFORM_DOMAIN`, `*.PLATFORM_DOMAIN` and each business's custom
-  domain (plus `*.customdomain` for its stores) at the app, with TLS for each.
+  domain (plus `*.customdomain` for its affiliate stores) at the app, with
+  TLS for each (wildcard certificates for the store subdomains).
 - Run behind a proxy that sets `X-Forwarded-Host` and `X-Forwarded-Proto`
   (customer links in emails are built from them).
 - Set `APP_SECRET` before saving any Stripe keys.
@@ -148,10 +161,10 @@ Every business table has a `businessId`, and:
 | `src/lib/files/` | Upload checks, file storage, order files |
 | `src/lib/email/` | Email templates and sending (Resend or Postmark) |
 | `src/app/c/`, `src/app/proof/` | Customer pages: quote/order/invoice and proof review |
-| `src/lib/store/` | Storefront engine: store and settings, items and prices, cart, checkout, accounts, quote requests |
+| `src/lib/store/` | Storefront engine: stores and inherited settings, items and prices, cart, checkout, accounts, quote requests, showcase |
 | `src/lib/payments/` | Stripe (hosted Checkout and signed webhooks) |
 | `src/app/(store)/` | The public storefront |
-| `src/app/admin/` | A business's back office |
+| `src/app/admin/` | A business's back office: `(panel)` business admin, `(stores)` affiliate stores |
 | `src/app/platform/` | Platform admin: businesses |
 
 ## Importing data later

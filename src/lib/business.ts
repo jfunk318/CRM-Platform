@@ -7,30 +7,41 @@ import { isLocalHost, normalizeHost, parseHost, PLATFORM_DOMAIN } from "./hosts"
 
 export { isLocalHost, normalizeHost, PLATFORM_DOMAIN };
 
+export type HostTarget = { business: Business | null; store: string | null };
+
 /**
- * Which business a host name belongs to:
+ * Which business (and which of its affiliate stores) a host name is for:
  * - <slug>.<PLATFORM_DOMAIN> or <slug>.localhost → business by slug
+ * - <store>.<slug>.<PLATFORM_DOMAIN> or <store>.<slug>.localhost → its store
  * - the business's own domain (customDomain) → that business
+ * - <store>.<customDomain> → its store
  * - localhost in development → DEV_BUSINESS_SLUG, or the only business
  */
-export async function businessForHost(rawHost: string | null): Promise<Business | null> {
+export async function hostTarget(rawHost: string | null): Promise<HostTarget> {
   const parsed = parseHost(rawHost);
   switch (parsed.kind) {
     case "platform":
-      return null;
+      return { business: null, store: null };
     case "slug":
-      return prisma.business.findUnique({ where: { slug: parsed.slug } });
-    case "domain":
-      return prisma.business.findUnique({ where: { customDomain: parsed.domain } });
+      return { business: await prisma.business.findUnique({ where: { slug: parsed.slug } }), store: parsed.store ?? null };
+    case "domain": {
+      const own = await prisma.business.findUnique({ where: { customDomain: parsed.domain } });
+      if (own) return { business: own, store: null };
+      const dot = parsed.domain.indexOf(".");
+      const parent = dot > 0 ? await prisma.business.findUnique({ where: { customDomain: parsed.domain.slice(dot + 1) } }) : null;
+      return parent ? { business: parent, store: parsed.domain.slice(0, dot) } : { business: null, store: null };
+    }
     case "local": {
       if (process.env.DEV_BUSINESS_SLUG) {
-        return prisma.business.findUnique({ where: { slug: process.env.DEV_BUSINESS_SLUG } });
+        return { business: await prisma.business.findUnique({ where: { slug: process.env.DEV_BUSINESS_SLUG } }), store: null };
       }
       const active = await prisma.business.findMany({ where: { status: "ACTIVE" }, take: 2 });
-      return active.length === 1 ? active[0] : null;
+      return { business: active.length === 1 ? active[0] : null, store: null };
     }
   }
 }
+
+export const businessForHost = async (rawHost: string | null) => (await hostTarget(rawHost)).business;
 
 /**
  * The host the browser requested. Next.js renders redirects from server
@@ -45,8 +56,13 @@ export const getRequestHost = cache(async () => {
   return h.get("x-forwarded-host")?.split(",")[0]?.trim() || h.get("host");
 });
 
+const getRequestTarget = cache(async () => hostTarget(await getRequestHost()));
+
 /** The business this request is for (from its host name), or null. */
-export const getRequestBusiness = cache(async () => businessForHost(await getRequestHost()));
+export const getRequestBusiness = cache(async () => (await getRequestTarget()).business);
+
+/** The affiliate store subdomain this request came in on ("store1"), or null for the business's own address. */
+export const getRequestStoreSlug = cache(async () => (await getRequestTarget()).store);
 
 /** Whether this request may use the platform admin area. */
 export async function isPlatformRequest(): Promise<boolean> {
@@ -62,6 +78,17 @@ export function businessDomain(b: Pick<Business, "slug" | "customDomain">): stri
 /** Address of one of a business's affiliate stores: <store>.<business domain> */
 export function storeUrl(storeSlug: string, b: Pick<Business, "slug" | "customDomain">): string {
   return `https://${storeSlug}.${businessDomain(b)}`;
+}
+
+/**
+ * The same, for the address this request came in on, so links work in
+ * development too (http://store1.companyname.localhost:3000).
+ */
+export async function storeUrlHere(storeSlug: string | null): Promise<string> {
+  const origin = await requestOrigin();
+  if (!storeSlug) return origin;
+  const [proto, rest] = origin.split("://");
+  return `${proto}://${storeSlug}.${rest}`;
 }
 
 /**

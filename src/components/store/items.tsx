@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Prisma, Store } from "@prisma/client";
+import type { Prisma, Store, StoreGroup } from "@prisma/client";
 import { itemPrice } from "@/lib/store/settings";
 
 export const shopItemsInclude = {
@@ -19,7 +19,7 @@ export function itemImage(item: ShopItem): string | null {
 }
 
 /** Lowest and highest price across sizes. */
-export function priceRange(item: ShopItem, store: Store) {
+export function priceRange(item: ShopItem, store: Store & { group?: StoreGroup | null }) {
   const prices = item.prices.map((p) => itemPrice(p, item, store));
   if (!prices.length) return null;
   const lo = prices.reduce((a, b) => (b.lt(a) ? b : a));
@@ -27,7 +27,7 @@ export function priceRange(item: ShopItem, store: Store) {
   return lo.equals(hi) ? money(lo) : `${money(lo)} – ${money(hi)}`;
 }
 
-export function ItemGrid({ items, store, showPrices }: { items: ShopItem[]; store: Store; showPrices: boolean }) {
+export function ItemGrid({ items, store, showPrices }: { items: ShopItem[]; store: Store & { group?: StoreGroup | null }; showPrices: boolean }) {
   return (
     <div className="grid grid-cols-2 gap-5 md:grid-cols-4" data-testid="item-grid">
       {items.map((item) => {

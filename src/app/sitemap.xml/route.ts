@@ -11,13 +11,12 @@ export async function GET() {
   const [pages, items, products] = await Promise.all([
     rs.db.storePage.findMany({ where: { storeId: rs.store.id, published: true }, select: { slug: true, updatedAt: true } }),
     rs.db.storeItem.findMany({ where: { storeId: rs.store.id, published: true }, select: { slug: true, updatedAt: true } }),
-    rs.db.product.findMany({ where: { status: "ACTIVE", variants: { some: { active: true } } }, select: { slug: true, updatedAt: true }, take: 5000 }),
+    rs.store.kind === "ROOT" ? rs.db.product.findMany({ where: { status: "ACTIVE", variants: { some: { active: true } } }, select: { slug: true, updatedAt: true }, take: 5000 }) : [],
   ]);
   const urls = [
     { loc: "/", lastmod: pages.find((p) => p.slug === "home")?.updatedAt },
     { loc: "/shop" },
-    { loc: "/catalog" },
-    { loc: "/quote" },
+    ...(rs.store.kind === "ROOT" ? [{ loc: "/catalog" }, { loc: "/quote" }] : []),
     ...pages.filter((p) => p.slug !== "home").map((p) => ({ loc: `/${p.slug}`, lastmod: p.updatedAt })),
     ...items.map((i) => ({ loc: `/shop/${i.slug}`, lastmod: i.updatedAt })),
     ...products.map((p) => ({ loc: `/catalog/${p.slug}`, lastmod: p.updatedAt })),

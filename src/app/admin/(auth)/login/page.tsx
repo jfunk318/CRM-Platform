@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getCurrentStaff } from "@/lib/auth/session";
-import { getRequestBusiness } from "@/lib/business";
+import { getRequestBusiness, getRequestStoreSlug } from "@/lib/business";
 import { PLATFORM_NAME } from "@/lib/platform";
 import { LoginForm } from "./login-form";
 
@@ -11,7 +11,7 @@ export async function generateMetadata() {
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ suspended?: string }> }) {
   if (await getCurrentStaff()) redirect("/admin");
   const business = await getRequestBusiness();
-  if (!business) notFound();
+  if (!business || (await getRequestStoreSlug())) notFound();
   const { suspended } = await searchParams;
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">

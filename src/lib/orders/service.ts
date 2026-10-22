@@ -208,7 +208,7 @@ export async function updateLine(db: BusinessDb, lineId: string, spec: LineSpec,
     include: {
       order: true,
       sizes: true,
-      storeItem: { include: { prices: true, store: true } },
+      storeItem: { include: { prices: true, store: { include: { group: true } } } },
       design: { include: { _count: { select: { orderLines: true, storeItems: true } } } },
     },
   });

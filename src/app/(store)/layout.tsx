@@ -40,7 +40,12 @@ export default async function StoreLayout({ children }: { children: React.ReactN
         hasItems={itemCount > 0}
       />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
-        {access ? (
+        {rs.status.state !== "open" ? (
+          <div className="mx-auto max-w-md space-y-3 py-12 text-center" data-testid="store-closed">
+            <h1 className="text-2xl font-bold">{rs.status.state === "scheduled" ? "This store isn't open yet" : "This store is closed"}</h1>
+            <p className="text-gray-600">{rs.status.label}. Questions? {business.email ? <a href={`mailto:${business.email}`} className="underline">{business.email}</a> : business.phone}</p>
+          </div>
+        ) : access ? (
           children
         ) : (
           <div className="mx-auto max-w-sm space-y-4 py-12 text-center">

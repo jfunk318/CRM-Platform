@@ -9,6 +9,7 @@ export const ROLE_LABELS: Record<StaffRole, string> = {
   PURCHASING: "Purchasing",
   SHIPPING: "Shipping",
   REFUNDS: "Refunds",
+  STORE_MANAGER: "Store manager",
 };
 
 export const ALL_ROLES = Object.keys(ROLE_LABELS) as StaffRole[];

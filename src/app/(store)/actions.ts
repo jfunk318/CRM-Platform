@@ -197,6 +197,7 @@ export async function payOrderAction(_: ActionResult, form: FormData): Promise<A
 export async function quoteRequestAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   const rs = await store();
   return run(async () => {
+    if (rs.store.kind !== "ROOT") throw new FormError("Quote requests go through the main site.");
     if (await looksLikeSpam(form, "quote")) return "Thanks! We'll be in touch.";
     const productId = optionalText(form, "productId");
     const colorId = optionalText(form, "colorId");

@@ -8,7 +8,7 @@ export const metadata = { title: "Catalog" };
 
 export default async function CatalogPage({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
   const rs = await getRequestStore();
-  if (!rs) notFound();
+  if (!rs || rs.store.kind !== "ROOT") notFound();
   const { category } = await searchParams;
   const [categories, selected] = await Promise.all([
     rs.db.category.findMany({ where: { products: { some: { product: { status: "ACTIVE" } } } }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
