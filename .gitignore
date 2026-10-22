@@ -22,3 +22,6 @@ next-env.d.ts
 *.pem
 *.log
 .vercel
+
+# uploaded files (local storage driver)
+/storage

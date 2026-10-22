@@ -51,12 +51,36 @@ Every business table has a `businessId`, and:
 
 `src/lib/isolation.db.test.ts` checks all three.
 
+## Customer links, proofs and payments
+
+- **Quotes:** "Email quote" on a quote sends the customer a private link
+  (`/c/<token>`, no login) where they approve it (name + checkbox) or ask for
+  changes. Converting the quote gives the order its own link.
+- **Artwork:** upload files on the order, then create a proof. The customer
+  approves it or asks for changes at `/proof/<token>`, and can attach files.
+  Sending a new proof retires the older ones.
+- **Statuses:** in Order statuses, "Set automatically" picks the status a
+  quote or order moves to when it's emailed, approved, or changes are asked for.
+- **Payments:** set a deposit, record payments and refunds (refunds need the
+  Refunds role), then issue an invoice. The customer link shows it with the
+  balance and your payment instructions (Shop & tax). Online card payments
+  come with checkout in phase 5.
+- **Email:** set `EMAIL_FROM` plus `RESEND_API_KEY` or `POSTMARK_SERVER_TOKEN`.
+  Without them nothing is sent, but every email is still listed on the order
+  and links can be copied from there.
+- **Files** are stored under `STORAGE_DIR` (default `./storage`), never in
+  the web root; they're only served to signed-in staff of the business, or
+  to the customer through a proof link on the business's own address.
+
 ## Production notes
 
 - Set `PLATFORM_DOMAIN`. `localhost` shortcuts are off in production.
 - Point `PLATFORM_DOMAIN`, `*.PLATFORM_DOMAIN` and each business's custom
   domain (plus `*.customdomain` for its stores) at the app, with TLS for each.
-- Run behind a proxy that sets `X-Forwarded-Host`.
+- Run behind a proxy that sets `X-Forwarded-Host` and `X-Forwarded-Proto`
+  (customer links in emails are built from them).
+- `STORAGE_DIR` must be on persistent disk, and backed up, until file storage
+  moves to S3/R2. Allow 55 MB request bodies at the proxy for uploads.
 
 ## Layout
 
@@ -69,7 +93,10 @@ Every business table has a `businessId`, and:
 | `src/lib/platform/` | Platform name and the defaults every new business starts with |
 | `src/lib/pricing/` | Pricing engine (pure functions) and `load.ts`, which builds engine input from the database |
 | `src/lib/auth/` | Passwords, staff and platform sessions, roles |
-| `src/lib/orders/` | Quotes and orders: numbering, line/design editing, conversion, repricing |
+| `src/lib/orders/` | Quotes and orders: numbering, line/design editing, conversion, repricing, customer links and proofs (`customer-flow.ts`), payments and invoices |
+| `src/lib/files/` | Upload checks, file storage, order files |
+| `src/lib/email/` | Email templates and sending (Resend or Postmark) |
+| `src/app/c/`, `src/app/proof/` | Customer pages: quote/order/invoice and proof review |
 | `src/app/admin/` | A business's back office |
 | `src/app/platform/` | Platform admin: businesses |
 

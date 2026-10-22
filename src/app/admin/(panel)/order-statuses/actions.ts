@@ -1,17 +1,18 @@
 "use server";
 
-import type { OrderType } from "@prisma/client";
+import type { OrderType, StatusRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/auth/session";
 import { all, type ActionResult, FormError, runAction, text } from "@/lib/admin/form";
 import { diffRows } from "@/lib/catalog/products";
+import { isStatusRole, STATUS_ROLES } from "@/lib/orders/status-roles";
 
 export async function saveStatuses(_: ActionResult, form: FormData): Promise<ActionResult> {
   const { db } = await requireStaff(["ADMIN"]);
   return runAction(async () => {
     const type = text(form, "type") as OrderType;
     if (type !== "QUOTE" && type !== "ORDER") throw new FormError("Unknown type");
-    const [ids, names, colors, defaults, closed, conversion] = ["statusId", "name", "color", "isDefault", "isClosed", "isConversion"].map((n) => all(form, n));
+    const [ids, names, colors, defaults, closed, roles] = ["statusId", "name", "color", "isDefault", "isClosed", "role"].map((n) => all(form, n));
     const rows = names
       .map((name, i) => ({
         id: ids[i] || null,
@@ -19,8 +20,8 @@ export async function saveStatuses(_: ActionResult, form: FormData): Promise<Act
         name,
         color: colors[i] || "#9CA3AF",
         isDefault: defaults[i] === "on",
-        isClosed: closed[i] === "on" || conversion[i] === "on",
-        isConversion: type === "QUOTE" && conversion[i] === "on",
+        isClosed: closed[i] === "on" || roles[i] === "QUOTE_CONVERTED",
+        role: roles[i] && isStatusRole(roles[i]) && STATUS_ROLES[roles[i] as StatusRole].type === type ? (roles[i] as StatusRole) : null,
         sortOrder: i,
       }))
       .filter((r) => r.name);
@@ -28,8 +29,11 @@ export async function saveStatuses(_: ActionResult, form: FormData): Promise<Act
     if (rows.length === 0) throw new FormError("Keep at least one status");
     if (rows.filter((r) => r.isDefault).length !== 1) throw new FormError("Mark exactly one status as the starting status");
     if (rows.find((r) => r.isDefault)!.isClosed) throw new FormError("The starting status can't be a closed status");
-    if (type === "QUOTE" && rows.filter((r) => r.isConversion).length !== 1) {
-      throw new FormError("Mark exactly one quote status for quotes that became orders");
+    const tagged = rows.flatMap((r) => (r.role ? [r.role] : []));
+    const dupRole = tagged.find((role, i) => tagged.indexOf(role) !== i);
+    if (dupRole) throw new FormError(`Only one status can be set "${STATUS_ROLES[dupRole].label.toLowerCase()}"`);
+    if (type === "QUOTE" && !tagged.includes("QUOTE_CONVERTED")) {
+      throw new FormError("One quote status must be set \"when it becomes an order\"");
     }
     if (rows.some((r) => !/^#[0-9a-fA-F]{6}$/.test(r.color))) throw new FormError("Colors must look like #22C55E");
     if (new Set(rows.map((r) => r.name.toLowerCase())).size !== rows.length) throw new FormError("Two statuses have the same name");
@@ -43,8 +47,8 @@ export async function saveStatuses(_: ActionResult, form: FormData): Promise<Act
 
     await db.$transaction(async (tx) => {
       await tx.orderStatus.deleteMany({ where: { id: { in: d.deleteIds } } });
-      // Temporary names first so renames that swap two statuses don't collide.
-      for (const r of d.update) await tx.orderStatus.update({ where: { id: r.id }, data: { name: `~${r.id}` } });
+      // Temporary names and no roles first, so swaps between rows don't collide.
+      for (const r of d.update) await tx.orderStatus.update({ where: { id: r.id }, data: { name: `~${r.id}`, role: null } });
       for (const { id, ...data } of d.update) await tx.orderStatus.update({ where: { id }, data });
       for (const data of d.create) await tx.orderStatus.create({ data: { ...data, businessId: db.$businessId } });
     });

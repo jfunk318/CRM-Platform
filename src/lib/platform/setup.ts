@@ -1,3 +1,4 @@
+import type { StatusRole } from "@prisma/client";
 import type { BusinessDb } from "../db";
 
 // Starting statuses; editable in admin to match how staff divide the work.
@@ -7,16 +8,18 @@ export const DEFAULT_ORDER_STATUSES: {
   color: string;
   isDefault?: boolean;
   isClosed?: boolean;
-  isConversion?: boolean;
+  role?: StatusRole;
 }[] = [
   { type: "QUOTE", name: "Draft", color: "#9CA3AF", isDefault: true },
-  { type: "QUOTE", name: "Sent", color: "#3B82F6" },
-  { type: "QUOTE", name: "Approved", color: "#10B981" },
+  { type: "QUOTE", name: "Sent", color: "#3B82F6", role: "QUOTE_SENT" },
+  { type: "QUOTE", name: "Changes requested", color: "#F59E0B", role: "QUOTE_CHANGES_REQUESTED" },
+  { type: "QUOTE", name: "Approved", color: "#10B981", role: "QUOTE_APPROVED" },
   { type: "QUOTE", name: "Declined", color: "#EF4444", isClosed: true },
-  { type: "QUOTE", name: "Converted to order", color: "#6366F1", isClosed: true, isConversion: true },
+  { type: "QUOTE", name: "Converted to order", color: "#6366F1", isClosed: true, role: "QUOTE_CONVERTED" },
   { type: "ORDER", name: "New", color: "#3B82F6", isDefault: true },
-  { type: "ORDER", name: "Awaiting artwork", color: "#F59E0B" },
-  { type: "ORDER", name: "Artwork approved", color: "#14B8A6" },
+  { type: "ORDER", name: "Awaiting artwork approval", color: "#F59E0B", role: "ORDER_PROOF_SENT" },
+  { type: "ORDER", name: "Artwork changes requested", color: "#EF4444", role: "ORDER_CHANGES_REQUESTED" },
+  { type: "ORDER", name: "Artwork approved", color: "#14B8A6", role: "ORDER_ARTWORK_APPROVED" },
   { type: "ORDER", name: "Ordering blanks", color: "#8B5CF6" },
   { type: "ORDER", name: "In production", color: "#F97316" },
   { type: "ORDER", name: "Ready for pickup / shipping", color: "#22C55E" },

@@ -50,3 +50,9 @@ body {
     @apply text-xl font-semibold text-gray-900;
   }
 }
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

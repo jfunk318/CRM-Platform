@@ -57,6 +57,33 @@ export default async function SettingsPage() {
                 <label className="label" htmlFor="paymentSurchargePct">Card surcharge (%)</label>
                 <input className="input" id="paymentSurchargePct" name="paymentSurchargePct" defaultValue={toPercentInput(settings.paymentSurchargePct)} placeholder="0" />
               </div>
+              <div>
+                <label className="label" htmlFor="defaultDepositPct">Suggested deposit (% of order)</label>
+                <input className="input" id="defaultDepositPct" name="defaultDepositPct" defaultValue={toPercentInput(settings.defaultDepositPct)} placeholder="0" />
+              </div>
+            </div>
+            <h2 className="font-semibold">Contact details (shown to customers on quotes, proofs, invoices and emails)</h2>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <SettingField label="Email (customer replies go here)" name="email" value={settings.email} />
+              <SettingField label="Phone" name="phone" value={settings.phone} />
+              <SettingField label="Street" name="addressLine1" value={settings.addressLine1} />
+              <SettingField label="Suite / unit" name="addressLine2" value={settings.addressLine2} />
+              <SettingField label="City" name="city" value={settings.city} />
+              <div className="grid grid-cols-3 gap-2">
+                <SettingField label="State" name="region" value={settings.region} />
+                <SettingField label="ZIP" name="postalCode" value={settings.postalCode} />
+                <SettingField label="Country" name="country" value={settings.country} />
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="label" htmlFor="invoiceTerms">Invoice terms</label>
+                <textarea className="input min-h-16" id="invoiceTerms" name="invoiceTerms" defaultValue={settings.invoiceTerms ?? ""} placeholder="e.g. Payment due on receipt" />
+              </div>
+              <div>
+                <label className="label" htmlFor="paymentInstructions">How customers can pay</label>
+                <textarea className="input min-h-16" id="paymentInstructions" name="paymentInstructions" defaultValue={settings.paymentInstructions ?? ""} placeholder="e.g. Checks payable to Beeze Tees; call to pay by card" />
+              </div>
             </div>
           </ActionForm>
         </div>
@@ -125,6 +152,15 @@ function TaxRateCard({ rate }: { rate?: TaxRate }) {
           <input type="hidden" name="id" value={rate.id} />
         </ActionForm>
       )}
+    </div>
+  );
+}
+
+function SettingField({ label, name, value }: { label: string; name: string; value: string | null }) {
+  return (
+    <div>
+      <label className="label" htmlFor={name}>{label}</label>
+      <input className="input" id={name} name={name} defaultValue={value ?? ""} />
     </div>
   );
 }

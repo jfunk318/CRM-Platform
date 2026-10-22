@@ -1,10 +1,14 @@
 import "server-only";
-import type { OrderEventType, OrderType } from "@prisma/client";
+import { randomBytes } from "node:crypto";
+import type { OrderEventType, OrderType, StatusRole } from "@prisma/client";
 import type { BusinessDb, BusinessTx } from "@/lib/db";
 import { nextOrderNumber, orderRef } from "./numbers";
 import { repriceOrder } from "./pricing";
 
 export class OrderError extends Error {}
+
+/** An unguessable token for a customer link. */
+export const newToken = () => randomBytes(24).toString("base64url");
 
 export interface DecorationSpec {
   methodId: string;
@@ -30,7 +34,7 @@ export interface LineSpec {
   notes?: string | null;
 }
 
-async function logEvent(
+export async function logEvent(
   tx: BusinessTx,
   businessId: string,
   orderId: string,
@@ -39,6 +43,35 @@ async function logEvent(
   staffId: string | null,
 ) {
   await tx.orderEvent.create({ data: { businessId, orderId, type, body, staffId } });
+}
+
+/**
+ * Move a quote/order to the status tagged with `role`, if the business has
+ * one and the order isn't closed. Logs the change with the reason.
+ */
+export async function moveToRole(
+  tx: BusinessTx,
+  businessId: string,
+  orderId: string,
+  role: StatusRole,
+  staffId: string | null,
+  reason: string,
+): Promise<void> {
+  const [order, status] = await Promise.all([
+    tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { status: true } }),
+    tx.orderStatus.findFirst({ where: { role } }),
+  ]);
+  if (!status || status.type !== order.type || status.id === order.statusId || order.status.isClosed) return;
+  await tx.order.update({ where: { id: orderId }, data: { statusId: status.id } });
+  await logEvent(tx, businessId, orderId, "STATUS", `Status: ${order.status.name} → ${status.name} (${reason})`, staffId);
+}
+
+/** A customer approved a specific version of a quote; any change clears that approval. */
+async function clearQuoteApproval(db: BusinessDb, orderId: string, staffId: string | null): Promise<void> {
+  const order = await db.order.findUniqueOrThrow({ where: { id: orderId } });
+  if (order.type !== "QUOTE" || !order.approvedAt) return;
+  await db.order.update({ where: { id: orderId }, data: { approvedAt: null, approvedByName: null } });
+  await logEvent(db, db.$businessId, orderId, "CUSTOMER", "The quote changed after the customer approved it, so it needs approving again", staffId);
 }
 
 export async function createOrder(
@@ -154,6 +187,7 @@ export async function addLine(db: BusinessDb, orderId: string, spec: LineSpec, s
     return line.id;
   });
   await repriceOrder(db, orderId);
+  await clearQuoteApproval(db, orderId, staffId);
   return lineId;
 }
 
@@ -189,6 +223,7 @@ export async function updateLine(db: BusinessDb, lineId: string, spec: LineSpec,
     await logEvent(tx, businessId, line.orderId, "EDITED", `Updated ${product.name} (${color.name})`, staffId);
   });
   await repriceOrder(db, line.orderId);
+  await clearQuoteApproval(db, line.orderId, staffId);
 }
 
 export async function removeLine(db: BusinessDb, lineId: string, staffId: string | null): Promise<void> {
@@ -202,6 +237,7 @@ export async function removeLine(db: BusinessDb, lineId: string, staffId: string
     await logEvent(tx, businessId, line.orderId, "EDITED", `Removed ${line.design.product.name} (${line.design.color.name})`, staffId);
   });
   await repriceOrder(db, line.orderId);
+  await clearQuoteApproval(db, line.orderId, staffId);
 }
 
 export async function setStatus(db: BusinessDb, orderId: string, statusId: string, staffId: string | null): Promise<void> {
@@ -250,7 +286,7 @@ export async function convertQuote(db: BusinessDb, quoteId: string, staffId: str
     }
     const [orderStatus, convertedStatus] = await Promise.all([
       tx.orderStatus.findFirst({ where: { type: "ORDER", isDefault: true } }),
-      tx.orderStatus.findFirst({ where: { type: "QUOTE", isConversion: true } }),
+      tx.orderStatus.findFirst({ where: { role: "QUOTE_CONVERTED" } }),
     ]);
     if (!orderStatus) throw new OrderError("No default order status is set up");
 
@@ -271,6 +307,11 @@ export async function convertQuote(db: BusinessDb, quoteId: string, staffId: str
         rush: quote.rush,
         taxExempt: quote.taxExempt,
         customerNotes: quote.customerNotes,
+        approvedAt: quote.approvedAt,
+        approvedByName: quote.approvedByName,
+        depositRequired: quote.depositRequired,
+        // A customer who had the quote link gets one for the order too.
+        publicToken: quote.publicToken ? newToken() : null,
         shipName: quote.shipName,
         shipLine1: quote.shipLine1,
         shipLine2: quote.shipLine2,
@@ -342,5 +383,9 @@ export async function updateDetails(db: BusinessDb, orderId: string, input: Orde
     });
     await logEvent(tx, businessId, orderId, "EDITED", "Updated details", staffId);
   });
+  const before = await db.order.findUniqueOrThrow({ where: { id: orderId }, select: { total: true } });
   await repriceOrder(db, orderId);
+  const after = await db.order.findUniqueOrThrow({ where: { id: orderId }, select: { total: true } });
+  // Notes or a due date don't change what was approved; price changes do.
+  if (!before.total.equals(after.total)) await clearQuoteApproval(db, orderId, staffId);
 }

@@ -49,6 +49,18 @@ model Business {
   priceRounding       PriceRounding  @default(CENT)
   rushFeePct          Decimal        @default(0) @db.Decimal(6, 4)
   paymentSurchargePct Decimal        @default(0) @db.Decimal(6, 4)
+  // Shown on quotes, proofs, invoices and customer emails.
+  email               String? // replies from customers go here
+  phone               String?
+  addressLine1        String?
+  addressLine2        String?
+  city                String?
+  region              String?
+  postalCode          String?
+  country             String         @default("US")
+  invoiceTerms        String? // e.g. "Payment due on receipt"
+  paymentInstructions String? // how to pay offline (checks payable to…)
+  defaultDepositPct   Decimal        @default(0) @db.Decimal(6, 4) // of order total
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
 
@@ -85,6 +97,12 @@ model Business {
   orderLineSizes         OrderLineSize[]
   orderEvents            OrderEvent[]
   counters               Counter[]
+  storedFiles            StoredFile[]
+  orderFiles             OrderFile[]
+  proofs                 Proof[]
+  proofFiles             ProofFile[]
+  payments               Payment[]
+  emailMessages          EmailMessage[]
 }
 
 // People who run the platform itself (not staff of a business).
@@ -138,6 +156,9 @@ model StaffUser {
   assignedOrders Order[]        @relation("OrderAssignee")
   createdOrders  Order[]        @relation("OrderCreator")
   orderEvents    OrderEvent[]
+  uploadedFiles  StoredFile[]
+  proofsCreated  Proof[]
+  payments       Payment[]
 
   @@unique([businessId, id])
   @@unique([businessId, email])
@@ -715,78 +736,107 @@ enum OrderType {
   ORDER
 }
 
+// What a status means to the system, so customer actions can move a
+// quote/order along automatically. Each role is used by at most one status.
+enum StatusRole {
+  QUOTE_SENT // set when a quote is emailed to the customer
+  QUOTE_APPROVED // the customer approved the quote online
+  QUOTE_CHANGES_REQUESTED // the customer asked for changes to the quote
+  QUOTE_CONVERTED // the quote became an order
+  ORDER_PROOF_SENT // a proof was sent for approval
+  ORDER_ARTWORK_APPROVED // the customer approved the latest proof
+  ORDER_CHANGES_REQUESTED // the customer asked for changes to a proof
+}
+
 // Editable list of statuses per type, so the workflow can match how staff work.
 model OrderStatus {
-  id           String    @id @default(cuid())
-  businessId   String
-  business     Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  type         OrderType
-  name         String
-  color        String    @default("#9CA3AF")
-  sortOrder    Int       @default(0)
-  isDefault    Boolean   @default(false) // status for new quotes/orders
-  isClosed     Boolean   @default(false) // done, cancelled, declined, converted
-  // The quote status set automatically when a quote becomes an order.
-  isConversion Boolean   @default(false)
-  orders       Order[]
+  id         String      @id @default(cuid())
+  businessId String
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  type       OrderType
+  name       String
+  color      String      @default("#9CA3AF")
+  sortOrder  Int         @default(0)
+  isDefault  Boolean     @default(false) // status for new quotes/orders
+  isClosed   Boolean     @default(false) // done, cancelled, declined, converted
+  role       StatusRole?
+  orders     Order[]
 
   @@unique([businessId, id])
   @@unique([businessId, type, name])
+  @@unique([businessId, role])
 }
 
 model Order {
-  id             String        @id @default(cuid())
-  businessId     String
-  business       Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  type           OrderType
-  number         Int // per business and type: quotes Q-1001…, orders 1001…
-  title          String?
-  customerId     String
-  customer       Customer      @relation(fields: [businessId, customerId], references: [businessId, id], onDelete: NoAction)
-  companyId      String?
-  company        Company?      @relation(fields: [businessId, companyId], references: [businessId, id], onDelete: NoAction)
-  statusId       String
-  status         OrderStatus   @relation(fields: [businessId, statusId], references: [businessId, id], onDelete: NoAction)
-  assignedToId   String?
-  assignedTo     StaffUser?    @relation("OrderAssignee", fields: [businessId, assignedToId], references: [businessId, id], onDelete: NoAction)
-  createdById    String?
-  createdBy      StaffUser?    @relation("OrderCreator", fields: [businessId, createdById], references: [businessId, id], onDelete: NoAction)
-  pricingGroupId String?
-  pricingGroup   PricingGroup? @relation(fields: [businessId, pricingGroupId], references: [businessId, id], onDelete: NoAction)
-  dueDate        DateTime?     @db.Date
-  rush           Boolean       @default(false)
-  taxExempt      Boolean       @default(false)
-  customerNotes  String? // shown on the quote/order the customer sees
+  id              String         @id @default(cuid())
+  businessId      String
+  business        Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  type            OrderType
+  number          Int // per business and type: quotes Q-1001…, orders 1001…
+  title           String?
+  customerId      String
+  customer        Customer       @relation(fields: [businessId, customerId], references: [businessId, id], onDelete: NoAction)
+  companyId       String?
+  company         Company?       @relation(fields: [businessId, companyId], references: [businessId, id], onDelete: NoAction)
+  statusId        String
+  status          OrderStatus    @relation(fields: [businessId, statusId], references: [businessId, id], onDelete: NoAction)
+  assignedToId    String?
+  assignedTo      StaffUser?     @relation("OrderAssignee", fields: [businessId, assignedToId], references: [businessId, id], onDelete: NoAction)
+  createdById     String?
+  createdBy       StaffUser?     @relation("OrderCreator", fields: [businessId, createdById], references: [businessId, id], onDelete: NoAction)
+  pricingGroupId  String?
+  pricingGroup    PricingGroup?  @relation(fields: [businessId, pricingGroupId], references: [businessId, id], onDelete: NoAction)
+  dueDate         DateTime?      @db.Date
+  rush            Boolean        @default(false)
+  taxExempt       Boolean        @default(false)
+  customerNotes   String? // shown on the quote/order the customer sees
   // Ship-to, copied onto the order so later address edits don't change it.
-  shipName       String?
-  shipLine1      String?
-  shipLine2      String?
-  shipCity       String?
-  shipRegion     String?
-  shipPostalCode String?
-  shipCountry    String        @default("US")
+  shipName        String?
+  shipLine1       String?
+  shipLine2       String?
+  shipCity        String?
+  shipRegion      String?
+  shipPostalCode  String?
+  shipCountry     String         @default("US")
   // Price snapshot, recalculated whenever the order changes.
-  shipping       Decimal       @default(0) @db.Decimal(10, 2)
-  merchandise    Decimal       @default(0) @db.Decimal(10, 2)
-  feesTotal      Decimal       @default(0) @db.Decimal(10, 2)
-  rushFee        Decimal       @default(0) @db.Decimal(10, 2)
-  tax            Decimal       @default(0) @db.Decimal(10, 2)
-  total          Decimal       @default(0) @db.Decimal(10, 2)
-  pricedAt       DateTime?
+  shipping        Decimal        @default(0) @db.Decimal(10, 2)
+  merchandise     Decimal        @default(0) @db.Decimal(10, 2)
+  feesTotal       Decimal        @default(0) @db.Decimal(10, 2)
+  rushFee         Decimal        @default(0) @db.Decimal(10, 2)
+  tax             Decimal        @default(0) @db.Decimal(10, 2)
+  total           Decimal        @default(0) @db.Decimal(10, 2)
+  pricedAt        DateTime?
+  // Customer-facing link (quote approval, order status, invoice). Random and
+  // unguessable; created the first time it's needed.
+  publicToken     String?        @unique
+  approvedAt      DateTime?
+  approvedByName  String?
+  // Deposit the customer must pay before production (amount).
+  depositRequired Decimal        @default(0) @db.Decimal(10, 2)
+  // Sum of payments minus refunds, kept up to date with each payment.
+  paidTotal       Decimal        @default(0) @db.Decimal(10, 2)
+  invoiceNumber   Int?
+  invoicedAt      DateTime?
+  invoiceDueDate  DateTime?      @db.Date
+  files           OrderFile[]
+  proofs          Proof[]
+  payments        Payment[]
+  emails          EmailMessage[]
   // A quote converted to an order points at the order it became.
-  quoteId        String?
-  quote          Order?        @relation("QuoteToOrder", fields: [businessId, quoteId], references: [businessId, id], onDelete: NoAction)
-  convertedTo    Order?        @relation("QuoteToOrder")
-  lines          OrderLine[]
-  events         OrderEvent[]
-  externalSource String?
-  externalId     String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  quoteId         String?
+  quote           Order?         @relation("QuoteToOrder", fields: [businessId, quoteId], references: [businessId, id], onDelete: NoAction)
+  convertedTo     Order?         @relation("QuoteToOrder")
+  lines           OrderLine[]
+  events          OrderEvent[]
+  externalSource  String?
+  externalId      String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   @@unique([businessId, id])
   @@unique([businessId, type, number])
   @@unique([businessId, quoteId])
+  @@unique([businessId, invoiceNumber])
   @@unique([businessId, externalSource, externalId])
   @@index([businessId, statusId])
   @@index([businessId, assignedToId])
@@ -837,6 +887,12 @@ enum OrderEventType {
   ASSIGNED
   EDITED
   CONVERTED
+  EMAIL // an email was sent to the customer
+  CUSTOMER // the customer approved or asked for changes
+  FILE // files added or removed
+  PROOF // a proof was created, sent or cancelled
+  PAYMENT // a payment or refund was recorded
+  INVOICE // an invoice was issued
 }
 
 model OrderEvent {
@@ -862,4 +918,149 @@ model Counter {
   value      Int
 
   @@id([businessId, key])
+}
+
+// ─── Files, proofs, payments, email ─────────────────────────────────────────
+
+// A stored upload (artwork, mockup, customer file). The bytes live in file
+// storage under storageKey; this row is the business's record of it.
+model StoredFile {
+  id           String      @id @default(cuid())
+  businessId   String
+  business     Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name         String // original filename
+  contentType  String
+  size         Int
+  sha256       String
+  storageKey   String      @unique
+  uploadedById String?
+  uploadedBy   StaffUser?  @relation(fields: [businessId, uploadedById], references: [businessId, id], onDelete: NoAction)
+  orderFiles   OrderFile[]
+  proofFiles   ProofFile[]
+  createdAt    DateTime    @default(now())
+
+  @@unique([businessId, id])
+}
+
+enum OrderFileKind {
+  ARTWORK // customer's or shop's artwork as received
+  PRODUCTION // print-ready / digitized files
+  MOCKUP // product previews
+  CUSTOMER // sent by the customer with a response
+  OTHER
+}
+
+model OrderFile {
+  id         String        @id @default(cuid())
+  businessId String
+  business   Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orderId    String
+  order      Order         @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: Cascade)
+  fileId     String
+  file       StoredFile    @relation(fields: [businessId, fileId], references: [businessId, id], onDelete: Cascade)
+  kind       OrderFileKind @default(ARTWORK)
+  note       String?
+  createdAt  DateTime      @default(now())
+
+  @@unique([orderId, fileId])
+  @@index([businessId, orderId])
+}
+
+enum ProofStatus {
+  DRAFT
+  SENT
+  APPROVED
+  CHANGES_REQUESTED
+  CANCELLED
+}
+
+// An artwork proof sent to the customer for approval.
+model Proof {
+  id            String      @id @default(cuid())
+  businessId    String
+  business      Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orderId       String
+  order         Order       @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: Cascade)
+  number        Int // 1, 2, 3… per order
+  token         String      @unique // customer link; random and unguessable
+  status        ProofStatus @default(DRAFT)
+  message       String? // note to the customer
+  sentAt        DateTime?
+  respondedAt   DateTime?
+  responderName String?
+  responseNote  String?
+  createdById   String?
+  createdBy     StaffUser?  @relation(fields: [businessId, createdById], references: [businessId, id], onDelete: NoAction)
+  files         ProofFile[]
+  createdAt     DateTime    @default(now())
+
+  @@unique([businessId, id])
+  @@unique([orderId, number])
+}
+
+model ProofFile {
+  id           String     @id @default(cuid())
+  businessId   String
+  business     Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  proofId      String
+  proof        Proof      @relation(fields: [businessId, proofId], references: [businessId, id], onDelete: Cascade)
+  fileId       String
+  file         StoredFile @relation(fields: [businessId, fileId], references: [businessId, id], onDelete: Cascade)
+  fromCustomer Boolean    @default(false) // attached by the customer with their response
+  sortOrder    Int        @default(0)
+
+  @@unique([proofId, fileId])
+}
+
+enum PaymentMethod {
+  CASH
+  CHECK
+  CARD // taken in person or by phone
+  BANK_TRANSFER
+  ONLINE // paid through the customer link (phase 5)
+  OTHER
+}
+
+// A payment (positive) or refund (negative) against an order.
+model Payment {
+  id         String        @id @default(cuid())
+  businessId String
+  business   Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orderId    String
+  order      Order         @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: Cascade)
+  amount     Decimal       @db.Decimal(10, 2)
+  method     PaymentMethod
+  reference  String? // check number, last 4 digits, transaction id
+  note       String?
+  receivedAt DateTime      @default(now())
+  staffId    String?
+  staff      StaffUser?    @relation(fields: [businessId, staffId], references: [businessId, id], onDelete: NoAction)
+  createdAt  DateTime      @default(now())
+
+  @@index([businessId, orderId])
+}
+
+enum EmailStatus {
+  SENT
+  FAILED
+  LOGGED // no email provider configured (development): recorded, not sent
+}
+
+// Every email the app sends on a business's behalf.
+model EmailMessage {
+  id         String      @id @default(cuid())
+  businessId String
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orderId    String?
+  order      Order?      @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: NoAction)
+  to         String
+  subject    String
+  text       String
+  html       String
+  status     EmailStatus
+  provider   String
+  error      String?
+  createdAt  DateTime    @default(now())
+
+  @@index([businessId, orderId])
 }

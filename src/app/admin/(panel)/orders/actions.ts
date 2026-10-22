@@ -2,7 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import type { OrderFileKind, PaymentMethod } from "@prisma/client";
 import { requireStaff } from "@/lib/auth/session";
+import { hasAnyRole } from "@/lib/auth/roles";
+import { requestOrigin } from "@/lib/business";
+import { formFiles, UploadError } from "@/lib/files/storage";
+import { addOrderFiles, FILE_KIND_LABELS, removeOrderFile } from "@/lib/files/order-files";
+import { cancelProof, createProof, ensurePublicToken, sendProof, sendQuote } from "@/lib/orders/customer-flow";
+import { issueInvoice, recordPayment, sendInvoice, setDeposit } from "@/lib/orders/payments";
 import { all, type ActionResult, checkbox, decimal, FormError, optionalText, runAction, text } from "@/lib/admin/form";
 import {
   addLine,
@@ -184,4 +191,159 @@ export async function convertQuoteAction(_: ActionResult, form: FormData): Promi
   });
   if (result.error) return result;
   redirect(`/admin/orders/${orderId}`);
+}
+
+// ─── Customer link, files, proofs, payments, invoices ──────────────────────
+
+/** Turn upload/order errors into form messages. */
+async function runWith(fn: () => Promise<string | void>): Promise<ActionResult> {
+  return run(async () => {
+    try {
+      return await fn();
+    } catch (e) {
+      if (e instanceof UploadError) throw new FormError(e.message);
+      throw e;
+    }
+  });
+}
+
+const emailResult = (status: string, what: string) =>
+  status === "FAILED"
+    ? `${what} couldn't be emailed; see the email log`
+    : status === "LOGGED"
+      ? `${what} recorded (email isn't set up, so nothing was sent; copy the link instead)`
+      : `${what} emailed`;
+
+export async function sendQuoteAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db, id: staffId } = await requireStaff(["SALES"]);
+  const orderId = text(form, "orderId");
+  return run(async () => {
+    const r = await sendQuote(db, orderId, { origin: await requestOrigin(), staffId, message: optionalText(form, "message") });
+    refresh(orderId);
+    return emailResult(r.status, "Quote");
+  });
+}
+
+export async function createLinkAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["SALES"]);
+  const orderId = text(form, "orderId");
+  return run(async () => {
+    await ensurePublicToken(db, orderId);
+    refresh(orderId);
+    return "Link created";
+  });
+}
+
+export async function uploadFilesAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db, id: staffId } = await requireStaff(["SALES", "ARTWORK", "ARTWORK_MANAGER"]);
+  const orderId = text(form, "orderId");
+  return runWith(async () => {
+    const kind = String(form.get("kind") ?? "ARTWORK") as OrderFileKind;
+    if (!(kind in FILE_KIND_LABELS)) throw new FormError("Choose a file type");
+    const n = await addOrderFiles(db, orderId, formFiles(form, "files"), kind, staffId);
+    refresh(orderId);
+    return `Uploaded ${n} file${n === 1 ? "" : "s"}`;
+  });
+}
+
+export async function removeFileAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db, id: staffId } = await requireStaff(["SALES", "ARTWORK", "ARTWORK_MANAGER"]);
+  const orderId = text(form, "orderId");
+  return run(async () => {
+    await removeOrderFile(db, text(form, "orderFileId"), staffId);
+    refresh(orderId);
+    return "Removed";
+  });
+}
+
+export async function createProofAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db, id: staffId } = await requireStaff(["SALES", "ARTWORK", "ARTWORK_MANAGER"]);
+  const orderId = text(form, "orderId");
+  return runWith(async () => {
+    const proof = await createProof(db, orderId, {
+      orderFileIds: form.getAll("orderFileIds").map(String),
+      uploads: formFiles(form, "files"),
+      message: optionalText(form, "message"),
+      staffId,
+    });
+    if (form.get("sendNow") === "on") {
+      const r = await sendProof(db, proof.id, { origin: await requestOrigin(), staffId });
+      refresh(orderId);
+      return emailResult(r.status, `Proof ${proof.number}`);
+    }
+    refresh(orderId);
+    return `Proof ${proof.number} saved as a draft`;
+  });
+}
+
+export async function sendProofAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db, id: staffId } = await requireStaff(["SALES", "ARTWORK", "ARTWORK_MANAGER"]);
+  const orderId = text(form, "orderId");
+  return run(async () => {
+    const r = await sendProof(db, text(form, "proofId"), { origin: await requestOrigin(), staffId });
+    refresh(orderId);
+    return emailResult(r.status, "Proof");
+  });
+}
+
+export async function cancelProofAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db, id: staffId } = await requireStaff(["SALES", "ARTWORK", "ARTWORK_MANAGER"]);
+  const orderId = text(form, "orderId");
+  return run(async () => {
+    await cancelProof(db, text(form, "proofId"), staffId);
+    refresh(orderId);
+    return "Cancelled";
+  });
+}
+
+const METHODS: PaymentMethod[] = ["CASH", "CHECK", "CARD", "BANK_TRANSFER", "OTHER"];
+
+export async function recordPaymentAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const staff = await requireStaff(["SALES"]);
+  const orderId = text(form, "orderId");
+  return run(async () => {
+    const refund = form.get("refund") === "on";
+    if (refund && !hasAnyRole(staff.roles, ["REFUNDS"])) throw new FormError("Refunds need the Refunds role");
+    const method = String(form.get("method")) as PaymentMethod;
+    if (!METHODS.includes(method)) throw new FormError("Choose how it was paid");
+    const day = optionalText(form, "receivedAt");
+    if (day && !/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new FormError("Date must be a date");
+    await recordPayment(staff.db, orderId, {
+      amount: decimal(String(form.get("amount") ?? ""), "Amount"),
+      refund,
+      method,
+      reference: optionalText(form, "reference"),
+      note: optionalText(form, "note"),
+      receivedAt: day ? new Date(`${day}T12:00:00Z`) : new Date(),
+      staffId: staff.id,
+    });
+    refresh(orderId);
+    return refund ? "Refund recorded" : "Payment recorded";
+  });
+}
+
+export async function setDepositAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db, id: staffId } = await requireStaff(["SALES"]);
+  const orderId = text(form, "orderId");
+  return run(async () => {
+    await setDeposit(db, orderId, decimal(String(form.get("deposit") ?? "") || "0", "Deposit"), staffId);
+    refresh(orderId);
+  });
+}
+
+export async function invoiceAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db, id: staffId } = await requireStaff(["SALES"]);
+  const orderId = text(form, "orderId");
+  return run(async () => {
+    const due = optionalText(form, "dueDate");
+    if (due && !/^\d{4}-\d{2}-\d{2}$/.test(due)) throw new FormError("Due date must be a date");
+    await issueInvoice(db, orderId, { dueDate: due ? new Date(`${due}T00:00:00Z`) : null, staffId });
+    if (form.get("send") === "on") {
+      const r = await sendInvoice(db, orderId, { origin: await requestOrigin(), staffId });
+      refresh(orderId);
+      return emailResult(r.status, "Invoice");
+    }
+    refresh(orderId);
+    return "Invoice saved";
+  });
 }

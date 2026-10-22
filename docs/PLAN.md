@@ -34,7 +34,7 @@ orders come before the public storefront.
    businesses resolved from the request's host; per-business staff sign-in;
    platform admin to add, configure and suspend businesses. Platform billing
    comes later.
-3. **Approvals, artwork, payments.** Customer quote approval links, artwork
+3. ✅ **Approvals, artwork, payments.** Customer quote approval links, artwork
    proofs with approve/request-changes, artwork file storage, recorded
    payments and deposits, invoices and emails.
 4. **Production, purchasing, shipping.** Workflow steps per method,
@@ -82,3 +82,11 @@ phases 1–3 need real product data.
   point at reusable designs, ready for publishing to stores in phase 7.
 - **Multi-business (done):** Name TBD now hosts many businesses. Existing
   data moved into Beeze Tees. Platform admin at `/platform`.
+- **Phase 3 (done):** customer links for quotes and orders (no login):
+  approve or ask for changes; order files; artwork proofs with
+  approve/request-changes and customer attachments; statuses that move
+  automatically on customer responses ("Set automatically" in Order
+  statuses); deposits, payments and refunds; invoice numbers and invoices on
+  the customer link; email via Resend or Postmark with every message listed
+  on the order. Deferred: online card payments (phase 5 checkout), file
+  storage on S3/R2, QuickBooks invoice sync (phase 8).

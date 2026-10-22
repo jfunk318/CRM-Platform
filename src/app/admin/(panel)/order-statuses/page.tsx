@@ -1,6 +1,7 @@
 import { requireStaff } from "@/lib/auth/session";
 import { ActionForm } from "@/components/admin/action-form";
 import { RowsEditor } from "@/components/admin/rows-editor";
+import { rolesFor, STATUS_ROLES } from "@/lib/orders/status-roles";
 import { saveStatuses } from "./actions";
 
 export default async function OrderStatusesPage() {
@@ -16,7 +17,9 @@ export default async function OrderStatusesPage() {
         <h1 className="page-title">Quote &amp; order statuses</h1>
         <p className="text-sm text-gray-500">
           The steps a quote or order moves through. Rename, reorder (top to bottom), recolor or add steps to match
-          how your team works. Closed statuses drop out of the default &ldquo;open&rdquo; lists.
+          how your team works. Closed statuses drop out of the default &ldquo;open&rdquo; lists. &ldquo;Set
+          automatically&rdquo; moves a quote or order to that status when the customer responds online or staff
+          send it.
         </p>
       </div>
       {(["ORDER", "QUOTE"] as const).map((type) => (
@@ -32,7 +35,12 @@ export default async function OrderStatusesPage() {
                 { name: "color", label: "Color", placeholder: "#22C55E", width: "8rem" },
                 { name: "isDefault", label: "Starting status", type: "checkbox" },
                 { name: "isClosed", label: "Closed", type: "checkbox" },
-                ...(type === "QUOTE" ? [{ name: "isConversion", label: "Became an order", type: "checkbox" as const }] : []),
+                {
+                  name: "role",
+                  label: "Set automatically",
+                  type: "select" as const,
+                  options: [{ value: "", label: "—" }, ...rolesFor(type).map((r) => ({ value: r, label: STATUS_ROLES[r].label }))],
+                },
               ]}
               initialRows={statuses
                 .filter((s) => s.type === type)
@@ -42,7 +50,7 @@ export default async function OrderStatusesPage() {
                   color: s.color,
                   isDefault: s.isDefault,
                   isClosed: s.isClosed,
-                  isConversion: s.isConversion,
+                  role: s.role ?? "",
                 }))}
             />
           </ActionForm>

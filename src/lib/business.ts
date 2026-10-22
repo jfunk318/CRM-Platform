@@ -63,3 +63,14 @@ export function businessDomain(b: Pick<Business, "slug" | "customDomain">): stri
 export function storeUrl(storeSlug: string, b: Pick<Business, "slug" | "customDomain">): string {
   return `https://${storeSlug}.${businessDomain(b)}`;
 }
+
+/**
+ * Base URL of the address this request came in on, for links in emails
+ * (e.g. https://beezetees.com or http://beezetees.localhost:3000).
+ */
+export async function requestOrigin(): Promise<string> {
+  const h = await headers();
+  const host = (await getRequestHost()) ?? "localhost";
+  const proto = h.get("x-forwarded-proto")?.split(",")[0]?.trim() || (parseHost(host).kind === "local" || host.includes("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
+}

@@ -11,8 +11,21 @@ export async function saveShopSettings(_: ActionResult, form: FormData): Promise
   return runAction(async () => {
     const currency = text(form, "currency", "Currency").toUpperCase();
     if (!/^[A-Z]{3}$/.test(currency)) throw new FormError("Currency must be a 3-letter code like USD");
+    const contactEmail = optionalText(form, "email")?.toLowerCase() ?? null;
+    if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) throw new FormError("Enter a valid business email");
     const data = {
       name: text(form, "shopName", "Business name"),
+      email: contactEmail,
+      phone: optionalText(form, "phone"),
+      addressLine1: optionalText(form, "addressLine1"),
+      addressLine2: optionalText(form, "addressLine2"),
+      city: optionalText(form, "city"),
+      region: optionalText(form, "region")?.toUpperCase() ?? null,
+      postalCode: optionalText(form, "postalCode"),
+      country: (optionalText(form, "country") ?? "US").toUpperCase(),
+      invoiceTerms: optionalText(form, "invoiceTerms"),
+      paymentInstructions: optionalText(form, "paymentInstructions"),
+      defaultDepositPct: percent(field(form, "defaultDepositPct") || "0", "Default deposit"),
       currency,
       priceRounding: field(form, "priceRounding") === "UP_TO_99" ? ("UP_TO_99" as const) : ("CENT" as const),
       rushFeePct: percent(field(form, "rushFeePct") || "0", "Rush fee"),

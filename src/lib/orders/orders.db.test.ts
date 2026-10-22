@@ -17,7 +17,7 @@ beforeAll(async () => {
   await db.orderStatus.createMany({
     data: [
       { businessId, type: "QUOTE", name: "Draft", isDefault: true },
-      { businessId, type: "QUOTE", name: "Converted", isClosed: true, isConversion: true },
+      { businessId, type: "QUOTE", name: "Converted", isClosed: true, role: "QUOTE_CONVERTED" },
       { businessId, type: "ORDER", name: "New", isDefault: true },
       { businessId, type: "ORDER", name: "In production" },
     ],
@@ -158,7 +158,7 @@ describe("quotes and orders", () => {
     expect(order.type).toBe("ORDER");
     expect(order.quoteId).toBe(quoteId);
     expect(order.total.toFixed(2)).toBe("205.30");
-    expect(quote.status.isConversion).toBe(true);
+    expect(quote.status.role).toBe("QUOTE_CONVERTED");
     expect(order.lines[0].designId).toBe(quote.lines.find((l) => l.id === navyLine)!.designId);
     await expect(convertQuote(db, quoteId, null)).rejects.toThrow(/Already converted/);
 

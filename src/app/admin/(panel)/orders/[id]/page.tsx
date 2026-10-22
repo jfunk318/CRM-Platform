@@ -7,6 +7,8 @@ import type { Fee, PricingIssue } from "@/lib/pricing";
 import { ActionForm } from "@/components/admin/action-form";
 import { LineEditor, type LineValue } from "@/components/admin/line-editor";
 import { StatusBadge } from "@/components/admin/order-table";
+import { requestOrigin } from "@/lib/business";
+import { CustomerLinkSection, EmailsSection, FilesSection, orderSectionsInclude, PaymentsSection, ProofsSection } from "./sections";
 import {
   addLineAction,
   addNoteAction,
@@ -50,9 +52,13 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         },
       },
       events: { orderBy: { createdAt: "desc" }, include: { staff: { select: { name: true } } } },
+      ...orderSectionsInclude,
     },
   });
   if (!order) notFound();
+  const origin = await requestOrigin();
+  const canArtwork = hasAnyRole(staff.roles, ["SALES", "ARTWORK", "ARTWORK_MANAGER"]);
+  const suggestedDeposit = order.total.times(staff.business.defaultDepositPct).toFixed(2);
 
   const [statuses, staffList, products, groups] = await Promise.all([
     db.orderStatus.findMany({ where: { type: order.type }, orderBy: { sortOrder: "asc" } }),
@@ -272,6 +278,9 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             )}
           </section>
 
+          <FilesSection order={order} canEdit={canArtwork && !locked} />
+          {!isQuote && <ProofsSection order={order} origin={origin} canEdit={canArtwork} />}
+
           <section className="card">
             <h2 className="mb-3 font-semibold">Details</h2>
             <fieldset disabled={!editable}>
@@ -315,6 +324,16 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         </div>
 
         <aside className="space-y-6">
+          <CustomerLinkSection order={order} origin={origin} canEdit={canEdit} />
+          {!isQuote && (
+            <PaymentsSection
+              order={order}
+              canEdit={canEdit}
+              canRefund={hasAnyRole(staff.roles, ["REFUNDS"])}
+              suggestedDeposit={suggestedDeposit}
+              origin={origin}
+            />
+          )}
           <section className="card text-sm" data-testid="totals">
             <h2 className="mb-2 font-semibold">Totals</h2>
             <dl className="space-y-1">
@@ -346,6 +365,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               ))}
             </ol>
           </section>
+          <EmailsSection order={order} />
         </aside>
       </div>
     </div>
