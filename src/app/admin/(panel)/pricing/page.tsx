@@ -85,7 +85,7 @@ export default async function PricingPage() {
           </div>
         ))}
         <div className="card">
-          <ActionForm action={createPricingGroup} submitLabel="Add pricing group" className="flex flex-wrap items-end gap-3">
+          <ActionForm action={createPricingGroup} submitLabel="Add pricing group" resetOnSuccess className="flex flex-wrap items-end gap-3">
             <div className="min-w-60 flex-1">
               <label className="label" htmlFor="new-group">New pricing group</label>
               <input className="input" id="new-group" name="name" placeholder="e.g. Wholesale, Schools" required />
@@ -124,7 +124,7 @@ export default async function PricingPage() {
             </div>
           ))}
           <div className="card">
-            <ActionForm action={createQuantityDiscount} submitLabel="Add discount table">
+            <ActionForm action={createQuantityDiscount} submitLabel="Add discount table" resetOnSuccess>
               <div>
                 <label className="label" htmlFor="new-discount">New discount table</label>
                 <input className="input" id="new-discount" name="name" placeholder="e.g. Team orders" required />

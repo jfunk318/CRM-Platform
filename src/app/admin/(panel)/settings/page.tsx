@@ -77,7 +77,7 @@ function TaxRateCard({ rate }: { rate?: TaxRate }) {
   return (
     <div className="card space-y-3">
       {!rate && <h3 className="font-semibold">Add a tax rate</h3>}
-      <ActionForm action={saveTaxRate} submitLabel={rate ? "Save" : "Add tax rate"}>
+      <ActionForm action={saveTaxRate} submitLabel={rate ? "Save" : "Add tax rate"} resetOnSuccess={!rate}>
         {rate && <input type="hidden" name="id" value={rate.id} />}
         <div className="grid gap-3 sm:grid-cols-5">
           <div className="sm:col-span-2">

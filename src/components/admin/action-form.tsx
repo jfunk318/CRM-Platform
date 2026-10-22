@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { startTransition, useActionState, useEffect, useRef } from "react";
 import type { ActionResult } from "@/lib/admin/form";
 
 type Props = {
@@ -11,17 +11,30 @@ type Props = {
   /** Ask before submitting, e.g. for deletes. */
   confirm?: string;
   danger?: boolean;
+  /** Clear the inputs after a successful save (for "add new" forms). */
+  resetOnSuccess?: boolean;
 };
 
 /** A form bound to an admin server action, with saved/error feedback. */
-export function ActionForm({ action, children, submitLabel = "Save", className, confirm, danger }: Props) {
+export function ActionForm({ action, children, submitLabel = "Save", className, confirm, danger, resetOnSuccess }: Props) {
   const [state, formAction, pending] = useActionState(action, {});
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    if (resetOnSuccess && state.ok) formRef.current?.reset();
+  }, [state, resetOnSuccess]);
+
   return (
     <form
-      action={formAction}
+      ref={formRef}
       className={className ?? "space-y-4"}
+      // Submitting through onSubmit (not the `action` prop) stops React from
+      // resetting the form, so a validation error doesn't wipe what was typed.
       onSubmit={(e) => {
-        if (confirm && !window.confirm(confirm)) e.preventDefault();
+        e.preventDefault();
+        if (confirm && !window.confirm(confirm)) return;
+        const data = new FormData(e.currentTarget);
+        startTransition(() => formAction(data));
       }}
     >
       {children}
