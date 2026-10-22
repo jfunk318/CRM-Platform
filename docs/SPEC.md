@@ -395,9 +395,19 @@ one-off order data. Store products point at the same designs [R].
 
 14.12 **Stores dashboard** [B]: in the root store's back office, every
 affiliate store at a glance: status (draft, open, closed), open/close dates,
-sales and orders, open requests, assigned staff manager. Stores can be
-grouped (e.g. Schools, Teams, Corporate, Fundraisers) and filtered by group,
-status and manager.
+sales and orders, assigned staff manager, with the old store list's useful
+columns consolidated. Stores can be grouped (e.g. Schools, Teams, Corporate,
+Fundraisers) and filtered by group, status and manager.
+
+**Request flags** [B]: each row has a space for small emoji-style flags, one
+per kind of action needed (e.g. new item requested, price change, reopen
+store, help needed, artwork to review). A flag appears when a store owner
+submits a request and clears when staff resolve it; hovering or clicking
+shows the request. The list **updates live** and has a **"most recent
+request"** view, so the store manager can monitor incoming requests from one
+screen. Every request is also logged on the store's and customer's history;
+turning an update request into a draft quote and notifying via Slack (14.7)
+are optional automations on top of the flags.
 
 14.13 **Per-store dashboard** [B]: one store's settings and activity: branding
 and subdomain, items (from the catalog or published from quotes/orders) with
@@ -417,11 +427,21 @@ dashboard shows where each effective value comes from. Settings include:
 - Shopper accounts: optional (default), required, or guest checkout only
 - Password / access code required to enter the store
 - Show or hide prices
-- Delivery methods offered (ship to buyer, pick up, deliver to the
-  organization in one batch) and their costs
-- Promo codes accepted (codes can be business-wide, per group or per store)
+- Delivery methods offered, chosen from the business's list (below)
+- Promo codes and gift codes accepted, chosen from the business's list
+  (below)
 - Listed in the root storefront's showcase or private (14.14)
 - Further behaviors added the same way as needs come up
+
+**Delivery methods** [B] are maintained once, business-wide, as an editable
+list (e.g. ship to buyer, pick up at the shop, deliver to the organization
+in one batch), with their costs and rules. Shipping rates and labels likely
+come through **ShipStation**. Stores and groups choose which methods from the
+list they offer; editing a method updates it everywhere it's used.
+
+**Promo codes and gift codes** [B] work the same way: one business-wide list
+of codes (percent or amount off, free shipping, usage limits, dates; gift
+codes with a balance), which stores and groups switch on as needed.
 
 14.16 **Shoppers** [B]: affiliate store buyers can create an account (order
 history, saved addresses) or check out as guests, as the store's settings

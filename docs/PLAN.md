@@ -51,8 +51,10 @@ orders come before the public storefront.
    pricing with overrides and markups; store settings inherited
    business → group → store (accounts, passwords, prices shown, delivery,
    promo codes, listing); open/close dates and batched production;
-   view-only store owner portal with requests (updates → draft quote, help →
-   Slack); commissions; the root storefront's showcase of affiliate stores.
+   view-only store owner portal with requests shown as live flags on the
+   stores list (optionally → draft quote / Slack); business-wide delivery
+   methods (ShipStation), promo and gift codes chosen per store/group;
+   commissions; the root storefront's showcase of affiliate stores.
 8. **CRM depth.** Leads, follow-up tasks, pipeline, Mailchimp sync.
 9. **Automations + integrations.** Rules engine, QuickBooks Online, supplier
    live catalogs and ordering, public API.
