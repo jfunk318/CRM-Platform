@@ -39,25 +39,25 @@ orders come before the public storefront.
    payments and deposits, invoices and emails.
 4. **Production, purchasing, shipping.** Workflow steps per method,
    production calendar, consolidated supplier POs and receiving, shipping
-   labels, packing slips, tracking notifications.
-5. **Storefront engine + checkout.** One storefront engine that serves the
-   main site and every store subdomain (`*.beezetees.com`), CMS pages,
-   catalog browsing, cart, Stripe checkout, customer accounts.
-6. **Design tool.** Canvas, text, images, uploads with quality checks,
-   colors and screens, team names, live pricing, mockups.
-7. **Affiliate stores.** Stores dashboard (grouping, filters, at-a-glance
-   status) and per-store dashboards; create stores manually or **publish a
-   quote/order to a new or existing store (update or overwrite)**; item
-   pricing with overrides and markups; store settings inherited
-   business → group → store (accounts, passwords, prices shown, delivery,
-   promo codes, listing); open/close dates and batched production;
-   view-only store owner portal with requests shown as live flags on the
-   stores list (optionally → draft quote / Slack); business-wide delivery
-   methods (ShipStation), promo and gift codes chosen per store/group;
-   commissions; the root storefront's showcase of affiliate stores.
-8. **CRM depth.** Leads, follow-up tasks, pipeline, Mailchimp sync.
-9. **Automations + integrations.** Rules engine, QuickBooks Online, supplier
-   live catalogs and ordering, public API.
+   (ShipStation) and business-wide delivery methods, packing slips,
+   tracking notifications.
+5. **Storefront engine + checkout.** One storefront engine for the root
+   storefront and every affiliate store, CMS pages, catalog browsing, cart,
+   Stripe checkout, shopper accounts or guest checkout, promo and gift codes.
+6. **Affiliate stores.** Stores dashboard (consolidated columns, live
+   request flags, grouping, views, bulk actions) and per-store dashboards;
+   create stores manually or **publish a quote/order to a new or existing
+   store (update or overwrite)**; staff mockup tool for store item images;
+   item pricing with overrides and markups; name/number personalization;
+   settings inherited business → group → store; open/close dates and
+   batched production; store owner portal (selectable sections, contacts,
+   code usage, requests → optional draft quote / Slack); commissions;
+   showcase of affiliate stores on the root storefront.
+7. **CRM depth.** Leads, follow-up tasks, pipeline, Mailchimp sync.
+8. **Automations + integrations.** Rules engine, QuickBooks Online, Slack,
+   supplier live catalogs and ordering, public API.
+9. **Customer designer.** Online design tool for shoppers where a store
+   enables it, within root store and store manager permissions.
 10. **Cutover.** URL redirects from the old beezetees.com paths, DNS switch
     (including wildcard DNS for store subdomains). No data import.
 

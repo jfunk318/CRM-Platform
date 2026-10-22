@@ -232,6 +232,11 @@ Implementation [R]: canvas library (Fabric.js or Konva) with a JSON design
 document as the source of truth; server renders mockups and print-ready
 files from the same document.
 
+4.10 **Staff mockups** [B]: before the customer designer, staff get a
+simpler tool to place uploaded artwork on a product's print areas and render
+the product images used for store items and quotes. It uses the same design
+document, so the customer designer later builds on it.
+
 ## 5. Storefront (website)
 
 5.1 CMS pages with nested hierarchy [O] (services, locations/SEO landing
@@ -340,9 +345,18 @@ Stripe Connect optional later [R].
 14.6 Store open/close dates and group ordering. Orders are batched into one
 production run when the store closes [D].
 14.7 **Store owner portal** [B]: the store owner signs in at their store's
-address and sees, read-only: sales and order counts over time, items with
-their prices, open/close dates, and earnings (commission or markup share,
-earned and paid). They can send **requests** and can't change anything themselves. Requests
+address. Each section can be shown or hidden (business-wide, per group or
+per store, 14.15):
+- sales and order counts over time, items with their prices, open/close
+  dates, earnings (commission or markup share, earned and paid), read-only
+- their organization's **contacts**, which they can view and edit
+- usage of promo and gift codes created for their store
+- whether the store is listed in the root storefront's showcase, if the
+  root store lets owners choose
+- requests (below); more sections can be added the same way
+
+Apart from contacts (and the listing choice when allowed), the portal is
+read-only. They can send **requests** and can't change anything themselves. Requests
 are routed for tracking [B] (direction agreed, details open):
 - **Update requests** (add an item, change a price, reopen the store)
   automatically create a **draft quote** for the store's customer, linked to
@@ -450,6 +464,9 @@ dashboard shows where each effective value comes from. Settings include:
 - Promo codes and gift codes accepted, chosen from the business's list
   (below)
 - Listed in the root storefront's showcase or private (14.14)
+- Which owner portal sections are shown (14.7)
+- **Name/number personalization** on chosen items, with its upcharge (14.17)
+- **Customer designer** options, within the root store's limits (14.18)
 - Further behaviors added the same way as needs come up
 
 **Delivery methods** [B] are maintained once, business-wide, as an editable
@@ -466,6 +483,19 @@ codes with a balance), which stores and groups switch on as needed.
 history, saved addresses) or check out as guests, as the store's settings
 allow. Either way they're recorded as customers in the root store's CRM,
 linked to the store they bought from.
+
+14.17 **Name & number personalization** [B]: a business-wide feature that
+stores switch on for chosen items: shoppers enter a name and/or number per
+item at checkout, at an upcharge set by the root store (overridable per
+store). Personalized items carry the names/numbers through to production
+(roster per order). Needs no designer.
+
+14.18 **Customer designer permissions** [B]: the root store sets up most
+designs itself (staff mockups, 4.10). When the online designer is enabled for
+a store, the **root store** defines what's possible (decoration methods,
+pricing) and the **store's manager**, in the back office, chooses within
+that what shoppers may do: upload their own artwork, choose their own
+garment, and so on. Shoppers never see these settings.
 
 ## 15. Invoicing & accounting
 
