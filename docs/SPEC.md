@@ -1,11 +1,23 @@
-# Beeze Platform — Feature Specification
+# Name TBD — Feature Specification
 
-Version 0.1 · 2026-10-22 · Owner: Beeze Tees
+Version 0.2 · 2026-10-22
 
-A print-shop platform for Beeze Tees to replace its DecoNetwork subscription,
-which has ended. It covers the storefront, online design tool, quoting and
-ordering, artwork approvals, production, purchasing, shipping, CRM, and
-affiliate/fundraiser stores.
+**Name TBD** (working name) is a print-shop business platform covering the
+storefront, online design tool, quoting and ordering, artwork approvals,
+production, purchasing, shipping, CRM, and affiliate/fundraiser stores.
+
+Three levels, kept distinct throughout [B]:
+
+| Level | Example | Brand / address |
+|-------|---------|-----------------|
+| **Platform** | Name TBD | Platform name (placeholder "Name TBD") |
+| **Business** using the platform | Beeze Tees | Its own name and domain, set in shop settings (e.g. `beezetees.com`) |
+| **Affiliate store** of that business | Lincoln Hockey | Subdomain of the business's domain (`lincoln-hockey.beezetees.com`) |
+
+Beeze Tees is the first business on the platform and the source of the
+feature requirements below (it is replacing a DecoNetwork subscription,
+which has ended). Customers of a business see that business's brand; the
+platform brand appears only as "Powered by".
 
 ## How this spec was built (and what it is not)
 

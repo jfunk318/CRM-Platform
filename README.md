@@ -1,7 +1,12 @@
-# Beeze Platform
+# Name TBD
 
-Print-shop platform for Beeze Tees: storefront, online design tool, quotes,
-orders, production, CRM and affiliate stores.
+Working name for a print-shop business platform: storefront, online design
+tool, quotes, orders, production, CRM and affiliate stores. Print shops run
+their business **through** the platform; Beeze Tees is the first.
+
+- The **platform** brand is "Name TBD" (`PLATFORM_NAME`, see `src/lib/platform.ts`).
+- The **business** brand (e.g. Beeze Tees) and its domain are shop settings
+  in admin. Its affiliate stores live at `<store>.<business domain>`.
 
 - [Feature spec](docs/SPEC.md)
 - [Build plan](docs/PLAN.md)

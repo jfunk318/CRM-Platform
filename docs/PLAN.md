@@ -1,4 +1,4 @@
-# Beeze Platform — Build Plan
+# Name TBD — Build Plan
 
 ## Recommended stack
 

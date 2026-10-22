@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentStaff } from "@/lib/auth/session";
 import { getShop } from "@/lib/shop";
+import { PLATFORM_NAME } from "@/lib/platform";
 import { LoginForm } from "./login-form";
 
 export async function generateMetadata() {
@@ -16,6 +17,7 @@ export default async function LoginPage() {
         <h1 className="text-lg font-semibold">{shop.name} staff</h1>
         <p className="mb-4 text-sm text-gray-500">Sign in to the back office.</p>
         <LoginForm />
+        <p className="mt-4 text-center text-[11px] text-gray-400">Powered by {PLATFORM_NAME}</p>
       </div>
     </main>
   );

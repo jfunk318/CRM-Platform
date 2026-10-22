@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { StaffRole } from "@prisma/client";
 import { requireStaff } from "@/lib/auth/session";
 import { getShop } from "@/lib/shop";
+import { PLATFORM_NAME } from "@/lib/platform";
 import { hasAnyRole } from "@/lib/auth/roles";
 import { logout } from "../(auth)/login/actions";
 
@@ -49,6 +50,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <button className="text-amber-700 hover:underline">Sign out</button>
           </form>
         </div>
+        <div className="px-4 pb-4 text-[11px] text-gray-400">Powered by {PLATFORM_NAME}</div>
       </aside>
       <main className="min-w-0 flex-1 px-4 py-6 md:px-8">{children}</main>
     </div>
