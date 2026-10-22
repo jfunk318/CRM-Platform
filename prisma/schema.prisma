@@ -1,0 +1,408 @@
+// Beeze Platform — phase 1 schema: staff, catalog, decoration methods, pricing.
+//
+// Import readiness: every record that could come from an outside system
+// (a supplier feed, a future DecoNetwork export, a spreadsheet) carries
+// `externalSource` + `externalId`, unique together. Importers upsert on that
+// pair, so re-running an import updates rows instead of duplicating them.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Staff ──────────────────────────────────────────────────────────────────
+
+enum StaffRole {
+  ADMIN
+  SALES
+  ARTWORK
+  ARTWORK_MANAGER
+  PRODUCTION
+  PURCHASING
+  SHIPPING
+  REFUNDS
+}
+
+model StaffUser {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  name         String
+  passwordHash String?
+  roles        StaffRole[]
+  active       Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+// ─── Suppliers & catalog ────────────────────────────────────────────────────
+
+enum SupplierIntegration {
+  REST_API
+  PROMOSTANDARDS
+  CSV
+  MANUAL
+}
+
+model Supplier {
+  id          String              @id @default(cuid())
+  code        String              @unique // "sanmar", "ss", "charles-river", "pennant"
+  name        String
+  integration SupplierIntegration @default(MANUAL)
+  active      Boolean             @default(true)
+  products    Product[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model Category {
+  id             String            @id @default(cuid())
+  slug           String            @unique
+  name           String
+  description    String?
+  sortOrder      Int               @default(0)
+  parentId       String?
+  parent         Category?         @relation("CategoryTree", fields: [parentId], references: [id])
+  children       Category[]        @relation("CategoryTree")
+  products       ProductCategory[]
+  externalSource String?
+  externalId     String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([externalSource, externalId])
+}
+
+model ProductType {
+  id                String                  @id @default(cuid())
+  name              String                  @unique // "Apparel", "Headwear", "Drinkware"
+  allowProcessMix   Boolean                 @default(true)
+  products          Product[]
+  decorationMethods ProductTypeDecoration[]
+}
+
+enum ProductStatus {
+  ACTIVE
+  CLOSING_OUT
+  DISCONTINUED
+}
+
+model Product {
+  id                 String                  @id @default(cuid())
+  slug               String                  @unique
+  styleCode          String // supplier style, e.g. "DM104L"
+  name               String
+  brand              String?
+  description        String?
+  status             ProductStatus           @default(ACTIVE)
+  isCustom           Boolean                 @default(false) // in-house / non-supplier item
+  allowBlankSale     Boolean                 @default(true)
+  sizeChartHtml      String?
+  sizeChartImageUrl  String?
+  specSheetUrl       String?
+  productionLeadDays Int? // overrides method lead days when set
+  supplierId         String?
+  supplier           Supplier?               @relation(fields: [supplierId], references: [id])
+  productTypeId      String
+  productType        ProductType             @relation(fields: [productTypeId], references: [id])
+  quantityDiscountId String?
+  quantityDiscount   QuantityDiscount?       @relation(fields: [quantityDiscountId], references: [id])
+  categories         ProductCategory[]
+  colors             ProductColor[]
+  sizes              ProductSize[]
+  variants           ProductVariant[]
+  views              ProductView[]
+  methodRules        ProductDecorationRule[]
+  externalSource     String?
+  externalId         String?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  @@unique([externalSource, externalId])
+  @@index([supplierId, styleCode])
+}
+
+model ProductCategory {
+  productId  String
+  categoryId String
+  sortOrder  Int      @default(0)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([productId, categoryId])
+}
+
+enum GarmentShade {
+  WHITE
+  LIGHT
+  DARK
+}
+
+model ProductColor {
+  id        String           @id @default(cuid())
+  productId String
+  product   Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  hex       String?
+  shade     GarmentShade     @default(LIGHT) // drives white-underbase rules
+  sortOrder Int              @default(0)
+  variants  ProductVariant[]
+  images    ViewImage[]
+
+  @@unique([productId, name])
+}
+
+model ProductSize {
+  id        String           @id @default(cuid())
+  productId String
+  product   Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  code      String // "S", "2XL", "YM"
+  label     String
+  sortOrder Int              @default(0)
+  variants  ProductVariant[]
+
+  @@unique([productId, code])
+}
+
+model ProductVariant {
+  id             String       @id @default(cuid())
+  productId      String
+  product        Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  colorId        String
+  color          ProductColor @relation(fields: [colorId], references: [id], onDelete: Cascade)
+  sizeId         String
+  size           ProductSize  @relation(fields: [sizeId], references: [id], onDelete: Cascade)
+  sku            String       @unique
+  supplierSku    String?
+  wholesaleCost  Decimal      @db.Decimal(10, 2)
+  stockOnHand    Int? // null = not stocked in-house
+  supplierStock  Int?
+  active         Boolean      @default(true)
+  externalSource String?
+  externalId     String?
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([productId, colorId, sizeId])
+  @@unique([externalSource, externalId])
+}
+
+model ProductView {
+  id        String           @id @default(cuid())
+  productId String
+  product   Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String // "Front", "Back", "Left Sleeve"
+  sortOrder Int              @default(0)
+  areas     DecorationArea[]
+  images    ViewImage[]
+
+  @@unique([productId, name])
+}
+
+model ViewImage {
+  id      String       @id @default(cuid())
+  viewId  String
+  view    ProductView  @relation(fields: [viewId], references: [id], onDelete: Cascade)
+  colorId String
+  color   ProductColor @relation(fields: [colorId], references: [id], onDelete: Cascade)
+  url     String
+
+  @@unique([viewId, colorId])
+}
+
+model DecorationArea {
+  id       String      @id @default(cuid())
+  viewId   String
+  view     ProductView @relation(fields: [viewId], references: [id], onDelete: Cascade)
+  name     String // "Full Front", "Left Chest"
+  widthIn  Decimal     @db.Decimal(6, 2)
+  heightIn Decimal     @db.Decimal(6, 2)
+  // Placement on the view image, as fractions of image width/height (0–1).
+  x        Float
+  y        Float
+  w        Float
+  h        Float
+}
+
+// ─── Decoration methods ─────────────────────────────────────────────────────
+
+enum DecorationKind {
+  SCREEN_PRINT
+  EMBROIDERY
+  DTF
+  DIGITAL
+  VINYL
+  TRANSFER
+  ENGRAVING
+  OTHER
+}
+
+// How the decoration unit price is looked up in its price table.
+enum DecorationPricingModel {
+  PER_COLOR // dimension = ink colors (screen printing)
+  PER_STITCH // dimension = stitch count (embroidery)
+  AREA // dimension = square inches of artwork
+  FLAT // no dimension; price by quantity only
+}
+
+model DecorationMethod {
+  id                    String                  @id @default(cuid())
+  code                  String                  @unique // "SCR", "EMB", "DTF"
+  name                  String
+  shortName             String
+  description           String?
+  kind                  DecorationKind
+  pricingModel          DecorationPricingModel
+  active                Boolean                 @default(true)
+  sortOrder             Int                     @default(0)
+  minQty                Int                     @default(1)
+  maxColors             Int?
+  minDpi                Int?
+  perfectDpi            Int?
+  productionLeadDays    Int                     @default(14)
+  // Fees (per job unless noted)
+  screenSetupFee        Decimal                 @default(0) @db.Decimal(10, 2) // per screen
+  chargeWhiteBaseScreen Boolean                 @default(true)
+  useWhiteBaseOnDark    Boolean                 @default(true)
+  artworkFee            Decimal                 @default(0) @db.Decimal(10, 2)
+  digitizingFee         Decimal                 @default(0) @db.Decimal(10, 2)
+  digitizingFeePerInch  Boolean                 @default(false)
+  proofingFee           Decimal                 @default(0) @db.Decimal(10, 2)
+  combineSameDesignQty  Boolean                 @default(false)
+  // Design-tool capabilities (text, images, team names, effects, palettes…).
+  capabilities          Json                    @default("{}")
+  priceTables           DecorationPriceTable[]
+  productTypes          ProductTypeDecoration[]
+  productRules          ProductDecorationRule[]
+  externalSource        String?
+  externalId            String?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  @@unique([externalSource, externalId])
+}
+
+model ProductTypeDecoration {
+  productTypeId String
+  methodId      String
+  productType   ProductType      @relation(fields: [productTypeId], references: [id], onDelete: Cascade)
+  method        DecorationMethod @relation(fields: [methodId], references: [id], onDelete: Cascade)
+
+  @@id([productTypeId, methodId])
+}
+
+// Per-product overrides: disable a method, or change its minimum quantity.
+model ProductDecorationRule {
+  productId String
+  methodId  String
+  enabled   Boolean          @default(true)
+  minQty    Int?
+  product   Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  method    DecorationMethod @relation(fields: [methodId], references: [id], onDelete: Cascade)
+
+  @@id([productId, methodId])
+}
+
+// A grid of unit prices: rows by minimum quantity, columns by dimension
+// (colors, stitches, or square inches). FLAT tables use dimensionMax = null.
+model DecorationPriceTable {
+  id             String                @id @default(cuid())
+  methodId       String
+  method         DecorationMethod      @relation(fields: [methodId], references: [id], onDelete: Cascade)
+  pricingGroupId String? // null = default table for the method
+  pricingGroup   PricingGroup?         @relation(fields: [pricingGroupId], references: [id], onDelete: Cascade)
+  name           String
+  cells          DecorationPriceCell[]
+
+  @@unique([methodId, pricingGroupId])
+}
+
+model DecorationPriceCell {
+  id           String               @id @default(cuid())
+  tableId      String
+  table        DecorationPriceTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  minQty       Int
+  dimensionMax Decimal?             @db.Decimal(10, 2) // up to N colors / stitches / sq in
+  unitPrice    Decimal              @db.Decimal(10, 2)
+
+  @@unique([tableId, minQty, dimensionMax])
+}
+
+// ─── Pricing ────────────────────────────────────────────────────────────────
+
+enum MarkupMode {
+  MARKUP // price = cost × (1 + pct)
+  MARGIN // price = cost ÷ (1 − pct)
+}
+
+model PricingGroup {
+  id             String                 @id @default(cuid())
+  name           String                 @unique
+  isDefault      Boolean                @default(false)
+  markupMode     MarkupMode             @default(MARKUP)
+  markupTiers    MarkupTier[]
+  priceTables    DecorationPriceTable[]
+  externalSource String?
+  externalId     String?
+
+  @@unique([externalSource, externalId])
+}
+
+model MarkupTier {
+  id             String       @id @default(cuid())
+  pricingGroupId String
+  pricingGroup   PricingGroup @relation(fields: [pricingGroupId], references: [id], onDelete: Cascade)
+  costFrom       Decimal      @db.Decimal(10, 2)
+  costTo         Decimal?     @db.Decimal(10, 2) // null = no upper bound
+  pct            Decimal      @db.Decimal(6, 4) // 0.55 = 55%
+}
+
+model QuantityDiscount {
+  id       String                 @id @default(cuid())
+  name     String                 @unique
+  tiers    QuantityDiscountTier[]
+  products Product[]
+}
+
+model QuantityDiscountTier {
+  id         String           @id @default(cuid())
+  discountId String
+  discount   QuantityDiscount @relation(fields: [discountId], references: [id], onDelete: Cascade)
+  minQty     Int
+  pct        Decimal          @db.Decimal(6, 4) // 0.10 = 10% off
+
+  @@unique([discountId, minQty])
+}
+
+model TaxRate {
+  id                  String   @id @default(cuid())
+  name                String
+  rate                Decimal  @db.Decimal(7, 5) // 0.055 = 5.5%
+  country             String   @default("US")
+  region              String? // state/province code; null = whole country
+  postalPrefixes      String[] // empty = whole region
+  active              Boolean  @default(true)
+  taxShipping         Boolean  @default(false)
+  taxArtworkFee       Boolean  @default(true)
+  taxDigitizingFee    Boolean  @default(true)
+  taxRushFee          Boolean  @default(true)
+  taxScreenSetupFee   Boolean  @default(true)
+  taxPaymentSurcharge Boolean  @default(false)
+}
+
+enum PriceRounding {
+  CENT // round to nearest cent
+  UP_TO_99 // round unit prices up to the next .99
+}
+
+model ShopSettings {
+  id                  Int           @id @default(1)
+  shopName            String
+  currency            String        @default("USD")
+  priceRounding       PriceRounding @default(CENT)
+  rushFeePct          Decimal       @default(0) @db.Decimal(6, 4)
+  paymentSurchargePct Decimal       @default(0) @db.Decimal(6, 4)
+  updatedAt           DateTime      @updatedAt
+}

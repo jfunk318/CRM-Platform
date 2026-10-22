@@ -29,8 +29,8 @@ Hard boundaries:
   their IP (license §10.6).
 - **No code/asset reuse.** Their JS bundles were analyzed only to learn
   behavior; nothing is ported. Fresh UI, fresh code.
-- **Fresh start, no data import** [B]: Beeze is restructuring cataloguing,
-  inventory and order flow, so the new system starts empty. A one-time
+- **Blank slate, import-ready** [B]: the new system starts empty, with
+  import possible later (see Decisions). A one-time
   archive of the DecoNetwork data is still recommended for reference (see
   Decisions below), but nothing is imported.
 
@@ -344,8 +344,10 @@ Shopify product sync was observed in the admin code (`manage_site/shopify/*`) [O
 
 ## Decisions (2026-10-22)
 
-- **No data migration.** Start fresh with a restructured catalog, inventory
-  and order flow. Recommended anyway: a one-time **reference archive** before
+- **Blank slate, import-ready.** Launch with no migrated data. The catalog,
+  inventory and order flow stay as specified here; the change is in how
+  staff perform the work. Importable records carry `externalSource` +
+  `externalId` so data can be imported later if needed. Recommended anyway: a one-time **reference archive** before
   DecoNetwork access ends: customer list, decoration price tables, artwork
   files and open affiliate stores. These are not for import; they're the
   only record of your current decoration prices, and useful for re-entering
@@ -355,9 +357,8 @@ Shopify product sync was observed in the admin code (`manage_site/shopify/*`) [O
 
 ## Open questions for Beeze
 
-1. **New catalog, inventory and order flow:** what's changing? For example:
-   stocked vs. order-on-demand blanks, house SKUs, how jobs move from order
-   to production. This shapes the phase 1 data model.
+1. **Staffing:** how will work be divided among staff? This shapes roles,
+   workflow steps and task assignment (phases 4–5).
 2. Do you have API credentials for SanMar and S&S? Do Charles River and
    Pennant offer data feeds?
 3. How many affiliate/fundraiser stores are live, and how are commissions
