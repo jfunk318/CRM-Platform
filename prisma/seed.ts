@@ -1,13 +1,13 @@
-// Sets up a development platform: a platform admin, the Beeze Tees business
-// with its starter data, and a Beeze Tees staff admin. Safe to run again.
+// Sets up a development platform: a platform admin, the Company Name business
+// with its starter data, and a Company Name staff admin. Safe to run again.
 //
 // .env:
 //   SEED_PLATFORM_ADMIN_EMAIL / SEED_PLATFORM_ADMIN_PASSWORD → /platform sign-in
-//   SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD                   → Beeze Tees /admin sign-in
+//   SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD                   → Company Name /admin sign-in
 import { forBusiness, prisma } from "../src/lib/db";
 import { hashPassword, MIN_PASSWORD_LENGTH } from "../src/lib/auth/password";
 import { setUpBusiness } from "../src/lib/platform/setup";
-import { beeze, categories, decorationMethods, defaultMarkupTiers, quantityDiscounts, suppliers } from "./seed-data";
+import { company, categories, decorationMethods, defaultMarkupTiers, quantityDiscounts, suppliers } from "./seed-data";
 
 function credentials(emailVar: string, passwordVar: string) {
   const email = process.env[emailVar]?.trim().toLowerCase();
@@ -31,15 +31,15 @@ async function main() {
   }
 
   const business = await prisma.business.upsert({
-    where: { slug: beeze.slug },
+    where: { slug: company.slug },
     update: {},
-    create: { slug: beeze.slug, name: beeze.name },
+    create: { slug: company.slug, name: company.name },
   });
   const db = forBusiness(business.id);
   const businessId = business.id;
   await setUpBusiness(db);
 
-  // Beeze Tees: flat 40% markup (setUpBusiness already defaults to it).
+  // Company Name: flat 40% markup (setUpBusiness already defaults to it).
   const retail = await db.pricingGroup.findFirstOrThrow({ where: { isDefault: true } });
   if (!(await db.markupTier.count({ where: { pricingGroupId: retail.id } }))) {
     await db.markupTier.createMany({ data: defaultMarkupTiers.map((t) => ({ ...t, businessId, pricingGroupId: retail.id })) });

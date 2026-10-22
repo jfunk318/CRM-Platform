@@ -11,8 +11,8 @@ Three levels, kept distinct throughout [B]:
 | Level | Example | Brand / address |
 |-------|---------|-----------------|
 | **Platform** | Name TBD | Platform name (placeholder "Name TBD") |
-| **Business** using the platform: the print shop, its **root store** | Beeze Tees | Its own name and domain (e.g. `beezetees.com`) |
-| **Affiliate store** of that business | Lincoln Hockey | Subdomain of the business's domain (`lincoln-hockey.beezetees.com`) |
+| **Business** using the platform: the print shop, its **root store** | Company Name | Its own name and domain (e.g. `companyname.com`) |
+| **Affiliate store** of that business | Lincoln Hockey | Subdomain of the business's domain (`lincoln-hockey.companyname.com`) |
 
 **How a business works on the platform** [B]:
 
@@ -23,7 +23,7 @@ Three levels, kept distinct throughout [B]:
   through the same production: what to buy from suppliers (from supplier
   stock and integrations), how each item is decorated, and where it ships.
 - The root store also has its **own public storefront** (today's
-  beezetees.com is the model for what any store looks like). It sells the
+  companyname.com is the model for what any store looks like). It sells the
   shop's own goods and showcases goods from its affiliate stores.
 - **Affiliate stores** belong to the shop's customers (teams, schools,
   companies). The root store creates and maintains them, manually or from a
@@ -46,7 +46,7 @@ manages everything from its own back office (its overall dashboard), and
 each of its affiliate stores gets its own dashboard (14.7). Platform billing
 (subscriptions) is to be added later.
 
-Beeze Tees is the first business on the platform and the source of the
+Company Name is the first business on the platform and the source of the
 feature requirements below (it is replacing a DecoNetwork subscription,
 which has ended). Customers of a business see that business's brand; the
 platform brand appears only as "Powered by".
@@ -61,15 +61,15 @@ Each requirement carries a source tag:
 
 | Tag | Meaning |
 |-----|---------|
-| **[O]** | Observed on beezetees.com: storefront pages, the public JavaScript bundles (analyzed with REA), and the design-tool configuration embedded in product pages. |
+| **[O]** | Observed on companyname.com: storefront pages, the public JavaScript bundles (analyzed with REA), and the design-tool configuration embedded in product pages. |
 | **[D]** | Described on deconetwork.com public feature/FAQ pages. Behavior is claimed by marketing copy, not observed. |
-| **[B]** | Beeze Tees business data (your own settings), to be re-entered or imported. |
+| **[B]** | Company Name business data (your own settings), to be re-entered or imported. |
 | **[R]** | Design recommendation for this build; not derived from DecoNetwork. |
 
 Hard boundaries:
 
 - **No catalog copying.** Supplier catalogs (SanMar, S&S, alphabroder…) must
-  come from Beeze's own supplier accounts/APIs. DecoNetwork's catalog data is
+  come from Company Name's own supplier accounts/APIs. DecoNetwork's catalog data is
   their IP (license §10.6).
 - **No code/asset reuse.** Their JS bundles were analyzed only to learn
   behavior; nothing is ported. Fresh UI, fresh code.
@@ -109,7 +109,7 @@ chart (table + image), spec sheet PDF, colors (each with light/dark/white
 class), sizes and **sub-sizes**, views (front/back/sleeve…) with decoration
 **areas** sized in inches, discontinued / closing-out / out-of-stock flags,
 per-decoration-method **minimum quantity**, and per-method **production lead
-days** (Beeze: 14 days for all methods [B]).
+days** (Company Name: 14 days for all methods [B]).
 
 1.2 **Product categories** [O]: hierarchical (e.g. T-Shirts › Ladies,
 Long Sleeve, Performance, Hooded, Full-Zip, Toddler; Good/Better/Best tiers).
@@ -120,7 +120,7 @@ fixed bundles, incremental bundles, or custom bundles.
 
 1.4 **Supplier catalogs** [D]: live product data, pricing, colors, sizes and
 stock from supplier APIs; auto-update on price/stock/discontinued changes.
-Build connectors against **Beeze's own** supplier accounts [B][R]:
+Build connectors against **Company Name's own** supplier accounts [B][R]:
 
 | Supplier | Integration approach [R] |
 |----------|--------------------------|
@@ -139,7 +139,7 @@ availability shown on product pages.
 
 ## 2. Pricing engine
 
-2.1 **Blank garment price = supplier cost × markup** [O]. Beeze's markup is
+2.1 **Blank garment price = supplier cost × markup** [O]. Company Name's markup is
 a **flat 40% on wholesale cost** (price = cost × 1.40) for every product [B].
 Cost-based tiers stay supported and editable per pricing group (the old
 storefront used 60/55/40/30/20% tiers by cost), as does margin mode.
@@ -152,7 +152,7 @@ table (contents server-side, **unknown** — re-enter from your admin), with
 pricing modes including **area-based pricing** (by sq. inches) and per-color
 (screen print) or per-stitch-count (embroidery) [O][D].
 
-2.4 **Quantity-break discounts** [O]: tables of {min qty → % off}. Beeze's
+2.4 **Quantity-break discounts** [O]: tables of {min qty → % off}. Company Name's
 observed tables [B]: {5→0%,10→0%}, {100→50%}, {5→3%,10→5%,15→10%}, {5→20%}.
 
 2.5 **Setup & extra fees** [O]: screen setup fee (per screen, with white-base
@@ -167,11 +167,11 @@ setup, payment surcharge; tax-exempt customers/sites.
 setting.
 
 2.8 **Process mixing** [O]: one product can combine decoration methods
-across views/areas (all pairs of Beeze's methods allowed).
+across views/areas (all pairs of Company Name's methods allowed).
 
 ## 3. Decoration methods
 
-Beeze's configured methods [B][O]:
+Company Name's configured methods [B][O]:
 
 | ID | Method | Notable settings |
 |----|--------|------------------|
@@ -339,7 +339,7 @@ capture [O].
 14.4 **Campaign products**: pre-decorated products the store owner sets up,
 with personalization optionally allowed (e.g. names/numbers) [O].
 14.5 **Commissions**: per-store commission rate or wholesale-price model.
-Beeze collects every payment; commission totals are tracked and paid out to
+Company Name collects every payment; commission totals are tracked and paid out to
 the store owner [D][O]. Payouts can be manual, recorded payouts first, with
 Stripe Connect optional later [R].
 14.6 Store open/close dates and group ordering. Orders are batched into one
@@ -367,8 +367,8 @@ are routed for tracking [B] (direction agreed, details open):
 14.9 **Store subdomains** [B]: each store lives at its own subdomain of the
 main site, e.g. `lincoln-hockey.<main domain>`. The business is rebranding,
 so the brand name and main domain are **settings** (Shop & tax), with
-"Beeze Tees" / `beezetees.com` as placeholders; nothing in code assumes them. Needs wildcard DNS
-(`*.beezetees.com`) and a wildcard TLS certificate. The storefront resolves
+"Company Name" / `companyname.com` as placeholders; nothing in code assumes them. Needs wildcard DNS
+(`*.companyname.com`) and a wildcard TLS certificate. The storefront resolves
 the store from the request's host name. The main site is itself a store, so
 there is one storefront engine for both [R].
 14.10 **Publish a quote or order to a store** [B]: from any quote or order,
@@ -558,7 +558,7 @@ Shopify product sync was observed in the admin code (`manage_site/shopify/*`) [O
 - **Suppliers:** SanMar, S&S Activewear, Charles River, Pennant.
 - **Accounting:** QuickBooks Online.
 
-## Open questions for Beeze
+## Open questions for Company Name
 
 1. **Staffing:** how will work be divided among staff? This shapes roles,
    workflow steps and task assignment (phases 4–5).
@@ -566,5 +566,5 @@ Shopify product sync was observed in the admin code (`manage_site/shopify/*`) [O
    Pennant offer data feeds?
 3. How many affiliate/fundraiser stores are live, and how are commissions
    paid today?
-4. Do you need to keep the same URLs on beezetees.com (`/create/…`,
+4. Do you need to keep the same URLs on companyname.com (`/create/…`,
    `/page/…`) to preserve SEO?

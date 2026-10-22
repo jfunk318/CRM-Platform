@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { escapeHtml, proofEmail, quoteEmail, staffAlertEmail } from "./templates";
 
-const brand = { name: "Beeze Tees", email: "hello@beezetees.com", phone: "603-555-0100" };
+const brand = { name: "Company Name", email: "hello@companyname.com", phone: "603-555-0100" };
 
 describe("email templates", () => {
   it("builds a quote email with the link and total", () => {
-    const e = quoteEmail({ brand, customerName: "Pat", ref: "Q-1001", total: "241.92", url: "https://beezetees.com/q/abc" });
-    expect(e.subject).toBe("Your quote Q-1001 from Beeze Tees");
+    const e = quoteEmail({ brand, customerName: "Pat", ref: "Q-1001", total: "241.92", url: "https://companyname.com/q/abc" });
+    expect(e.subject).toBe("Your quote Q-1001 from Company Name");
     expect(e.text).toContain("$241.92");
-    expect(e.text).toContain("https://beezetees.com/q/abc");
-    expect(e.html).toContain('href="https://beezetees.com/q/abc"');
+    expect(e.text).toContain("https://companyname.com/q/abc");
+    expect(e.html).toContain('href="https://companyname.com/q/abc"');
   });
 
   it("escapes everything placed into HTML", () => {

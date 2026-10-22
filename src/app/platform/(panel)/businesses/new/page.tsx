@@ -18,7 +18,7 @@ export default async function NewBusinessPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="label" htmlFor="name">Business name</label>
-              <input className="input" id="name" name="name" placeholder="Beeze Tees" required />
+              <input className="input" id="name" name="name" placeholder="Company Name" required />
             </div>
             <div>
               <label className="label" htmlFor="slug">Web address</label>
@@ -29,7 +29,7 @@ export default async function NewBusinessPage() {
             </div>
             <div className="sm:col-span-2">
               <label className="label" htmlFor="customDomain">Their own domain (optional)</label>
-              <input className="input" id="customDomain" name="customDomain" placeholder="beezetees.com" />
+              <input className="input" id="customDomain" name="customDomain" placeholder="companyname.com" />
               <p className="mt-1 text-xs text-gray-500">
                 Their DNS must point this domain, and <span className="font-mono">*.domain</span> for affiliate stores,
                 at the platform.

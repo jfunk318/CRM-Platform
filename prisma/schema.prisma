@@ -35,13 +35,13 @@ enum PriceRounding {
   UP_TO_99 // round unit prices up to the next .99
 }
 
-// A business running on the platform (e.g. Beeze Tees).
+// A business running on the platform (e.g. Company Name).
 model Business {
   id                     String         @id @default(cuid())
   // Platform address: <slug>.<PLATFORM_DOMAIN>
   slug                   String         @unique
   name                   String
-  // The business's own domain (e.g. beezetees.com); its affiliate stores
+  // The business's own domain (e.g. companyname.com); its affiliate stores
   // live at <store>.<customDomain>.
   customDomain           String?        @unique
   status                 BusinessStatus @default(ACTIVE)

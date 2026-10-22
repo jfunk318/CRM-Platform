@@ -35,7 +35,7 @@ const scrCells = [
   { minQty: 48, dimensionMax: 4, unitPrice: "3.50" },
 ];
 
-// Cost-based tiers, to exercise tier selection (Beeze's default is a flat 40%).
+// Cost-based tiers, to exercise tier selection (Company Name's default is a flat 40%).
 const tieredMarkup = [
   { costFrom: "0.00", costTo: "2.99", pct: "0.60" },
   { costFrom: "3.00", costTo: "9.99", pct: "0.55" },
@@ -47,7 +47,7 @@ const tieredMarkup = [
 const markup = { mode: "MARKUP" as const, tiers: tieredMarkup };
 
 describe("blankUnitPrice", () => {
-  it("applies Beeze's default flat 40% markup", () => {
+  it("applies Company Name's default flat 40% markup", () => {
     expect(blankUnitPrice("3.00", defaultMarkupTiers).toFixed(2)).toBe("4.20");
     expect(blankUnitPrice("12.50", defaultMarkupTiers).toFixed(2)).toBe("17.50");
   });

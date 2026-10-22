@@ -1,10 +1,10 @@
-// Beeze Tees starter data (the first business on the platform), taken from the
+// Company Name starter data (the first business on the platform), taken from the
 // settings its old storefront published to its design tool (docs/SPEC.md §2–3).
 // Every new business also gets the generic defaults in src/lib/platform/setup.ts.
 // Decoration price tables were not visible there; the tables below are
-// placeholders to be replaced in admin with Beeze's real prices.
+// placeholders to be replaced in admin with Company Name's real prices.
 
-export const beeze = { slug: "beezetees", name: "Beeze Tees" };
+export const company = { slug: "companyname", name: "Company Name" };
 
 // Flat 40% markup on wholesale cost (price = cost × 1.40) for every product.
 // Tiers stay editable in admin if cost-based tiers are wanted later.

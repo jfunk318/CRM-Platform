@@ -66,7 +66,7 @@ export function storeUrl(storeSlug: string, b: Pick<Business, "slug" | "customDo
 
 /**
  * Base URL of the address this request came in on, for links in emails
- * (e.g. https://beezetees.com or http://beezetees.localhost:3000).
+ * (e.g. https://companyname.com or http://companyname.localhost:3000).
  */
 export async function requestOrigin(): Promise<string> {
   const h = await headers();

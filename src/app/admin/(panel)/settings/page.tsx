@@ -82,7 +82,7 @@ export default async function SettingsPage() {
               </div>
               <div>
                 <label className="label" htmlFor="paymentInstructions">How customers can pay</label>
-                <textarea className="input min-h-16" id="paymentInstructions" name="paymentInstructions" defaultValue={settings.paymentInstructions ?? ""} placeholder="e.g. Checks payable to Beeze Tees; call to pay by card" />
+                <textarea className="input min-h-16" id="paymentInstructions" name="paymentInstructions" defaultValue={settings.paymentInstructions ?? ""} placeholder="e.g. Checks payable to Company Name; call to pay by card" />
               </div>
             </div>
           </ActionForm>

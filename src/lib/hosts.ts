@@ -3,7 +3,7 @@ export const PLATFORM_DOMAIN = process.env.PLATFORM_DOMAIN?.trim().toLowerCase()
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
-/** "WWW.BeezeTees.com:443" → "beezetees.com" */
+/** "WWW.CompanyName.com:443" → "companyname.com" */
 export function normalizeHost(rawHost: string | null | undefined): string {
   return (rawHost ?? "")
     .trim()
@@ -44,7 +44,7 @@ export function isValidSlug(slug: string): boolean {
   return /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(slug);
 }
 
-/** Lowercase hostname check, e.g. "beezetees.com" or "shop.example.co.uk". */
+/** Lowercase hostname check, e.g. "companyname.com" or "shop.example.co.uk". */
 export function isValidDomain(domain: string): boolean {
   return /^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(domain);
 }

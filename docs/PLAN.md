@@ -59,7 +59,7 @@ orders come before the public storefront.
    supplier live catalogs and ordering, public API.
 9. **Customer designer.** Online design tool for shoppers where a store
    enables it, within root store and store manager permissions.
-10. **Cutover.** URL redirects from the old beezetees.com paths, DNS switch
+10. **Cutover.** URL redirects from the old companyname.com paths, DNS switch
     (including wildcard DNS for store subdomains). No data import.
 
 Supplier catalog connectors (SanMar and S&S first, then Charles River and
@@ -81,7 +81,7 @@ phases 1–3 need real product data.
   items have pricing problems); "assigned to me" on the dashboard. Lines
   point at reusable designs, ready for publishing to stores in phase 7.
 - **Multi-business (done):** Name TBD now hosts many businesses. Existing
-  data moved into Beeze Tees. Platform admin at `/platform`.
+  data moved into Company Name. Platform admin at `/platform`.
 - **Phase 3 (done):** customer links for quotes and orders (no login):
   approve or ask for changes; order files; artwork proofs with
   approve/request-changes and customer attachments; statuses that move

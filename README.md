@@ -2,12 +2,12 @@
 
 Working name for a print-shop business platform: storefront, online design
 tool, quotes, orders, production, CRM and affiliate stores. Many print shops
-run their business **through** the platform; Beeze Tees is the first.
+run their business **through** the platform; Company Name is the first.
 
 | Level | Example | Where it lives |
 |-------|---------|----------------|
 | Platform | Name TBD | `PLATFORM_DOMAIN` (e.g. `nametbd.com`); admin at `/platform` |
-| Business | Beeze Tees | its own domain (`beezetees.com`) or `<slug>.<PLATFORM_DOMAIN>`; back office at `/admin` |
+| Business | Company Name | its own domain (`companyname.com`) or `<slug>.<PLATFORM_DOMAIN>`; back office at `/admin` |
 | Affiliate store | Lincoln Hockey | `<store>.<business domain>` (phase 7) |
 
 - [Feature spec](docs/SPEC.md)
@@ -22,7 +22,7 @@ npm install
 cp .env.example .env        # fill in the SEED_* logins
 docker compose up -d        # or point DATABASE_URL at your own Postgres
 npm run db:migrate          # create tables
-npm run db:seed             # platform admin + Beeze Tees with starter data (safe to re-run)
+npm run db:seed             # platform admin + Company Name with starter data (safe to re-run)
 npm test                    # unit tests + database tests (need DATABASE_URL)
 npm run dev
 ```
@@ -30,7 +30,7 @@ npm run dev
 Then:
 
 - **Platform admin:** http://localhost:3000/platform (the `SEED_PLATFORM_ADMIN_*` login)
-- **Beeze Tees back office:** http://beezetees.localhost:3000/admin (the `SEED_ADMIN_*` login)
+- **Company Name back office:** http://companyname.localhost:3000/admin (the `SEED_ADMIN_*` login)
 - Other businesses you add: `http://<slug>.localhost:3000/admin`
 
 `*.localhost` addresses work in Chrome, Edge and Firefox. While there is only
@@ -96,7 +96,7 @@ Every business table has a `businessId`, and:
 
 ## Storefront and checkout
 
-- **The store** is the business's own address (e.g. http://beezetees.localhost:3000/):
+- **The store** is the business's own address (e.g. http://companyname.localhost:3000/):
   home page, content pages, Shop (decorated items for sale), Catalog (blank
   garments with "request a quote"), search, cart, checkout, order tracking
   and shopper accounts. Affiliate stores (phase 6) use the same engine.
@@ -134,7 +134,7 @@ Every business table has a `businessId`, and:
 | Path | What |
 |------|------|
 | `prisma/schema.prisma` | Database schema |
-| `prisma/seed.ts`, `seed-data.ts` | Development setup: platform admin, Beeze Tees and its starter data |
+| `prisma/seed.ts`, `seed-data.ts` | Development setup: platform admin, Company Name and its starter data |
 | `src/lib/db.ts` | Database clients: unscoped `prisma` and business-scoped `forBusiness()` |
 | `src/lib/business.ts`, `hosts.ts` | Which business a request is for, from its host name |
 | `src/lib/platform/` | Platform name and the defaults every new business starts with |
