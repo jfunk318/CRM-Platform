@@ -18,7 +18,7 @@ export function balances(o: { total: Prisma.Decimal; paidTotal: Prisma.Decimal; 
   return { balance, depositDue };
 }
 
-async function refreshPaidTotal(tx: BusinessTx, orderId: string) {
+export async function refreshPaidTotal(tx: BusinessTx, orderId: string) {
   const sum = await tx.payment.aggregate({ where: { orderId }, _sum: { amount: true } });
   await tx.order.update({ where: { id: orderId }, data: { paidTotal: sum._sum.amount ?? 0 } });
 }

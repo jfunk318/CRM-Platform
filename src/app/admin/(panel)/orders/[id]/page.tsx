@@ -6,7 +6,7 @@ import { orderRef } from "@/lib/orders/numbers";
 import type { Fee, PricingIssue } from "@/lib/pricing";
 import { ActionForm } from "@/components/admin/action-form";
 import { LineEditor, type LineValue } from "@/components/admin/line-editor";
-import { StatusBadge } from "@/components/admin/order-table";
+import { SourceTag, StatusBadge } from "@/components/admin/order-table";
 import { requestOrigin } from "@/lib/business";
 import { orderBlankStatus } from "@/lib/purchasing/service";
 import { CustomerLinkSection, EmailsSection, FilesSection, orderSectionsInclude, PaymentsSection, ProofsSection } from "./sections";
@@ -56,6 +56,8 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       events: { orderBy: { createdAt: "desc" }, include: { staff: { select: { name: true } } } },
       ...orderSectionsInclude,
       ...fulfillmentInclude,
+      store: true,
+      promoCode: true,
     },
   });
   if (!order) notFound();
@@ -109,8 +111,14 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             ← {isQuote ? "Quotes" : "Orders"}
           </Link>
           <h1 className="page-title mt-1 flex items-center gap-3">
-            {isQuote ? "Quote" : "Order"} {orderRef(order)} <StatusBadge status={order.status} />
+            {isQuote ? "Quote" : "Order"} {orderRef(order)} <StatusBadge status={order.status} /> <SourceTag source={order.source} />
           </h1>
+          {order.placedAt && (
+            <p className="text-sm text-gray-500">
+              Placed online{order.store ? ` at ${order.store.name}` : ""} on {when(order.placedAt)}
+              {!order.discount.isZero() && <> · promo {order.promoCode?.code} saved ${order.discount.toFixed(2)}</>}
+            </p>
+          )}
           {order.title && <p className="text-gray-700">{order.title}</p>}
           <p className="text-sm text-gray-600">
             <Link href={`/admin/customers/${order.customerId}`} className="text-amber-700 hover:underline">
@@ -242,7 +250,9 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                   ) : (
                     <p className="text-sm text-gray-500">Blank (no decoration)</p>
                   )}
-                  <p className="text-xs text-gray-500">Decoration {money(line.decorationUnit)} per piece</p>
+                  <p className="text-xs text-gray-500">
+                    {line.fixedPrice ? "Sold at the store's price (not repriced)" : <>Decoration {money(line.decorationUnit)} per piece</>}
+                  </p>
                   {fees.length > 0 && (
                     <ul className="text-sm text-gray-700">
                       {fees.map((f, i) => <li key={i}>{f.location}: {f.description} — {money(f.amount)}</li>)}
@@ -359,6 +369,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               <Row label="Merchandise" value={money(order.merchandise)} />
               <Row label="Setup & service fees" value={money(order.feesTotal)} />
               {!order.rushFee.isZero() && <Row label="Rush" value={money(order.rushFee)} />}
+              {!order.discount.isZero() && <Row label="Discount" value={`−${money(order.discount)}`} />}
               <Row label="Shipping" value={money(order.shipping)} />
               <Row label={order.shipRegion ? `Tax (${order.shipRegion})` : "Tax (no ship-to state)"} value={money(order.tax)} />
               <div className="flex justify-between border-t border-gray-200 pt-1 text-base font-semibold">

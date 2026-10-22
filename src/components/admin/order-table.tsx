@@ -21,6 +21,14 @@ export function StatusBadge({ status }: { status: { name: string; color: string 
   );
 }
 
+/** "Online" for storefront orders, "Web request" for quote requests. */
+export function SourceTag({ source }: { source: "STAFF" | "STOREFRONT" | "QUOTE_REQUEST" }) {
+  if (source === "STAFF") return null;
+  return (
+    <span className="ml-1.5 rounded bg-sky-50 px-1.5 py-0.5 text-[11px] font-medium text-sky-800">{source === "STOREFRONT" ? "Online" : "Web request"}</span>
+  );
+}
+
 const date = (d: Date | null) => (d ? d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }) : "");
 
 export function OrderTable({ orders, empty = "Nothing here yet." }: { orders: Row[]; empty?: string }) {
@@ -49,6 +57,7 @@ export function OrderTable({ orders, empty = "Nothing here yet." }: { orders: Ro
                 <Link href={`/admin/orders/${o.id}`} className="font-medium text-amber-700 hover:underline">
                   {orderRef(o)}
                 </Link>
+                <SourceTag source={o.source} />
                 {o.title && <div className="text-xs text-gray-500">{o.title}</div>}
               </td>
               <td>

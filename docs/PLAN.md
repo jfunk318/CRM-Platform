@@ -41,7 +41,7 @@ orders come before the public storefront.
    production calendar, consolidated supplier POs and receiving, shipping
    (ShipStation) and business-wide delivery methods, packing slips,
    tracking notifications.
-5. **Storefront engine + checkout.** One storefront engine for the root
+5. ✅ **Storefront engine + checkout.** One storefront engine for the root
    storefront and every affiliate store, CMS pages, catalog browsing, cart,
    Stripe checkout, shopper accounts or guest checkout, promo and gift codes.
 6. **Affiliate stores.** Stores dashboard (consolidated columns, live
@@ -101,3 +101,18 @@ phases 1–3 need real product data.
   statuses that move forward automatically. Deferred: ShipStation and
   supplier API ordering (phase 8), carrier rates and labels (through
   ShipStation), batching store orders into one run (phase 6).
+- **Phase 5 (done):** one storefront engine (root store now, affiliate
+  stores next) with branding, Markdown content pages and menus, shop items
+  priced per size (base from pricing at a batch quantity, override, item or
+  store markup), catalog browsing with quote requests (land as draft
+  quotes), search, order tracking, cart with promo and gift codes, checkout
+  with delivery methods and tax, Stripe Checkout on each business's own
+  account (encrypted keys, signed webhooks; test payment page in
+  development), pay later option, online payment of deposits and balances
+  from the customer link, shopper accounts with emailed sign-in links and
+  optional passwords, account modes, access codes, show/hide prices,
+  settings inherited from business defaults, GA4 / Meta Pixel, sitemap,
+  robots and product structured data. Online orders keep store prices, record
+  payments and create production jobs. Deferred: store groups and affiliate
+  subdomains (phase 6), name/number personalization (phase 6), ShipStation
+  rates (phase 8), the customer designer (phase 9).

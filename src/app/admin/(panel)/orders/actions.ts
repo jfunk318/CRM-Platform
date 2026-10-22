@@ -10,14 +10,13 @@ import { formFiles, UploadError } from "@/lib/files/storage";
 import { addOrderFiles, FILE_KIND_LABELS, removeOrderFile } from "@/lib/files/order-files";
 import { cancelProof, createProof, ensurePublicToken, sendProof, sendQuote } from "@/lib/orders/customer-flow";
 import { issueInvoice, recordPayment, sendInvoice, setDeposit } from "@/lib/orders/payments";
-import { all, type ActionResult, checkbox, decimal, FormError, optionalText, runAction, text } from "@/lib/admin/form";
+import { type ActionResult, checkbox, decimal, FormError, optionalText, runAction, text } from "@/lib/admin/form";
+import { parseLine } from "@/lib/admin/line-form";
 import {
   addLine,
   addNote,
   assign,
   convertQuote,
-  type DecorationSpec,
-  type LineSpec,
   OrderError,
   removeLine,
   setStatus,
@@ -37,50 +36,6 @@ async function run(fn: () => Promise<string | void>): Promise<ActionResult> {
       throw e;
     }
   });
-}
-
-function optionalNumber(raw: string | undefined, label: string, integer = false): number | null {
-  const v = (raw ?? "").trim();
-  if (!v) return null;
-  const n = Number(v);
-  if (!Number.isFinite(n) || n < 0) throw new FormError(`${label} must be a positive number`);
-  if (integer && !Number.isInteger(n)) throw new FormError(`${label} must be a whole number`);
-  return n;
-}
-
-function parseLine(form: FormData): LineSpec {
-  const quantities: Record<string, number> = {};
-  for (const [key, value] of form.entries()) {
-    if (!key.startsWith("qty_")) continue;
-    const qty = optionalNumber(String(value), "Quantity", true);
-    if (qty) quantities[key.slice(4)] = qty;
-  }
-  const [methods, areas, locations, colors, stitches, widths, heights, inks, art, dig, reuse] = [
-    "d_method", "d_area", "d_location", "d_colors", "d_stitches", "d_w", "d_h", "d_inks", "d_art", "d_dig", "d_reuse",
-  ].map((n) => all(form, n));
-  const decorations: DecorationSpec[] = methods.map((methodId, i) => {
-    if (!methodId) throw new FormError(`Decoration ${i + 1}: choose a method`);
-    return {
-      methodId,
-      areaId: areas[i] || null,
-      location: locations[i] ?? "",
-      colors: optionalNumber(colors[i], "Ink colors", true),
-      stitches: optionalNumber(stitches[i], "Stitches", true),
-      widthIn: optionalNumber(widths[i], "Width"),
-      heightIn: optionalNumber(heights[i], "Height"),
-      inkColors: (inks[i] ?? "").split(",").map((s) => s.trim()).filter(Boolean),
-      needsArtwork: art[i] === "on",
-      needsDigitizing: dig[i] === "on",
-      reuseScreens: reuse[i] === "on",
-    };
-  });
-  return {
-    productId: text(form, "productId", "Product"),
-    colorId: text(form, "colorId", "Color"),
-    quantities,
-    decorations,
-    notes: optionalText(form, "notes"),
-  };
 }
 
 export async function addLineAction(_: ActionResult, form: FormData): Promise<ActionResult> {

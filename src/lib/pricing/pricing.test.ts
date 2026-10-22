@@ -263,6 +263,18 @@ describe("priceOrder", () => {
     expect(totals.total.toFixed(2)).toBe("359.32");
   });
 
+  it("takes a discount off merchandise before tax, never below zero", () => {
+    const rate = { name: "State", rate: "0.05", taxShipping: false, taxArtworkFee: false, taxDigitizingFee: false, taxRushFee: false, taxScreenSetupFee: false, taxPaymentSurcharge: false };
+    const totals = priceOrder({ lines: [line], discount: "20.16", taxRates: [rate] });
+    // (201.60 − 20.16) × 5% = 9.07
+    expect(totals.discount.toFixed(2)).toBe("20.16");
+    expect(totals.tax.toFixed(2)).toBe("9.07");
+    expect(totals.total.toFixed(2)).toBe("285.51");
+    const capped = priceOrder({ lines: [line], discount: "500" });
+    expect(capped.discount.toFixed(2)).toBe("201.60");
+    expect(capped.total.toFixed(2)).toBe("95.00");
+  });
+
   it("charges no tax for exempt customers", () => {
     const totals = priceOrder({ lines: [line] });
     expect(totals.tax.toFixed(2)).toBe("0.00");

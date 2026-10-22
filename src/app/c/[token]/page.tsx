@@ -10,6 +10,10 @@ import { ActionForm } from "@/components/admin/action-form";
 import { CustomerShell } from "@/components/customer/shell";
 import { OrderItems } from "@/components/customer/order-items";
 import { PrintButton } from "@/components/customer/print-button";
+import { requestOrigin } from "@/lib/business";
+import { stripeKeys } from "@/lib/payments/stripe";
+import { completeCheckoutSession } from "@/lib/store/checkout";
+import { payOrderAction } from "@/app/(store)/actions";
 import { approveQuote, requestQuoteChanges } from "../actions";
 
 export const metadata = { robots: { index: false, follow: false } };
@@ -29,11 +33,22 @@ const PROOF_STATUS = {
 } as const;
 
 /** The customer's view of a quote, or of an order with its proofs, payments and invoice. */
-export default async function CustomerOrderPage({ params }: { params: Promise<{ token: string }> }) {
+export default async function CustomerOrderPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ token: string }>;
+  searchParams: Promise<{ session_id?: string }>;
+}) {
   const business = await getRequestBusiness();
   if (!business || business.status !== "ACTIVE") notFound();
   const { token } = await params;
-  const order = await orderByToken(forBusiness(business.id), token);
+  const db = forBusiness(business.id);
+  const keys = stripeKeys(business);
+  // Back from paying online: record it now in case the webhook is slower.
+  const { session_id } = await searchParams;
+  const justPaid = !!(session_id && keys && (await completeCheckoutSession(db, keys, session_id, await requestOrigin()).catch(() => null)));
+  const order = await orderByToken(db, token);
   if (!order) notFound();
 
   const isQuote = order.type === "QUOTE";
@@ -98,6 +113,7 @@ export default async function CustomerOrderPage({ params }: { params: Promise<{ 
         </div>
         <dl className="card space-y-1 text-sm" data-testid="customer-totals">
           <Row label="Items" value={money(order.merchandise)} />
+          {!order.discount.isZero() && <Row label="Discount" value={`−${money(order.discount)}`} />}
           {!order.feesTotal.isZero() && <Row label="Setup & service fees" value={money(order.feesTotal)} />}
           {!order.rushFee.isZero() && <Row label="Rush" value={money(order.rushFee)} />}
           {!order.shipping.isZero() && <Row label="Shipping" value={money(order.shipping)} />}
@@ -120,6 +136,14 @@ export default async function CustomerOrderPage({ params }: { params: Promise<{ 
           )}
         </dl>
       </div>
+
+      {justPaid && <p className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-800">Thank you, your payment was received.</p>}
+      {!isQuote && balance.gt(0) && keys && (
+        <ActionForm action={payOrderAction} submitLabel={`Pay ${money(depositDue.gt(0) ? depositDue : balance)} online`} className="card flex flex-wrap items-center gap-3 no-print">
+          <input type="hidden" name="token" value={token} />
+          <span className="text-sm text-gray-600">{depositDue.gt(0) ? "Pay the deposit by card to get started." : "Pay the balance by card."}</span>
+        </ActionForm>
+      )}
 
       {!isQuote && balance.gt(0) && business.paymentInstructions && (
         <div className="card text-sm">

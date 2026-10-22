@@ -29,8 +29,9 @@ export const DEFAULT_ORDER_STATUSES: {
 
 /**
  * What every new business starts with: quote/order statuses, an Apparel
- * product type, a Retail pricing group (flat 40% markup) and two delivery
- * methods. Safe to run again; it only fills in what's missing.
+ * product type, a Retail pricing group (flat 40% markup), two delivery
+ * methods and its root storefront with a home page. Safe to run again; it
+ * only fills in what's missing.
  */
 export async function setUpBusiness(db: BusinessDb): Promise<void> {
   const businessId = db.$businessId;
@@ -64,4 +65,19 @@ export async function setUpBusiness(db: BusinessDb): Promise<void> {
       ],
     });
   }
+  if (!(await db.store.count({ where: { kind: "ROOT" } }))) {
+    const business = await db.business.findUniqueOrThrow({ where: { id: businessId } });
+    await db.store.create({
+      data: {
+        businessId,
+        kind: "ROOT",
+        name: business.name,
+        pages: { create: { slug: "home", title: "Home", body: DEFAULT_HOME_PAGE } },
+      },
+    });
+  }
 }
+
+const DEFAULT_HOME_PAGE = `# Custom apparel, printed in-house
+
+Screen printing, embroidery and more. Browse the [catalog](/catalog) or [request a quote](/quote).`;

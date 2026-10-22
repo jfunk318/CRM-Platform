@@ -94,6 +94,30 @@ Every business table has a `businessId`, and:
   for pickup / shipping" and "Completed" on their own, and only forward
   (Order statuses → Set automatically).
 
+## Storefront and checkout
+
+- **The store** is the business's own address (e.g. http://beezetees.localhost:3000/):
+  home page, content pages, Shop (decorated items for sale), Catalog (blank
+  garments with "request a quote"), search, cart, checkout, order tracking
+  and shopper accounts. Affiliate stores (phase 6) use the same engine.
+- **Back office → Storefront:** shop items (pick a garment, colors and
+  decoration; base prices per size come from your pricing as a batch, with
+  overrides and markups), pages (Markdown), and settings: branding, shopper
+  accounts (optional / required / guest only), show prices, pay later,
+  access code, delivery methods offered, analytics IDs.
+- **Promo codes and gift codes** are business-wide lists (Promo codes, Gift
+  codes). Discounts come off before tax; gift codes are recorded as payments.
+- **Card payments** use the business's own Stripe account (Storefront →
+  Settings & payments: secret key and webhook signing secret, stored
+  encrypted with `APP_SECRET`). Without keys, development shows a test
+  payment page; production won't take card orders until keys are added.
+  Customers can also pay deposits and balances from their order link.
+- **Online orders** land in Orders tagged "Online", with the store's prices
+  kept, payments recorded, artwork counted as approved and production jobs
+  created. Quote requests land in Quotes tagged "Web request".
+- **Shopper accounts** sign in with an emailed one-time link (which also
+  creates the account), and can set a password afterwards.
+
 ## Production notes
 
 - Set `PLATFORM_DOMAIN`. `localhost` shortcuts are off in production.
@@ -101,6 +125,7 @@ Every business table has a `businessId`, and:
   domain (plus `*.customdomain` for its stores) at the app, with TLS for each.
 - Run behind a proxy that sets `X-Forwarded-Host` and `X-Forwarded-Proto`
   (customer links in emails are built from them).
+- Set `APP_SECRET` before saving any Stripe keys.
 - `STORAGE_DIR` must be on persistent disk, and backed up, until file storage
   moves to S3/R2. Allow 55 MB request bodies at the proxy for uploads.
 
@@ -123,6 +148,9 @@ Every business table has a `businessId`, and:
 | `src/lib/files/` | Upload checks, file storage, order files |
 | `src/lib/email/` | Email templates and sending (Resend or Postmark) |
 | `src/app/c/`, `src/app/proof/` | Customer pages: quote/order/invoice and proof review |
+| `src/lib/store/` | Storefront engine: store and settings, items and prices, cart, checkout, accounts, quote requests |
+| `src/lib/payments/` | Stripe (hosted Checkout and signed webhooks) |
+| `src/app/(store)/` | The public storefront |
 | `src/app/admin/` | A business's back office |
 | `src/app/platform/` | Platform admin: businesses |
 

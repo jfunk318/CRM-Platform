@@ -37,32 +37,40 @@ enum PriceRounding {
 
 // A business running on the platform (e.g. Beeze Tees).
 model Business {
-  id                  String         @id @default(cuid())
+  id                     String         @id @default(cuid())
   // Platform address: <slug>.<PLATFORM_DOMAIN>
-  slug                String         @unique
-  name                String
+  slug                   String         @unique
+  name                   String
   // The business's own domain (e.g. beezetees.com); its affiliate stores
   // live at <store>.<customDomain>.
-  customDomain        String?        @unique
-  status              BusinessStatus @default(ACTIVE)
-  currency            String         @default("USD")
-  priceRounding       PriceRounding  @default(CENT)
-  rushFeePct          Decimal        @default(0) @db.Decimal(6, 4)
-  paymentSurchargePct Decimal        @default(0) @db.Decimal(6, 4)
+  customDomain           String?        @unique
+  status                 BusinessStatus @default(ACTIVE)
+  currency               String         @default("USD")
+  priceRounding          PriceRounding  @default(CENT)
+  rushFeePct             Decimal        @default(0) @db.Decimal(6, 4)
+  paymentSurchargePct    Decimal        @default(0) @db.Decimal(6, 4)
   // Shown on quotes, proofs, invoices and customer emails.
-  email               String? // replies from customers go here
-  phone               String?
-  addressLine1        String?
-  addressLine2        String?
-  city                String?
-  region              String?
-  postalCode          String?
-  country             String         @default("US")
-  invoiceTerms        String? // e.g. "Payment due on receipt"
-  paymentInstructions String? // how to pay offline (checks payable to…)
-  defaultDepositPct   Decimal        @default(0) @db.Decimal(6, 4) // of order total
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  email                  String? // replies from customers go here
+  phone                  String?
+  addressLine1           String?
+  addressLine2           String?
+  city                   String?
+  region                 String?
+  postalCode             String?
+  country                String         @default("US")
+  invoiceTerms           String? // e.g. "Payment due on receipt"
+  paymentInstructions    String? // how to pay offline (checks payable to…)
+  defaultDepositPct      Decimal        @default(0) @db.Decimal(6, 4) // of order total
+  // Storefront defaults every store inherits unless it sets its own.
+  defaultAccountMode     AccountMode    @default(OPTIONAL)
+  defaultShowPrices      Boolean        @default(true)
+  defaultAllowPayLater   Boolean        @default(false) // place orders without paying online (invoiced later)
+  // Online payments through the business's own Stripe account. Secrets are
+  // stored encrypted (APP_SECRET).
+  stripeSecretKeyEnc     String?
+  stripeWebhookSecretEnc String?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
 
   staff                  StaffUser[]
   suppliers              Supplier[]
@@ -113,6 +121,18 @@ model Business {
   deliveryMethods        DeliveryMethod[]
   shipments              Shipment[]
   shipmentItems          ShipmentItem[]
+  stores                 Store[]
+  storeDeliveryMethods   StoreDeliveryMethod[]
+  storePages             StorePage[]
+  storeItems             StoreItem[]
+  storeItemPrices        StoreItemPrice[]
+  carts                  Cart[]
+  cartItems              CartItem[]
+  promoCodes             PromoCode[]
+  giftCodes              GiftCode[]
+  giftCodeUses           GiftCodeUse[]
+  customerSessions       CustomerSession[]
+  customerTokens         CustomerToken[]
 }
 
 // People who run the platform itself (not staff of a business).
@@ -342,16 +362,17 @@ model ProductColor {
 }
 
 model ProductSize {
-  id         String           @id @default(cuid())
-  businessId String
-  business   Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  productId  String
-  product    Product          @relation(fields: [businessId, productId], references: [businessId, id], onDelete: Cascade)
-  code       String // "S", "2XL", "YM"
-  label      String
-  sortOrder  Int              @default(0)
-  variants   ProductVariant[]
-  lineSizes  OrderLineSize[]
+  id              String           @id @default(cuid())
+  businessId      String
+  business        Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product          @relation(fields: [businessId, productId], references: [businessId, id], onDelete: Cascade)
+  code            String // "S", "2XL", "YM"
+  label           String
+  sortOrder       Int              @default(0)
+  variants        ProductVariant[]
+  lineSizes       OrderLineSize[]
+  storeItemPrices StoreItemPrice[]
 
   @@unique([businessId, id])
   @@unique([productId, code])
@@ -665,27 +686,34 @@ model Company {
 }
 
 model Customer {
-  id             String        @id @default(cuid())
-  businessId     String
-  business       Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  firstName      String
-  lastName       String        @default("")
-  email          String?
-  phone          String?
-  notes          String?
+  id              String            @id @default(cuid())
+  businessId      String
+  business        Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  firstName       String
+  lastName        String            @default("")
+  email           String?
+  phone           String?
+  notes           String?
   // Unset = inherit from the company.
-  taxExempt      Boolean?
-  pricingGroupId String?
-  pricingGroup   PricingGroup? @relation(fields: [businessId, pricingGroupId], references: [businessId, id], onDelete: NoAction)
-  companyId      String?
-  company        Company?      @relation(fields: [businessId, companyId], references: [businessId, id], onDelete: NoAction)
-  addresses      Address[]
-  orders         Order[]
-  designs        Design[]
-  externalSource String?
-  externalId     String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  taxExempt       Boolean?
+  pricingGroupId  String?
+  pricingGroup    PricingGroup?     @relation(fields: [businessId, pricingGroupId], references: [businessId, id], onDelete: NoAction)
+  companyId       String?
+  company         Company?          @relation(fields: [businessId, companyId], references: [businessId, id], onDelete: NoAction)
+  addresses       Address[]
+  orders          Order[]
+  designs         Design[]
+  // Shopper account: set once they've proved the email is theirs.
+  passwordHash    String?
+  emailVerifiedAt DateTime?
+  lastLoginAt     DateTime?
+  sessions        CustomerSession[]
+  tokens          CustomerToken[]
+  carts           Cart[]
+  externalSource  String?
+  externalId      String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   @@unique([businessId, id])
   @@unique([businessId, externalSource, externalId])
@@ -729,6 +757,7 @@ model Design {
   customer    Customer?          @relation(fields: [businessId, customerId], references: [businessId, id], onDelete: NoAction)
   decorations DesignDecoration[]
   orderLines  OrderLine[]
+  storeItems  StoreItem[]
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 
@@ -853,6 +882,17 @@ model Order {
   invoiceDueDate   DateTime?         @db.Date
   deliveryMethodId String?
   deliveryMethod   DeliveryMethod?   @relation(fields: [businessId, deliveryMethodId], references: [businessId, id], onDelete: NoAction)
+  // Where it came from: the back office, a storefront checkout, or a quote request form.
+  source           OrderSource       @default(STAFF)
+  storeId          String?
+  store            Store?            @relation(fields: [businessId, storeId], references: [businessId, id], onDelete: NoAction)
+  placedAt         DateTime? // when a shopper placed it online
+  // Promo code discount, taken off before tax.
+  discount         Decimal           @default(0) @db.Decimal(10, 2)
+  promoCodeId      String?
+  promoCode        PromoCode?        @relation(fields: [businessId, promoCodeId], references: [businessId, id], onDelete: NoAction)
+  giftCodeUses     GiftCodeUse[]
+  carts            Cart[]
   readyNotifiedAt  DateTime? // "ready for pickup" email sent
   productionJobs   ProductionJob[]
   blankAllocations BlankAllocation[]
@@ -900,6 +940,10 @@ model OrderLine {
   feesTotal      Decimal         @default(0) @db.Decimal(10, 2)
   total          Decimal         @default(0) @db.Decimal(10, 2) // merchandise + fees
   issues         Json            @default("[]") // pricing problems to show staff
+  // Store purchases keep the store's price instead of being repriced.
+  fixedPrice     Boolean         @default(false)
+  storeItemId    String?
+  storeItem      StoreItem?      @relation(fields: [businessId, storeItemId], references: [businessId, id], onDelete: NoAction)
   sizes          OrderLineSize[]
   shipmentItems  ShipmentItem[]
 
@@ -981,6 +1025,8 @@ model StoredFile {
   uploadedBy   StaffUser?  @relation(fields: [businessId, uploadedById], references: [businessId, id], onDelete: NoAction)
   orderFiles   OrderFile[]
   proofFiles   ProofFile[]
+  storeLogos   Store[]
+  storeItems   StoreItem[]
   createdAt    DateTime    @default(now())
 
   @@unique([businessId, id])
@@ -1061,7 +1107,8 @@ enum PaymentMethod {
   CHECK
   CARD // taken in person or by phone
   BANK_TRANSFER
-  ONLINE // paid through the customer link (phase 5)
+  ONLINE // paid online by card (Stripe)
+  GIFT_CARD // a gift code redeemed at checkout
   OTHER
 }
 
@@ -1303,21 +1350,23 @@ enum DeliveryKind {
 // The business-wide list of delivery options, used on orders now and
 // offered by storefronts later.
 model DeliveryMethod {
-  id          String       @id @default(cuid())
+  id          String                @id @default(cuid())
   businessId  String
-  business    Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business    Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name        String
-  kind        DeliveryKind @default(SHIP)
+  kind        DeliveryKind          @default(SHIP)
   description String?
-  price       Decimal      @default(0) @db.Decimal(10, 2)
-  freeOver    Decimal?     @db.Decimal(10, 2) // free when the order's items reach this
+  price       Decimal               @default(0) @db.Decimal(10, 2)
+  freeOver    Decimal?              @db.Decimal(10, 2) // free when the order's items reach this
   // Carrier and service codes, e.g. for ShipStation ("ups_walleted", "ups_ground").
   carrier     String?
   service     String?
-  active      Boolean      @default(true)
-  sortOrder   Int          @default(0)
+  active      Boolean               @default(true)
+  sortOrder   Int                   @default(0)
   orders      Order[]
   shipments   Shipment[]
+  stores      StoreDeliveryMethod[]
+  carts       Cart[]
 
   @@unique([businessId, id])
   @@unique([businessId, name])
@@ -1360,4 +1409,299 @@ model ShipmentItem {
   sizeId      String
   description String // "Gildan 5000 · Navy · M"
   qty         Int
+}
+
+// ─── Storefront ──────────────────────────────────────────────────────────
+
+enum OrderSource {
+  STAFF
+  STOREFRONT
+  QUOTE_REQUEST
+}
+
+enum AccountMode {
+  OPTIONAL // shoppers may sign in or check out as guests
+  REQUIRED // shoppers must sign in to check out
+  GUEST_ONLY // no accounts; everyone checks out as a guest
+}
+
+enum StoreKind {
+  ROOT // the business's own storefront
+  AFFILIATE // a customer's store on a subdomain (phase 6)
+}
+
+enum MarkupKind {
+  AMOUNT
+  PERCENT
+}
+
+// A storefront. Every business has one ROOT store; affiliate stores share
+// the same engine. Settings left empty inherit the business defaults.
+model Store {
+  id                    String                @id @default(cuid())
+  businessId            String
+  business              Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  kind                  StoreKind             @default(ROOT)
+  slug                  String? // subdomain label for affiliate stores; empty for the root store
+  name                  String
+  tagline               String?
+  logoFileId            String?
+  logo                  StoredFile?           @relation(fields: [businessId, logoFileId], references: [businessId, id], onDelete: NoAction)
+  accentColor           String? // "#f59e0b"
+  announcement          String? // bar across the top of every page
+  footerText            String?
+  active                Boolean               @default(true)
+  accountMode           AccountMode?
+  accessCode            String? // shoppers must enter it to see the store
+  showPrices            Boolean?
+  allowPayLater         Boolean?
+  // Default markup on items (14.11); items can set their own.
+  markupKind            MarkupKind?
+  markupValue           Decimal?              @db.Decimal(10, 2)
+  // Off: offer every active delivery method. On: only the ones listed.
+  customDeliveryMethods Boolean               @default(false)
+  deliveryMethods       StoreDeliveryMethod[]
+  ga4Id                 String? // Google Analytics 4 measurement ID
+  metaPixelId           String?
+  pages                 StorePage[]
+  items                 StoreItem[]
+  carts                 Cart[]
+  orders                Order[]
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@unique([businessId, id])
+  @@unique([businessId, slug])
+}
+
+model StoreDeliveryMethod {
+  businessId       String
+  business         Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  storeId          String
+  store            Store          @relation(fields: [businessId, storeId], references: [businessId, id], onDelete: Cascade)
+  deliveryMethodId String
+  deliveryMethod   DeliveryMethod @relation(fields: [businessId, deliveryMethodId], references: [businessId, id], onDelete: Cascade)
+
+  @@id([storeId, deliveryMethodId])
+}
+
+// A content page. The page with slug "home" is the home page.
+model StorePage {
+  id             String      @id @default(cuid())
+  businessId     String
+  business       Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  storeId        String
+  store          Store       @relation(fields: [businessId, storeId], references: [businessId, id], onDelete: Cascade)
+  slug           String
+  title          String
+  body           String      @default("") // Markdown
+  parentId       String?
+  parent         StorePage?  @relation("PageTree", fields: [businessId, parentId], references: [businessId, id], onDelete: NoAction)
+  children       StorePage[] @relation("PageTree")
+  showInNav      Boolean     @default(false)
+  navOrder       Int         @default(0)
+  published      Boolean     @default(true)
+  seoTitle       String?
+  seoDescription String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@unique([businessId, id])
+  @@unique([storeId, slug])
+}
+
+// A decorated product for sale in a store, priced per size.
+model StoreItem {
+  id          String           @id @default(cuid())
+  businessId  String
+  business    Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  storeId     String
+  store       Store            @relation(fields: [businessId, storeId], references: [businessId, id], onDelete: Cascade)
+  designId    String
+  design      Design           @relation(fields: [businessId, designId], references: [businessId, id], onDelete: NoAction)
+  name        String
+  slug        String
+  description String?
+  imageFileId String?
+  image       StoredFile?      @relation(fields: [businessId, imageFileId], references: [businessId, id], onDelete: NoAction)
+  published   Boolean          @default(true)
+  featured    Boolean          @default(false)
+  sortOrder   Int              @default(0)
+  // Markup on top of the base price; empty = the store's default markup.
+  markupKind  MarkupKind?
+  markupValue Decimal?         @db.Decimal(10, 2)
+  prices      StoreItemPrice[]
+  cartItems   CartItem[]
+  orderLines  OrderLine[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([businessId, id])
+  @@unique([storeId, slug])
+}
+
+model StoreItemPrice {
+  id            String      @id @default(cuid())
+  businessId    String
+  business      Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  itemId        String
+  item          StoreItem   @relation(fields: [businessId, itemId], references: [businessId, id], onDelete: Cascade)
+  sizeId        String
+  size          ProductSize @relation(fields: [businessId, sizeId], references: [businessId, id], onDelete: NoAction)
+  basePrice     Decimal     @db.Decimal(10, 2)
+  overridePrice Decimal?    @db.Decimal(10, 2)
+
+  @@unique([itemId, sizeId])
+}
+
+enum CartStatus {
+  OPEN
+  CHECKOUT // sent to the payment page
+  COMPLETED // became an order
+}
+
+// A shopper's cart, found by the token in their cookie. Checkout details are
+// kept on it until it becomes an order.
+model Cart {
+  id                String          @id @default(cuid())
+  businessId        String
+  business          Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  storeId           String
+  store             Store           @relation(fields: [businessId, storeId], references: [businessId, id], onDelete: Cascade)
+  tokenHash         String          @unique
+  status            CartStatus      @default(OPEN)
+  customerId        String?
+  customer          Customer?       @relation(fields: [businessId, customerId], references: [businessId, id], onDelete: NoAction)
+  email             String?
+  firstName         String?
+  lastName          String?
+  phone             String?
+  shipName          String?
+  shipLine1         String?
+  shipLine2         String?
+  shipCity          String?
+  shipRegion        String?
+  shipPostalCode    String?
+  shipCountry       String          @default("US")
+  deliveryMethodId  String?
+  deliveryMethod    DeliveryMethod? @relation(fields: [businessId, deliveryMethodId], references: [businessId, id], onDelete: NoAction)
+  promoCodeId       String?
+  promoCode         PromoCode?      @relation(fields: [businessId, promoCodeId], references: [businessId, id], onDelete: NoAction)
+  giftCodeId        String?
+  giftCode          GiftCode?       @relation(fields: [businessId, giftCodeId], references: [businessId, id], onDelete: NoAction)
+  note              String?
+  amountDue         Decimal?        @db.Decimal(10, 2) // what was sent to the payment page
+  checkoutSessionId String?         @unique
+  orderId           String?
+  order             Order?          @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: NoAction)
+  items             CartItem[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([businessId, id])
+}
+
+model CartItem {
+  id          String    @id @default(cuid())
+  businessId  String
+  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  cartId      String
+  cart        Cart      @relation(fields: [businessId, cartId], references: [businessId, id], onDelete: Cascade)
+  storeItemId String
+  storeItem   StoreItem @relation(fields: [businessId, storeItemId], references: [businessId, id], onDelete: Cascade)
+  sizeId      String
+  qty         Int
+
+  @@unique([cartId, storeItemId, sizeId])
+}
+
+enum PromoKind {
+  PERCENT
+  AMOUNT
+  FREE_SHIPPING
+}
+
+// Business-wide promo codes.
+model PromoCode {
+  id          String    @id @default(cuid())
+  businessId  String
+  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  code        String // stored upper case
+  description String?
+  kind        PromoKind
+  value       Decimal   @default(0) @db.Decimal(10, 2) // percent (10 = 10%) or amount
+  minSubtotal Decimal?  @db.Decimal(10, 2)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  maxUses     Int?
+  usedCount   Int       @default(0)
+  active      Boolean   @default(true)
+  orders      Order[]
+  carts       Cart[]
+  createdAt   DateTime  @default(now())
+
+  @@unique([businessId, id])
+  @@unique([businessId, code])
+}
+
+// Business-wide gift codes with a balance, spent like a payment.
+model GiftCode {
+  id            String        @id @default(cuid())
+  businessId    String
+  business      Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  code          String // stored upper case
+  initialAmount Decimal       @db.Decimal(10, 2)
+  balance       Decimal       @db.Decimal(10, 2)
+  expiresAt     DateTime?
+  active        Boolean       @default(true)
+  note          String? // who it was for
+  uses          GiftCodeUse[]
+  carts         Cart[]
+  createdAt     DateTime      @default(now())
+
+  @@unique([businessId, id])
+  @@unique([businessId, code])
+}
+
+model GiftCodeUse {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  giftCodeId String
+  giftCode   GiftCode @relation(fields: [businessId, giftCodeId], references: [businessId, id], onDelete: Cascade)
+  orderId    String
+  order      Order    @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: Cascade)
+  amount     Decimal  @db.Decimal(10, 2)
+  createdAt  DateTime @default(now())
+}
+
+// ─── Shopper accounts ────────────────────────────────────────────────────
+
+model CustomerSession {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerId String
+  customer   Customer @relation(fields: [businessId, customerId], references: [businessId, id], onDelete: Cascade)
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([businessId, customerId])
+}
+
+// One-time sign-in links emailed to shoppers (sign up, magic link, reset).
+model CustomerToken {
+  id         String    @id @default(cuid())
+  businessId String
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  email      String
+  customerId String?
+  customer   Customer? @relation(fields: [businessId, customerId], references: [businessId, id], onDelete: Cascade)
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([businessId, email])
 }

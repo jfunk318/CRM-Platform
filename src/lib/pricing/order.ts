@@ -22,6 +22,8 @@ export interface OrderInput {
   paymentSurchargePct?: DecimalLike;
   /** Rates that apply to the ship-to address; empty for tax-exempt customers. */
   taxRates?: TaxRateInput[];
+  /** Promo discount, taken off merchandise before tax. */
+  discount?: DecimalLike;
 }
 
 export interface TaxLine {
@@ -35,6 +37,7 @@ export interface OrderTotals {
   fees: Record<FeeType, Decimal>;
   rushFee: Decimal;
   shipping: Decimal;
+  discount: Decimal;
   paymentSurcharge: Decimal;
   subtotal: Decimal;
   taxes: TaxLine[];
@@ -54,12 +57,15 @@ export function priceOrder(input: OrderInput): OrderTotals {
   ) as Record<FeeType, Decimal>;
   const rushFee = toCents(merchandise.times(input.rushFeePct ?? 0));
   const shipping = toCents(D(input.shipping ?? 0));
-  const beforeSurcharge = merchandise.plus(sum(Object.values(fees))).plus(rushFee).plus(shipping);
+  // A discount can't take merchandise below zero.
+  const discount = Decimal.min(toCents(D(input.discount ?? 0)), merchandise);
+  const beforeSurcharge = merchandise.minus(discount).plus(sum(Object.values(fees))).plus(rushFee).plus(shipping);
   const paymentSurcharge = toCents(beforeSurcharge.times(input.paymentSurchargePct ?? 0));
   const subtotal = beforeSurcharge.plus(paymentSurcharge);
 
   const taxes: TaxLine[] = (input.taxRates ?? []).map((r) => {
     const taxable = merchandise
+      .minus(discount)
       .plus(r.taxScreenSetupFee ? fees.SCREEN_SETUP : ZERO)
       .plus(r.taxArtworkFee ? fees.ARTWORK : ZERO)
       .plus(r.taxDigitizingFee ? fees.DIGITIZING : ZERO)
@@ -77,6 +83,7 @@ export function priceOrder(input: OrderInput): OrderTotals {
     fees,
     rushFee,
     shipping,
+    discount,
     paymentSurcharge,
     subtotal,
     taxes,

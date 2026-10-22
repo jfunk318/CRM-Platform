@@ -59,6 +59,10 @@ export async function repriceOrder(db: BusinessDb, orderId: string): Promise<voi
   const pricingGroupId = pricingGroupFor(order);
   const priced: { lineId: string; price: LineItemPrice | null; issues: PricingIssue[] }[] = [];
   for (const line of order.lines) {
+    if (line.fixedPrice) {
+      priced.push({ lineId: line.id, price: fixedLinePrice(line), issues: [] });
+      continue;
+    }
     const decorations: DecorationRequest[] = line.design.decorations.map((d) => ({
       methodId: d.methodId,
       location: d.location,
@@ -100,6 +104,7 @@ export async function repriceOrder(db: BusinessDb, orderId: string): Promise<voi
     shipping: order.shipping.toString(),
     rushFeePct: order.rush ? business.rushFeePct.toString() : 0,
     taxRates,
+    discount: order.discount.toString(),
   });
 
   await db.$transaction(async (tx) => {
@@ -138,6 +143,31 @@ export async function repriceOrder(db: BusinessDb, orderId: string): Promise<voi
       },
     });
   });
+}
+
+/** A store purchase keeps the per-size prices it was sold at. */
+function fixedLinePrice(line: OrderForPricing["lines"][number]): LineItemPrice {
+  const zero = new Prisma.Decimal(0);
+  const sizes = line.sizes.map((s) => ({
+    sizeCode: s.size.code,
+    qty: s.qty,
+    blankUnit: zero,
+    decorationUnit: zero,
+    discountPct: zero,
+    unitPrice: s.unitPrice,
+    total: s.unitPrice.times(s.qty),
+  }));
+  const merchandiseTotal = sizes.reduce((t, s) => t.plus(s.total), zero);
+  return {
+    totalQty: sizes.reduce((n, s) => n + s.qty, 0),
+    sizes,
+    decorations: [],
+    fees: [],
+    merchandiseTotal,
+    feesTotal: zero,
+    total: merchandiseTotal,
+    issues: [],
+  };
 }
 
 /**

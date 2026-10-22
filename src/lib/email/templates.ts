@@ -151,3 +151,37 @@ export function pickupReadyEmail(o: { brand: Brand; customerName: string; ref: s
   const button = o.url ? { label: "View your order", url: o.url } : undefined;
   return { subject, text: text(paragraphs, button, o.brand), html: layout(o.brand, subject, paragraphs, button) };
 }
+
+export function orderConfirmationEmail(o: {
+  brand: Brand;
+  customerName: string;
+  ref: string;
+  items: string[];
+  total: string;
+  paid: string;
+  balance: string;
+  delivery?: string | null;
+  url: string;
+}): EmailContent {
+  const subject = `Order ${o.ref} confirmed — thank you!`;
+  const owing = Number(o.balance) > 0;
+  const paragraphs = [
+    `Hi ${o.customerName},`,
+    `Thanks for your order ${o.ref}. We'll start on it and let you know when it's on its way.`,
+    `Items:\n${o.items.join("\n")}`,
+    `Total ${money(o.total)}${Number(o.paid) > 0 ? `, paid ${money(o.paid)}` : ""}${owing ? `, balance due ${money(o.balance)}` : ""}.${o.delivery ? `\nDelivery: ${o.delivery}` : ""}`,
+  ];
+  const button = { label: "View your order", url: o.url };
+  return { subject, text: text(paragraphs, button, o.brand), html: layout(o.brand, `Order ${o.ref}`, paragraphs, button) };
+}
+
+/** A sign-in link for a shopper (sign up, magic link, or reset). */
+export function signInEmail(o: { brand: Brand; url: string; minutes: number }): EmailContent {
+  const subject = `Your sign-in link for ${o.brand.name}`;
+  const paragraphs = [
+    "Use the button below to sign in. You can set or change your password once you're in.",
+    `The link works once and expires in ${o.minutes} minutes. If you didn't ask for it, you can ignore this email.`,
+  ];
+  const button = { label: "Sign in", url: o.url };
+  return { subject, text: text(paragraphs, button, o.brand), html: layout(o.brand, "Sign in", paragraphs, button) };
+}

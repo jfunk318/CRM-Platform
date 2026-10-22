@@ -1,8 +1,9 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
-import type { OrderEventType, OrderType, StatusRole } from "@prisma/client";
+import type { OrderEventType, OrderType, Prisma, StatusRole } from "@prisma/client";
 import type { BusinessDb, BusinessTx } from "@/lib/db";
 import { nextOrderNumber, orderRef } from "./numbers";
+import { itemPrice } from "@/lib/store/settings";
 import { repriceOrder } from "./pricing";
 
 export class OrderError extends Error {}
@@ -204,10 +205,30 @@ export async function updateLine(db: BusinessDb, lineId: string, spec: LineSpec,
   const { product, color, sizes } = await validateLine(db, spec);
   const line = await db.orderLine.findUniqueOrThrow({
     where: { id: lineId },
-    include: { order: true, design: { include: { _count: { select: { orderLines: true } } } } },
+    include: {
+      order: true,
+      sizes: true,
+      storeItem: { include: { prices: true, store: true } },
+      design: { include: { _count: { select: { orderLines: true, storeItems: true } } } },
+    },
   });
+  // A store purchase keeps the prices it was sold at for sizes it already had;
+  // added sizes take the store's price. A different garment goes back to the
+  // price list.
+  const sameGarment = line.design.productId === product.id && line.design.colorId === color.id;
+  const fixedPrices = new Map<string, Prisma.Decimal>();
+  if (line.fixedPrice && sameGarment) {
+    for (const [sizeId] of sizes) {
+      const old = line.sizes.find((s) => s.sizeId === sizeId);
+      const fromStore = line.storeItem?.prices.find((p) => p.sizeId === sizeId);
+      const price = old?.unitPrice ?? (fromStore && line.storeItem ? itemPrice(fromStore, line.storeItem, line.storeItem.store) : undefined);
+      if (price) fixedPrices.set(sizeId, price);
+    }
+  }
+  const keepFixed = line.fixedPrice && sameGarment && fixedPrices.size === sizes.length;
   await db.$transaction(async (tx) => {
-    const shared = line.design._count.orderLines > 1;
+    // Designs used by other lines or by a store item are copied, never changed in place.
+    const shared = line.design._count.orderLines > 1 || line.design._count.storeItems > 0;
     const designData = { name: `${product.name} — ${color.name}`, productId: product.id, colorId: color.id };
     let designId = line.designId;
     if (shared) {
@@ -220,10 +241,17 @@ export async function updateLine(db: BusinessDb, lineId: string, spec: LineSpec,
       await tx.designDecoration.deleteMany({ where: { designId } });
       await tx.designDecoration.createMany({ data: spec.decorations.map((d, i) => ({ ...decorationData(d, i), businessId, designId })) });
     }
-    await tx.orderLine.update({ where: { id: lineId }, data: { designId, notes: spec.notes } });
+    await tx.orderLine.update({ where: { id: lineId }, data: { designId, notes: spec.notes, fixedPrice: keepFixed } });
     await tx.orderLineSize.deleteMany({ where: { lineId } });
-    await tx.orderLineSize.createMany({ data: sizes.map(([sizeId, qty]) => ({ businessId, lineId, sizeId, qty })) });
-    await logEvent(tx, businessId, line.orderId, "EDITED", `Updated ${product.name} (${color.name})`, staffId);
+    await tx.orderLineSize.createMany({ data: sizes.map(([sizeId, qty]) => ({ businessId, lineId, sizeId, qty, unitPrice: keepFixed ? fixedPrices.get(sizeId) : 0 })) });
+    await logEvent(
+      tx,
+      businessId,
+      line.orderId,
+      "EDITED",
+      `Updated ${product.name} (${color.name})${line.fixedPrice && !keepFixed ? "; now priced from the price list instead of the store price" : ""}`,
+      staffId,
+    );
   });
   await repriceOrder(db, line.orderId);
   await clearQuoteApproval(db, line.orderId, staffId);

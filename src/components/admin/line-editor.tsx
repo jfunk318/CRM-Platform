@@ -47,9 +47,12 @@ const blankDecoration = (): DecorationValue => ({
 export function LineEditor({
   products,
   initial,
+  sizeMode = "quantity",
 }: {
   products: { id: string; name: string; styleCode: string }[];
   initial?: LineValue;
+  /** "select": tick which sizes to sell (store items) instead of entering quantities. */
+  sizeMode?: "quantity" | "select";
 }) {
   const [value, setValue] = useState<LineValue>(
     initial ?? { productId: "", colorId: "", quantities: {}, decorations: [], notes: "" },
@@ -120,9 +123,19 @@ export function LineEditor({
       {options && (
         <>
           <div>
-            <div className="label">Quantities {totalQty > 0 && <span className="text-gray-400">({totalQty} total)</span>}</div>
+            <div className="label">
+              {sizeMode === "select" ? "Sizes to sell" : <>Quantities {totalQty > 0 && <span className="text-gray-400">({totalQty} total)</span>}</>}
+            </div>
             <div className="flex flex-wrap gap-2">
               {options.sizes.map((s) => {
+                if (sizeMode === "select") {
+                  const offered = color?.sizeIds.includes(s.id);
+                  return (
+                    <label key={s.id} className={`flex items-center gap-1 rounded border px-2 py-1 text-sm ${offered ? "border-gray-200" : "border-gray-100 text-gray-300 line-through"}`}>
+                      <input type="checkbox" name={`size_${s.id}`} defaultChecked={offered} disabled={!offered} /> {s.code}
+                    </label>
+                  );
+                }
                 const offered = color?.sizeIds.includes(s.id);
                 return (
                   <div key={s.id} className="w-16">
