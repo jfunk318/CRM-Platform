@@ -298,7 +298,9 @@ production run when the store closes [D].
 14.7 Store-owner dashboard: sales, orders, commission earned and paid [R].
 14.8 Optional password or access-code protected stores (team/corporate) [R].
 14.9 **Store subdomains** [B]: each store lives at its own subdomain of the
-main site, e.g. `lincoln-hockey.beezetees.com`. Needs wildcard DNS
+main site, e.g. `lincoln-hockey.<main domain>`. The business is rebranding,
+so the brand name and main domain are **settings** (Shop & tax), with
+"Beeze Tees" / `beezetees.com` as placeholders; nothing in code assumes them. Needs wildcard DNS
 (`*.beezetees.com`) and a wildcard TLS certificate. The storefront resolves
 the store from the request's host name. The main site is itself a store, so
 there is one storefront engine for both [R].
@@ -316,6 +318,22 @@ into a store:
 Before applying, staff see a preview of what will be added, changed and
 removed. Each store product keeps a link back to the quote/order line it came
 from.
+
+14.11 **Store item pricing** [B]: a store item's price is worked out per size:
+
+1. **Base price** = the unit price on the quote/order line it came from
+   (per size, so 2XL keeps its upcharge), unless staff **override** it for
+   that item.
+2. **Plus a markup**: set on the item, or else the store's default markup.
+   A markup is a fixed amount (e.g. +$5.00) or a percentage (e.g. +20%).
+   For fundraiser and affiliate stores this is typically the organization's
+   share and feeds commission tracking (14.5).
+
+Staff see base, markup and final price side by side. Re-publishing a
+quote/order to an existing store with **update** refreshes base prices from
+the new quote but keeps item overrides and markups; **overwrite** replaces
+items, so overrides and item markups on removed items are dropped (the
+preview says so).
 
 To make this possible, a quote/order line stores its design (product, color,
 decorations, artwork, placement) as a reusable **design** record, not as

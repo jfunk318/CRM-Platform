@@ -425,6 +425,9 @@ enum PriceRounding {
 model ShopSettings {
   id                  Int           @id @default(1)
   shopName            String
+  // Main site domain; stores live at <store>.<primaryDomain>. A placeholder
+  // until the rebrand: change it here, not in code.
+  primaryDomain       String        @default("beezetees.com")
   currency            String        @default("USD")
   priceRounding       PriceRounding @default(CENT)
   rushFeePct          Decimal       @default(0) @db.Decimal(6, 4)

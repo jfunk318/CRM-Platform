@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { getShop } from "@/lib/shop";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -12,10 +12,12 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Beeze Tees",
-  description: "Custom apparel, embroidery and promotional products",
-};
+export async function generateMetadata() {
+  return {
+    title: (await getShop()).name,
+    description: "Custom apparel, embroidery and promotional products",
+  };
+}
 
 export default function RootLayout({
   children,

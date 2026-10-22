@@ -96,7 +96,7 @@ export default async function MethodPage({
         </nav>
         {table?.isPlaceholder && (
           <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            These are placeholder prices. Replace them with Beeze&apos;s real prices and save.
+            These are placeholder prices. Replace them with your real prices and save.
           </p>
         )}
         {selectedGroup && !groupTable && (

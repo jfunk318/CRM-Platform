@@ -33,6 +33,13 @@ export default async function SettingsPage() {
                 <input className="input" id="shopName" name="shopName" defaultValue={settings?.shopName ?? "Beeze Tees"} required />
               </div>
               <div>
+                <label className="label" htmlFor="primaryDomain">Main domain</label>
+                <input className="input" id="primaryDomain" name="primaryDomain" defaultValue={settings?.primaryDomain ?? "beezetees.com"} required />
+                <p className="mt-1 text-xs text-gray-500">
+                  Stores will live at <span className="font-mono">storename.{settings?.primaryDomain ?? "beezetees.com"}</span>
+                </p>
+              </div>
+              <div>
                 <label className="label" htmlFor="currency">Currency</label>
                 <input className="input" id="currency" name="currency" defaultValue={settings?.currency ?? "USD"} required />
               </div>

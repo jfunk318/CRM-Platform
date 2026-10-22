@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
 import { type ActionResult, checkbox, FormError, optionalText, percent, runAction, text } from "@/lib/admin/form";
+import { isValidDomain } from "@/lib/shop";
 
 const field = (form: FormData, name: string) => String(form.get(name) ?? "");
 
@@ -12,15 +13,23 @@ export async function saveShopSettings(_: ActionResult, form: FormData): Promise
   return runAction(async () => {
     const currency = text(form, "currency", "Currency").toUpperCase();
     if (!/^[A-Z]{3}$/.test(currency)) throw new FormError("Currency must be a 3-letter code like USD");
+    const primaryDomain = text(form, "primaryDomain", "Main domain")
+      .toLowerCase()
+      .replace(/^https?:\/\//, "")
+      .replace(/^www\./, "")
+      .replace(/\/.*$/, "");
+    if (!isValidDomain(primaryDomain)) throw new FormError("Main domain must look like example.com");
     const data = {
       shopName: text(form, "shopName", "Shop name"),
+      primaryDomain,
       currency,
       priceRounding: field(form, "priceRounding") === "UP_TO_99" ? ("UP_TO_99" as const) : ("CENT" as const),
       rushFeePct: percent(field(form, "rushFeePct") || "0", "Rush fee"),
       paymentSurchargePct: percent(field(form, "paymentSurchargePct") || "0", "Card surcharge"),
     };
     await db.shopSettings.upsert({ where: { id: 1 }, update: data, create: { id: 1, ...data } });
-    revalidatePath("/admin/settings");
+    // The name appears in every page's header and title.
+    revalidatePath("/", "layout");
   });
 }
 
