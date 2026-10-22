@@ -52,7 +52,8 @@ orders come before the public storefront.
    settings inherited business → group → store; open/close dates and
    batched production; store owner portal (selectable sections, contacts,
    code usage, requests → optional draft quote / Slack); commissions;
-   showcase of affiliate stores on the root storefront.
+   drag-and-drop store showcase widgets (filters, sorting, layouts) on the
+   root storefront and affiliate stores.
 7. **CRM depth.** Leads, follow-up tasks, pipeline, Mailchimp sync.
 8. **Automations + integrations.** Rules engine, QuickBooks Online, Slack,
    supplier live catalogs and ordering, public API.

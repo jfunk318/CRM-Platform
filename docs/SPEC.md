@@ -351,8 +351,7 @@ per store, 14.15):
   dates, earnings (commission or markup share, earned and paid), read-only
 - their organization's **contacts**, which they can view and edit
 - usage of promo and gift codes created for their store
-- whether the store is listed in the root storefront's showcase, if the
-  root store lets owners choose
+- opting out of the store showcase (14.14); stores are included by default
 - requests (below); more sections can be added the same way
 
 Apart from contacts (and the listing choice when allowed), the portal is
@@ -448,10 +447,18 @@ base price, override and markup (14.11), store default markup, open/close
 dates and batching, owner and portal access, requests, and the store's
 orders.
 
-14.14 **Root storefront as a showcase** [B]: the root store's own public
-site sells the shop's goods and promotes its affiliate stores: a directory
-of stores and featured items from them. Each affiliate store chooses
-whether it's listed (team or company stores may want to stay private).
+14.14 **Store showcase** [B]: a traffic driver: stores shown near other
+stores send shoppers to each other. The root store's store manager decides
+how and whether stores are shown, using drag-and-drop **showcase widgets**
+placed on pages of the root storefront (and, where the manager wants,
+on affiliate stores, to cross-promote). Each widget has:
+- **Which stores:** filters by group, commissioned or not, short or long
+  term, open/closed status, and other store attributes
+- **Order:** most sales, most visitors, newest, oldest (more as needed)
+- **How many** stores, and the **layout**: grid columns, card style
+  (logo, name, featured items)
+Every store is **included by default**. A store owner can opt out from their
+portal (14.7); the manager can also exclude a store.
 
 14.15 **Store settings with inheritance** [B]: store behavior is set at
 three levels, each inheriting from the one above unless overridden:
@@ -463,7 +470,7 @@ dashboard shows where each effective value comes from. Settings include:
 - Delivery methods offered, chosen from the business's list (below)
 - Promo codes and gift codes accepted, chosen from the business's list
   (below)
-- Listed in the root storefront's showcase or private (14.14)
+- Included in the store showcase (default on; owner can opt out, 14.14)
 - Which owner portal sections are shown (14.7)
 - **Name/number personalization** on chosen items, with its upcharge (14.17)
 - **Customer designer** options, within the root store's limits (14.18)
