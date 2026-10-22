@@ -35,14 +35,28 @@ const scrCells = [
   { minQty: 48, dimensionMax: 4, unitPrice: "3.50" },
 ];
 
-const markup = { mode: "MARKUP" as const, tiers: defaultMarkupTiers };
+// Cost-based tiers, to exercise tier selection (Beeze's default is a flat 40%).
+const tieredMarkup = [
+  { costFrom: "0.00", costTo: "2.99", pct: "0.60" },
+  { costFrom: "3.00", costTo: "9.99", pct: "0.55" },
+  { costFrom: "10.00", costTo: "14.99", pct: "0.40" },
+  { costFrom: "15.00", costTo: "19.99", pct: "0.30" },
+  { costFrom: "20.00", costTo: null, pct: "0.20" },
+];
+
+const markup = { mode: "MARKUP" as const, tiers: tieredMarkup };
 
 describe("blankUnitPrice", () => {
-  it("applies Beeze markup tiers by wholesale cost", () => {
-    expect(blankUnitPrice("2.50", defaultMarkupTiers).toFixed(2)).toBe("4.00"); // +60%
-    expect(blankUnitPrice("3.00", defaultMarkupTiers).toFixed(2)).toBe("4.65"); // +55%
-    expect(blankUnitPrice("12.00", defaultMarkupTiers).toFixed(2)).toBe("16.80"); // +40%
-    expect(blankUnitPrice("25.00", defaultMarkupTiers).toFixed(2)).toBe("30.00"); // +20%
+  it("applies Beeze's default flat 40% markup", () => {
+    expect(blankUnitPrice("3.00", defaultMarkupTiers).toFixed(2)).toBe("4.20");
+    expect(blankUnitPrice("12.50", defaultMarkupTiers).toFixed(2)).toBe("17.50");
+  });
+
+  it("selects the tier covering the wholesale cost", () => {
+    expect(blankUnitPrice("2.50", tieredMarkup).toFixed(2)).toBe("4.00"); // +60%
+    expect(blankUnitPrice("3.00", tieredMarkup).toFixed(2)).toBe("4.65"); // +55%
+    expect(blankUnitPrice("12.00", tieredMarkup).toFixed(2)).toBe("16.80"); // +40%
+    expect(blankUnitPrice("25.00", tieredMarkup).toFixed(2)).toBe("30.00"); // +20%
   });
 
   it("supports margin mode", () => {

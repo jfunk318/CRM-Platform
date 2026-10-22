@@ -7,6 +7,7 @@ import {
   shop,
   suppliers,
 } from "./seed-data";
+import { hashPassword, MIN_PASSWORD_LENGTH } from "../src/lib/auth/password";
 
 const prisma = new PrismaClient();
 
@@ -85,12 +86,22 @@ async function main() {
     });
   }
 
-  const adminEmail = process.env.SEED_ADMIN_EMAIL;
-  if (adminEmail) {
+  const adminEmail = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase();
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (adminEmail && adminPassword) {
+    if (adminPassword.length < MIN_PASSWORD_LENGTH) {
+      throw new Error(`SEED_ADMIN_PASSWORD must be at least ${MIN_PASSWORD_LENGTH} characters`);
+    }
+    // Only sets the password when creating the account; change it in admin afterwards.
     await prisma.staffUser.upsert({
       where: { email: adminEmail },
       update: {},
-      create: { email: adminEmail, name: "Admin", roles: ["ADMIN"] },
+      create: {
+        email: adminEmail,
+        name: "Admin",
+        roles: ["ADMIN"],
+        passwordHash: await hashPassword(adminPassword),
+      },
     });
   }
 

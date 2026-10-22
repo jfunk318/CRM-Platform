@@ -9,13 +9,9 @@ export const shop = {
   priceRounding: "CENT" as const,
 };
 
-export const defaultMarkupTiers = [
-  { costFrom: "0.00", costTo: "2.99", pct: "0.60" },
-  { costFrom: "3.00", costTo: "9.99", pct: "0.55" },
-  { costFrom: "10.00", costTo: "14.99", pct: "0.40" },
-  { costFrom: "15.00", costTo: "19.99", pct: "0.30" },
-  { costFrom: "20.00", costTo: null, pct: "0.20" },
-];
+// Flat 40% markup on wholesale cost (price = cost × 1.40) for every product.
+// Tiers stay editable in admin if cost-based tiers are wanted later.
+export const defaultMarkupTiers = [{ costFrom: "0.00", costTo: null, pct: "0.40" }];
 
 export const quantityDiscounts = [
   { name: "Small run 5/10", tiers: [{ minQty: 5, pct: "0" }, { minQty: 10, pct: "0" }] },
