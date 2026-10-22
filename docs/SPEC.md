@@ -11,8 +11,31 @@ Three levels, kept distinct throughout [B]:
 | Level | Example | Brand / address |
 |-------|---------|-----------------|
 | **Platform** | Name TBD | Platform name (placeholder "Name TBD") |
-| **Business** using the platform | Beeze Tees | Its own name and domain, set in shop settings (e.g. `beezetees.com`) |
+| **Business** using the platform: the print shop, its **root store** | Beeze Tees | Its own name and domain (e.g. `beezetees.com`) |
 | **Affiliate store** of that business | Lincoln Hockey | Subdomain of the business's domain (`lincoln-hockey.beezetees.com`) |
+
+**How a business works on the platform** [B]:
+
+- The **root store** is the print shop itself. Its back office is the CRM:
+  staff quote customers and turn a quote into an **order** or into an
+  **affiliate store**. Every order, whether quoted manually, taken in person,
+  or bought through any affiliate store, lands in the same CRM and moves
+  through the same production: what to buy from suppliers (from supplier
+  stock and integrations), how each item is decorated, and where it ships.
+- The root store also has its **own public storefront** (today's
+  beezetees.com is the model for what any store looks like). It sells the
+  shop's own goods and showcases goods from its affiliate stores.
+- **Affiliate stores** belong to the shop's customers (teams, schools,
+  companies). The root store creates and maintains them, manually or from a
+  quote, and prints and fulfills everything ordered through them for the
+  store owner's own customers.
+- **Store owners** get a view-only portal: their store's sales, items and
+  prices, plus a way to request updates or help. They don't edit anything.
+- The root store's staff manage stores from a **stores dashboard** (every
+  store at a glance, grouped and filtered) and a **dashboard per store** for
+  its settings.
+- The **platform** level (Name TBD itself) only adds and manages businesses
+  (`/platform`); a business's staff never see it.
 
 **Multi-business** [B]: like DecoNetwork, many businesses use the platform.
 Each business's data is completely separate (enforced in the app and in the
@@ -316,7 +339,12 @@ the store owner [D][O]. Payouts can be manual, recorded payouts first, with
 Stripe Connect optional later [R].
 14.6 Store open/close dates and group ordering. Orders are batched into one
 production run when the store closes [D].
-14.7 Store-owner dashboard: sales, orders, commission earned and paid [R].
+14.7 **Store owner portal** [B]: the store owner signs in at their store's
+address and sees, read-only: sales and order counts over time, items with
+their prices, open/close dates, and earnings (commission or markup share,
+earned and paid). They can send **requests** (add an item, change a price,
+reopen the store, help) that arrive in the root store's back office linked to
+the store and customer. They can't change anything themselves.
 14.8 Optional password or access-code protected stores (team/corporate) [R].
 14.9 **Store subdomains** [B]: each store lives at its own subdomain of the
 main site, e.g. `lincoln-hockey.<main domain>`. The business is rebranding,
@@ -359,6 +387,23 @@ preview says so).
 To make this possible, a quote/order line stores its design (product, color,
 decorations, artwork, placement) as a reusable **design** record, not as
 one-off order data. Store products point at the same designs [R].
+
+14.12 **Stores dashboard** [B]: in the root store's back office, every
+affiliate store at a glance: status (draft, open, closed), open/close dates,
+sales and orders, open requests, assigned staff manager. Stores can be
+grouped (e.g. Schools, Teams, Corporate, Fundraisers) and filtered by group,
+status and manager.
+
+14.13 **Per-store dashboard** [B]: one store's settings and activity: branding
+and subdomain, items (from the catalog or published from quotes/orders) with
+base price, override and markup (14.11), store default markup, open/close
+dates and batching, owner and portal access, requests, and the store's
+orders.
+
+14.14 **Root storefront as a showcase** [B]: the root store's own public
+site sells the shop's goods and promotes its affiliate stores: a directory
+of stores and featured items from them. Each affiliate store chooses
+whether it's listed (team or company stores may want to stay private).
 
 ## 15. Invoicing & accounting
 

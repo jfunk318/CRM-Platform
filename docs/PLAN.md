@@ -45,10 +45,12 @@ orders come before the public storefront.
    catalog browsing, cart, Stripe checkout, customer accounts.
 6. **Design tool.** Canvas, text, images, uploads with quality checks,
    colors and screens, team names, live pricing, mockups.
-7. **Affiliate, team and fundraiser stores.** Store builder, **publish a
-   quote/order to a new or existing store (update or overwrite)**,
-   open/close dates, commissions and payouts, store-owner dashboard,
-   batched production.
+7. **Affiliate stores.** Stores dashboard (grouping, filters, at-a-glance
+   status) and per-store dashboards; create stores manually or **publish a
+   quote/order to a new or existing store (update or overwrite)**; item
+   pricing with overrides and markups; open/close dates and batched
+   production; view-only store owner portal with update/help requests;
+   commissions; the root storefront's showcase of affiliate stores.
 8. **CRM depth.** Leads, follow-up tasks, pipeline, Mailchimp sync.
 9. **Automations + integrations.** Rules engine, QuickBooks Online, supplier
    live catalogs and ordering, public API.
