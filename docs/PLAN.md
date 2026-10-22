@@ -19,33 +19,36 @@
 
 ## Phases
 
-Each phase ends with something usable.
+Each phase ends with something usable. Reordered 2026-10-22: back-office
+orders come before the public storefront.
 
-1. ✅ **Foundation + catalog + pricing engine.** Repo, database schema, staff
-   auth and roles, products/colors/sizes/views/areas, categories, decoration
-   methods, markup tiers, quantity breaks, fees, and taxes. Pricing engine
-   unit-tested against your current prices.
-2. **Storefront + cart + checkout.** CMS pages, category and product pages,
-   blank-product ordering, cart, coupons, Stripe checkout, customer accounts,
-   order tracking. *Can go live for blank and quote-request sales.*
-3. **Design tool.** Canvas, text, images, upload with quality checks,
-   colors and screens, team names, live pricing, saved designs, mockup
-   rendering. *Full decorated ordering online.*
-4. **Back office: quotes, orders, artwork approvals, invoices.** Quote
-   builder with an approval link, quote-to-order, order editing, approval
-   workflow with PDF proof sheets, invoices with payment links, deposits.
-5. **Production, purchasing, shipping.** Workflows and steps, production
-   calendar, consolidated supplier POs and receiving, shipping labels,
-   packing slips, tracking notifications.
-6. **CRM.** Contacts and companies, leads, activity timeline, tasks,
-   pipeline, customer groups, Mailchimp sync.
-7. **Affiliate, team and fundraiser stores.** Store builder, campaign
-   products, open/close dates, commission tracking and payouts, store-owner
-   dashboard, batched production.
-8. **Automations + integrations.** Rules engine, QuickBooks Online, supplier
+1. ✅ **Foundation + catalog + pricing engine.** Schema, staff sign-in and
+   roles, catalog, decoration methods and price tables, markup, discounts,
+   taxes, price check.
+2. **Customers, quotes and orders.** Customers and companies, quotes and
+   orders built from catalog products and decorations with live pricing,
+   reusable designs, editable order statuses, staff assignment, activity
+   timeline and notes, quote-to-order conversion.
+3. **Approvals, artwork, payments.** Customer quote approval links, artwork
+   proofs with approve/request-changes, artwork file storage, recorded
+   payments and deposits, invoices and emails.
+4. **Production, purchasing, shipping.** Workflow steps per method,
+   production calendar, consolidated supplier POs and receiving, shipping
+   labels, packing slips, tracking notifications.
+5. **Storefront engine + checkout.** One storefront engine that serves the
+   main site and every store subdomain (`*.beezetees.com`), CMS pages,
+   catalog browsing, cart, Stripe checkout, customer accounts.
+6. **Design tool.** Canvas, text, images, uploads with quality checks,
+   colors and screens, team names, live pricing, mockups.
+7. **Affiliate, team and fundraiser stores.** Store builder, **publish a
+   quote/order to a new or existing store (update or overwrite)**,
+   open/close dates, commissions and payouts, store-owner dashboard,
+   batched production.
+8. **CRM depth.** Leads, follow-up tasks, pipeline, Mailchimp sync.
+9. **Automations + integrations.** Rules engine, QuickBooks Online, supplier
    live catalogs and ordering, public API.
-9. **Cutover.** Set up URL redirects from the old beezetees.com paths to
-   keep SEO, then switch DNS. No data import (fresh start).
+10. **Cutover.** URL redirects from the old beezetees.com paths, DNS switch
+    (including wildcard DNS for store subdomains). No data import.
 
 Supplier catalog connectors (SanMar and S&S first, then Charles River and
 Pennant) start alongside phase 1 once you have API credentials, because

@@ -14,6 +14,8 @@ export interface DecorationRequest {
   needsDigitizing?: boolean;
   reuseScreens?: boolean;
   requestProof?: boolean;
+  /** Quantity for the price break when combined across lines (see DecorationInput). */
+  pricingQty?: number;
 }
 
 export interface LineRequest {

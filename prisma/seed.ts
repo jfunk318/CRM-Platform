@@ -3,6 +3,7 @@ import {
   categories,
   decorationMethods,
   defaultMarkupTiers,
+  orderStatuses,
   quantityDiscounts,
   shop,
   suppliers,
@@ -85,6 +86,15 @@ async function main() {
       update: {},
       create: { slug: c.slug, name: c.name, sortOrder: i, parentId: parent?.id },
     });
+  }
+
+  for (const [type, statuses] of Object.entries(Object.groupBy(orderStatuses, (o) => o.type))) {
+    // Only seed a type's statuses once; after that they're managed in admin.
+    if (await prisma.orderStatus.count({ where: { type: type as "QUOTE" | "ORDER" } })) continue;
+    await prisma.orderStatus.createMany({ data: statuses!.map((st, i) => ({ ...st, sortOrder: i })) });
+  }
+  for (const key of ["quote", "order"]) {
+    await prisma.counter.upsert({ where: { key }, update: {}, create: { key, value: 1000 } });
   }
 
   const adminEmail = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase();

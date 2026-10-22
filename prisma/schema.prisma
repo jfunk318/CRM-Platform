@@ -28,15 +28,18 @@ enum StaffRole {
 }
 
 model StaffUser {
-  id           String         @id @default(cuid())
-  email        String         @unique
-  name         String
-  passwordHash String?
-  roles        StaffRole[]
-  active       Boolean        @default(true)
-  sessions     StaffSession[]
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id             String         @id @default(cuid())
+  email          String         @unique
+  name           String
+  passwordHash   String?
+  roles          StaffRole[]
+  active         Boolean        @default(true)
+  sessions       StaffSession[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  assignedOrders Order[]        @relation("OrderAssignee")
+  createdOrders  Order[]        @relation("OrderCreator")
+  orderEvents    OrderEvent[]
 }
 
 model StaffSession {
@@ -132,6 +135,7 @@ model Product {
   externalId         String?
   createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
+  designs            Design[]
 
   @@unique([externalSource, externalId])
   @@index([supplierId, styleCode])
@@ -163,6 +167,7 @@ model ProductColor {
   sortOrder Int              @default(0)
   variants  ProductVariant[]
   images    ViewImage[]
+  designs   Design[]
 
   @@unique([productId, name])
 }
@@ -175,6 +180,7 @@ model ProductSize {
   label     String
   sortOrder Int              @default(0)
   variants  ProductVariant[]
+  lineSizes OrderLineSize[]
 
   @@unique([productId, code])
 }
@@ -225,17 +231,18 @@ model ViewImage {
 }
 
 model DecorationArea {
-  id       String      @id @default(cuid())
-  viewId   String
-  view     ProductView @relation(fields: [viewId], references: [id], onDelete: Cascade)
-  name     String // "Full Front", "Left Chest"
-  widthIn  Decimal     @db.Decimal(6, 2)
-  heightIn Decimal     @db.Decimal(6, 2)
+  id                String             @id @default(cuid())
+  viewId            String
+  view              ProductView        @relation(fields: [viewId], references: [id], onDelete: Cascade)
+  name              String // "Full Front", "Left Chest"
+  widthIn           Decimal            @db.Decimal(6, 2)
+  heightIn          Decimal            @db.Decimal(6, 2)
   // Placement on the view image, as fractions of image width/height (0–1).
-  x        Float
-  y        Float
-  w        Float
-  h        Float
+  x                 Float
+  y                 Float
+  w                 Float
+  h                 Float
+  designDecorations DesignDecoration[]
 }
 
 // ─── Decoration methods ─────────────────────────────────────────────────────
@@ -292,6 +299,7 @@ model DecorationMethod {
   externalId            String?
   createdAt             DateTime                @default(now())
   updatedAt             DateTime                @updatedAt
+  designDecorations     DesignDecoration[]
 
   @@unique([externalSource, externalId])
 }
@@ -360,6 +368,9 @@ model PricingGroup {
   priceTables    DecorationPriceTable[]
   externalSource String?
   externalId     String?
+  companies      Company[]
+  customers      Customer[]
+  orders         Order[]
 
   @@unique([externalSource, externalId])
 }
@@ -419,4 +430,245 @@ model ShopSettings {
   rushFeePct          Decimal       @default(0) @db.Decimal(6, 4)
   paymentSurchargePct Decimal       @default(0) @db.Decimal(6, 4)
   updatedAt           DateTime      @updatedAt
+}
+
+// ─── Customers ──────────────────────────────────────────────────────────────
+
+model Company {
+  id             String        @id @default(cuid())
+  name           String
+  phone          String?
+  website        String?
+  notes          String?
+  taxExempt      Boolean       @default(false)
+  pricingGroupId String?
+  pricingGroup   PricingGroup? @relation(fields: [pricingGroupId], references: [id], onDelete: SetNull)
+  customers      Customer[]
+  orders         Order[]
+  externalSource String?
+  externalId     String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([externalSource, externalId])
+  @@index([name])
+}
+
+model Customer {
+  id             String        @id @default(cuid())
+  firstName      String
+  lastName       String        @default("")
+  email          String?
+  phone          String?
+  notes          String?
+  // Unset = inherit from the company.
+  taxExempt      Boolean?
+  pricingGroupId String?
+  pricingGroup   PricingGroup? @relation(fields: [pricingGroupId], references: [id], onDelete: SetNull)
+  companyId      String?
+  company        Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  addresses      Address[]
+  orders         Order[]
+  designs        Design[]
+  externalSource String?
+  externalId     String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([externalSource, externalId])
+  @@index([email])
+  @@index([lastName, firstName])
+}
+
+model Address {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  label      String? // "Office", "Warehouse"
+  name       String
+  line1      String
+  line2      String?
+  city       String
+  region     String // state / province code
+  postalCode String
+  country    String   @default("US")
+  isDefault  Boolean  @default(false)
+}
+
+// ─── Designs ────────────────────────────────────────────────────────────────
+// A decorated product: product + color + decorations. Quote/order lines point
+// at a design, and (later) affiliate store products point at the same
+// designs, which is what lets a quote be published to a store.
+
+model Design {
+  id          String             @id @default(cuid())
+  name        String
+  productId   String
+  product     Product            @relation(fields: [productId], references: [id])
+  colorId     String
+  color       ProductColor       @relation(fields: [colorId], references: [id])
+  customerId  String?
+  customer    Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  decorations DesignDecoration[]
+  orderLines  OrderLine[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+model DesignDecoration {
+  id              String           @id @default(cuid())
+  designId        String
+  design          Design           @relation(fields: [designId], references: [id], onDelete: Cascade)
+  methodId        String
+  method          DecorationMethod @relation(fields: [methodId], references: [id])
+  areaId          String?
+  area            DecorationArea?  @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  location        String // "Front / Full Front"; kept even if the area is removed
+  colors          Int? // ink colors (screen print)
+  stitches        Int? // embroidery
+  widthIn         Decimal?         @db.Decimal(6, 2)
+  heightIn        Decimal?         @db.Decimal(6, 2)
+  inkColors       String[] // names, e.g. ["White", "Pantone 186 C"]
+  needsArtwork    Boolean          @default(false)
+  needsDigitizing Boolean          @default(false)
+  reuseScreens    Boolean          @default(false)
+  notes           String?
+  sortOrder       Int              @default(0)
+}
+
+// ─── Quotes & orders ────────────────────────────────────────────────────────
+
+enum OrderType {
+  QUOTE
+  ORDER
+}
+
+// Editable list of statuses per type, so the workflow can match how staff work.
+model OrderStatus {
+  id           String    @id @default(cuid())
+  type         OrderType
+  name         String
+  color        String    @default("#9CA3AF")
+  sortOrder    Int       @default(0)
+  isDefault    Boolean   @default(false) // status for new quotes/orders
+  isClosed     Boolean   @default(false) // done, cancelled, declined, converted
+  // The quote status set automatically when a quote becomes an order.
+  isConversion Boolean   @default(false)
+  orders       Order[]
+
+  @@unique([type, name])
+}
+
+model Order {
+  id             String        @id @default(cuid())
+  type           OrderType
+  number         Int // per type: quotes Q-1001…, orders 1001…
+  title          String?
+  customerId     String
+  customer       Customer      @relation(fields: [customerId], references: [id])
+  companyId      String?
+  company        Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  statusId       String
+  status         OrderStatus   @relation(fields: [statusId], references: [id])
+  assignedToId   String?
+  assignedTo     StaffUser?    @relation("OrderAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdById    String?
+  createdBy      StaffUser?    @relation("OrderCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  pricingGroupId String?
+  pricingGroup   PricingGroup? @relation(fields: [pricingGroupId], references: [id], onDelete: SetNull)
+  dueDate        DateTime?     @db.Date
+  rush           Boolean       @default(false)
+  taxExempt      Boolean       @default(false)
+  customerNotes  String? // shown on the quote/order the customer sees
+  // Ship-to, copied onto the order so later address edits don't change it.
+  shipName       String?
+  shipLine1      String?
+  shipLine2      String?
+  shipCity       String?
+  shipRegion     String?
+  shipPostalCode String?
+  shipCountry    String        @default("US")
+  // Price snapshot, recalculated whenever the order changes.
+  shipping       Decimal       @default(0) @db.Decimal(10, 2)
+  merchandise    Decimal       @default(0) @db.Decimal(10, 2)
+  feesTotal      Decimal       @default(0) @db.Decimal(10, 2)
+  rushFee        Decimal       @default(0) @db.Decimal(10, 2)
+  tax            Decimal       @default(0) @db.Decimal(10, 2)
+  total          Decimal       @default(0) @db.Decimal(10, 2)
+  pricedAt       DateTime?
+  // A quote converted to an order points at the order it became.
+  quoteId        String?       @unique
+  quote          Order?        @relation("QuoteToOrder", fields: [quoteId], references: [id], onDelete: SetNull)
+  convertedTo    Order?        @relation("QuoteToOrder")
+  lines          OrderLine[]
+  events         OrderEvent[]
+  externalSource String?
+  externalId     String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([type, number])
+  @@unique([externalSource, externalId])
+  @@index([statusId])
+  @@index([assignedToId])
+  @@index([customerId])
+}
+
+model OrderLine {
+  id             String          @id @default(cuid())
+  orderId        String
+  order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sortOrder      Int             @default(0)
+  designId       String
+  design         Design          @relation(fields: [designId], references: [id])
+  notes          String?
+  // Price snapshot
+  decorationUnit Decimal         @default(0) @db.Decimal(10, 2)
+  discountPct    Decimal         @default(0) @db.Decimal(6, 4)
+  fees           Json            @default("[]") // [{type, location, description, amount}]
+  feesTotal      Decimal         @default(0) @db.Decimal(10, 2)
+  total          Decimal         @default(0) @db.Decimal(10, 2) // merchandise + fees
+  issues         Json            @default("[]") // pricing problems to show staff
+  sizes          OrderLineSize[]
+}
+
+model OrderLineSize {
+  id        String      @id @default(cuid())
+  lineId    String
+  line      OrderLine   @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  sizeId    String
+  size      ProductSize @relation(fields: [sizeId], references: [id])
+  qty       Int
+  unitPrice Decimal     @default(0) @db.Decimal(10, 2)
+  total     Decimal     @default(0) @db.Decimal(10, 2)
+
+  @@unique([lineId, sizeId])
+}
+
+enum OrderEventType {
+  CREATED
+  NOTE
+  STATUS
+  ASSIGNED
+  EDITED
+  CONVERTED
+}
+
+model OrderEvent {
+  id        String         @id @default(cuid())
+  orderId   String
+  order     Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  type      OrderEventType
+  body      String
+  staffId   String?
+  staff     StaffUser?     @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  createdAt DateTime       @default(now())
+
+  @@index([orderId, createdAt])
+}
+
+// Sequential document numbers (quotes, orders).
+model Counter {
+  key   String @id
+  value Int
 }

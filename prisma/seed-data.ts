@@ -173,3 +173,27 @@ export const categories: { slug: string; name: string; parent?: string }[] = [
   { slug: "sweatshirts-full-zip", name: "Full-Zip", parent: "sweatshirts" },
   { slug: "sweatshirts-quarter-zip", name: "1/4 Zip", parent: "sweatshirts" },
 ];
+
+// Starting statuses; editable in admin to match how staff divide the work.
+export const orderStatuses: {
+  type: "QUOTE" | "ORDER";
+  name: string;
+  color: string;
+  isDefault?: boolean;
+  isClosed?: boolean;
+  isConversion?: boolean;
+}[] = [
+  { type: "QUOTE", name: "Draft", color: "#9CA3AF", isDefault: true },
+  { type: "QUOTE", name: "Sent", color: "#3B82F6" },
+  { type: "QUOTE", name: "Approved", color: "#10B981" },
+  { type: "QUOTE", name: "Declined", color: "#EF4444", isClosed: true },
+  { type: "QUOTE", name: "Converted to order", color: "#6366F1", isClosed: true, isConversion: true },
+  { type: "ORDER", name: "New", color: "#3B82F6", isDefault: true },
+  { type: "ORDER", name: "Awaiting artwork", color: "#F59E0B" },
+  { type: "ORDER", name: "Artwork approved", color: "#14B8A6" },
+  { type: "ORDER", name: "Ordering blanks", color: "#8B5CF6" },
+  { type: "ORDER", name: "In production", color: "#F97316" },
+  { type: "ORDER", name: "Ready for pickup / shipping", color: "#22C55E" },
+  { type: "ORDER", name: "Completed", color: "#6B7280", isClosed: true },
+  { type: "ORDER", name: "Cancelled", color: "#EF4444", isClosed: true },
+];

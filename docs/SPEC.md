@@ -297,6 +297,29 @@ Stripe Connect optional later [R].
 production run when the store closes [D].
 14.7 Store-owner dashboard: sales, orders, commission earned and paid [R].
 14.8 Optional password or access-code protected stores (team/corporate) [R].
+14.9 **Store subdomains** [B]: each store lives at its own subdomain of the
+main site, e.g. `lincoln-hockey.beezetees.com`. Needs wildcard DNS
+(`*.beezetees.com`) and a wildcard TLS certificate. The storefront resolves
+the store from the request's host name. The main site is itself a store, so
+there is one storefront engine for both [R].
+14.10 **Publish a quote or order to a store** [B]: from any quote or order,
+staff can send its decorated items (product, colors, decorations, artwork)
+into a store:
+- **New store**: create a store at a new subdomain, pre-filled with the
+  items and the customer as store owner.
+- **Existing store, update**: add items that aren't in the store yet and
+  refresh the ones that are (matched by product + design); everything else
+  in the store stays.
+- **Existing store, overwrite**: replace the store's product list with the
+  quote/order's items.
+
+Before applying, staff see a preview of what will be added, changed and
+removed. Each store product keeps a link back to the quote/order line it came
+from.
+
+To make this possible, a quote/order line stores its design (product, color,
+decorations, artwork, placement) as a reusable **design** record, not as
+one-off order data. Store products point at the same designs [R].
 
 ## 15. Invoicing & accounting
 
