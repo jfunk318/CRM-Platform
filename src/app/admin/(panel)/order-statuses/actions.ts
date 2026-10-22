@@ -2,13 +2,12 @@
 
 import type { OrderType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
 import { all, type ActionResult, FormError, runAction, text } from "@/lib/admin/form";
 import { diffRows } from "@/lib/catalog/products";
 
 export async function saveStatuses(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff(["ADMIN"]);
+  const { db } = await requireStaff(["ADMIN"]);
   return runAction(async () => {
     const type = text(form, "type") as OrderType;
     if (type !== "QUOTE" && type !== "ORDER") throw new FormError("Unknown type");
@@ -47,7 +46,7 @@ export async function saveStatuses(_: ActionResult, form: FormData): Promise<Act
       // Temporary names first so renames that swap two statuses don't collide.
       for (const r of d.update) await tx.orderStatus.update({ where: { id: r.id }, data: { name: `~${r.id}` } });
       for (const { id, ...data } of d.update) await tx.orderStatus.update({ where: { id }, data });
-      for (const data of d.create) await tx.orderStatus.create({ data });
+      for (const data of d.create) await tx.orderStatus.create({ data: { ...data, businessId: db.$businessId } });
     });
     revalidatePath("/admin/order-statuses");
   });

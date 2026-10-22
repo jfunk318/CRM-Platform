@@ -1,11 +1,16 @@
-import type { OrderType, Prisma } from "@prisma/client";
+import type { OrderType } from "@prisma/client";
+import type { BusinessTx } from "@/lib/db";
 
-/** Next sequential number for quotes or orders, safe under concurrent use. */
-export async function nextOrderNumber(tx: Prisma.TransactionClient, type: OrderType): Promise<number> {
+/**
+ * Next sequential number for a business's quotes or orders, safe under
+ * concurrent use. Raw SQL bypasses the scoped client, so businessId is
+ * passed explicitly.
+ */
+export async function nextOrderNumber(tx: BusinessTx, businessId: string, type: OrderType): Promise<number> {
   const key = type === "QUOTE" ? "quote" : "order";
   const rows = await tx.$queryRaw<{ value: number }[]>`
-    INSERT INTO "Counter" (key, value) VALUES (${key}, 1001)
-    ON CONFLICT (key) DO UPDATE SET value = "Counter".value + 1
+    INSERT INTO "Counter" ("businessId", key, value) VALUES (${businessId}, ${key}, 1001)
+    ON CONFLICT ("businessId", key) DO UPDATE SET value = "Counter".value + 1
     RETURNING value`;
   return rows[0].value;
 }

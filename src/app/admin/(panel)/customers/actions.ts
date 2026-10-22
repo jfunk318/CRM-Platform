@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
+import type { BusinessDb } from "@/lib/db";
 import { all, type ActionResult, checkbox, FormError, optionalText, runAction, text } from "@/lib/admin/form";
 import { diffRows } from "@/lib/catalog/products";
 import { createOrder } from "@/lib/orders/service";
@@ -21,26 +21,27 @@ function triState(form: FormData, name: string): boolean | null {
 }
 
 /** Existing company by id, or a new one from the typed name. */
-async function companyId(form: FormData): Promise<string | null> {
+async function companyId(db: BusinessDb, form: FormData): Promise<string | null> {
   const newName = optionalText(form, "newCompany");
   if (newName) {
     const existing = await db.company.findFirst({ where: { name: { equals: newName, mode: "insensitive" } } });
-    return existing?.id ?? (await db.company.create({ data: { name: newName } })).id;
+    return existing?.id ?? (await db.company.create({ data: { businessId: db.$businessId, name: newName } })).id;
   }
   return optionalText(form, "companyId");
 }
 
 export async function createCustomer(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["SALES"]);
   let id = "";
   const result = await runAction(async () => {
     const customer = await db.customer.create({
       data: {
+        businessId: db.$businessId,
         firstName: text(form, "firstName", "First name"),
         lastName: optionalText(form, "lastName") ?? "",
         email: email(form),
         phone: optionalText(form, "phone"),
-        companyId: await companyId(form),
+        companyId: await companyId(db, form),
       },
     });
     id = customer.id;
@@ -50,7 +51,7 @@ export async function createCustomer(_: ActionResult, form: FormData): Promise<A
 }
 
 export async function saveCustomer(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["SALES"]);
   return runAction(async () => {
     const id = text(form, "id");
     await db.customer.update({
@@ -61,7 +62,7 @@ export async function saveCustomer(_: ActionResult, form: FormData): Promise<Act
         email: email(form),
         phone: optionalText(form, "phone"),
         notes: optionalText(form, "notes"),
-        companyId: await companyId(form),
+        companyId: await companyId(db, form),
         pricingGroupId: optionalText(form, "pricingGroupId"),
         taxExempt: triState(form, "taxExempt"),
       },
@@ -72,7 +73,7 @@ export async function saveCustomer(_: ActionResult, form: FormData): Promise<Act
 }
 
 export async function saveAddresses(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["SALES"]);
   return runAction(async () => {
     const customerId = text(form, "customerId");
     const cols = ["addressId", "label", "name", "line1", "line2", "city", "region", "postalCode", "country", "isDefault"];
@@ -104,7 +105,7 @@ export async function saveAddresses(_: ActionResult, form: FormData): Promise<Ac
     await db.$transaction([
       db.address.deleteMany({ where: { id: { in: d.deleteIds } } }),
       ...d.update.map(({ id, ...data }) => db.address.update({ where: { id }, data })),
-      ...d.create.map((data) => db.address.create({ data: { ...data, customerId } })),
+      ...d.create.map((data) => db.address.create({ data: { ...data, businessId: db.$businessId, customerId } })),
     ]);
     revalidatePath(`/admin/customers/${customerId}`);
   });
@@ -112,17 +113,18 @@ export async function saveAddresses(_: ActionResult, form: FormData): Promise<Ac
 
 export async function startOrder(_: ActionResult, form: FormData): Promise<ActionResult> {
   const staff = await requireStaff(["SALES"]);
+  const { db } = staff;
   let id = "";
   const result = await runAction(async () => {
     const type = form.get("type") === "ORDER" ? "ORDER" : "QUOTE";
-    id = await createOrder({ type, customerId: text(form, "customerId"), staffId: staff.id, title: optionalText(form, "title") });
+    id = await createOrder(db, { type, customerId: text(form, "customerId"), staffId: staff.id, title: optionalText(form, "title") });
   });
   if (result.error) return result;
   redirect(`/admin/orders/${id}`);
 }
 
 export async function saveCompany(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["SALES"]);
   return runAction(async () => {
     const id = text(form, "id");
     await db.company.update({

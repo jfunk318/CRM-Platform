@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { DecorationPriceCell } from "@prisma/client";
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
 import { hasAnyRole } from "@/lib/auth/roles";
 import { CAPABILITIES, DIMENSION_UNIT, KIND_LABELS, PRICING_MODEL_LABELS } from "@/lib/catalog/methods";
@@ -41,6 +40,7 @@ export default async function MethodPage({
   searchParams: Promise<{ group?: string }>;
 }) {
   const staff = await requireStaff(["SALES", "PRODUCTION"]);
+  const { db } = staff;
   const canEditSettings = hasAnyRole(staff.roles, ["ADMIN"]);
   const canEditPrices = hasAnyRole(staff.roles, ["SALES"]);
   const { id } = await params;

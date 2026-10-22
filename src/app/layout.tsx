@@ -1,4 +1,5 @@
-import { getShop } from "@/lib/shop";
+import { getRequestBusiness } from "@/lib/business";
+import { PLATFORM_NAME } from "@/lib/platform";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -14,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export async function generateMetadata() {
   return {
-    title: (await getShop()).name,
+    title: (await getRequestBusiness())?.name ?? PLATFORM_NAME,
     description: "Custom apparel, embroidery and promotional products",
   };
 }

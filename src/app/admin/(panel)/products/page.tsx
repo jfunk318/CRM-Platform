@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { Prisma } from "@prisma/client";
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
 import { ActionForm } from "@/components/admin/action-form";
 import { createProduct } from "./actions";
@@ -13,7 +12,7 @@ export default async function ProductsPage({
 }: {
   searchParams: Promise<{ q?: string; supplier?: string; category?: string; page?: string }>;
 }) {
-  await requireStaff(["SALES", "PURCHASING"]);
+  const { db } = await requireStaff(["SALES", "PURCHASING"]);
   const { q = "", supplier = "", category = "", page = "1" } = await searchParams;
   const pageNum = Math.max(1, Number(page) || 1);
 

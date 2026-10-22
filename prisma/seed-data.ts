@@ -1,13 +1,10 @@
-// Beeze Tees starting configuration, taken from the settings the old storefront
-// published to its design tool (see docs/SPEC.md §2–3). Decoration price
-// tables were not visible there; the tables below are placeholders to be
-// replaced in admin with Beeze's real prices.
+// Beeze Tees starter data (the first business on the platform), taken from the
+// settings its old storefront published to its design tool (docs/SPEC.md §2–3).
+// Every new business also gets the generic defaults in src/lib/platform/setup.ts.
+// Decoration price tables were not visible there; the tables below are
+// placeholders to be replaced in admin with Beeze's real prices.
 
-export const shop = {
-  shopName: "Beeze Tees",
-  currency: "USD",
-  priceRounding: "CENT" as const,
-};
+export const beeze = { slug: "beezetees", name: "Beeze Tees" };
 
 // Flat 40% markup on wholesale cost (price = cost × 1.40) for every product.
 // Tiers stay editable in admin if cost-based tiers are wanted later.
@@ -172,28 +169,4 @@ export const categories: { slug: string; name: string; parent?: string }[] = [
   { slug: "sweatshirts-hooded", name: "Hooded", parent: "sweatshirts" },
   { slug: "sweatshirts-full-zip", name: "Full-Zip", parent: "sweatshirts" },
   { slug: "sweatshirts-quarter-zip", name: "1/4 Zip", parent: "sweatshirts" },
-];
-
-// Starting statuses; editable in admin to match how staff divide the work.
-export const orderStatuses: {
-  type: "QUOTE" | "ORDER";
-  name: string;
-  color: string;
-  isDefault?: boolean;
-  isClosed?: boolean;
-  isConversion?: boolean;
-}[] = [
-  { type: "QUOTE", name: "Draft", color: "#9CA3AF", isDefault: true },
-  { type: "QUOTE", name: "Sent", color: "#3B82F6" },
-  { type: "QUOTE", name: "Approved", color: "#10B981" },
-  { type: "QUOTE", name: "Declined", color: "#EF4444", isClosed: true },
-  { type: "QUOTE", name: "Converted to order", color: "#6366F1", isClosed: true, isConversion: true },
-  { type: "ORDER", name: "New", color: "#3B82F6", isDefault: true },
-  { type: "ORDER", name: "Awaiting artwork", color: "#F59E0B" },
-  { type: "ORDER", name: "Artwork approved", color: "#14B8A6" },
-  { type: "ORDER", name: "Ordering blanks", color: "#8B5CF6" },
-  { type: "ORDER", name: "In production", color: "#F97316" },
-  { type: "ORDER", name: "Ready for pickup / shipping", color: "#22C55E" },
-  { type: "ORDER", name: "Completed", color: "#6B7280", isClosed: true },
-  { type: "ORDER", name: "Cancelled", color: "#EF4444", isClosed: true },
 ];

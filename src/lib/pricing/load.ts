@@ -1,5 +1,5 @@
 import "server-only";
-import { db } from "@/lib/db";
+import type { BusinessTx } from "@/lib/db";
 import type { DecorationInput, LineItemInput, MethodPricing } from "./line-item";
 import type { TaxRateInput } from "./order";
 
@@ -36,7 +36,7 @@ export class LineRequestError extends Error {}
  * one exists, else default), product-level method overrides, and the
  * product's quantity discount.
  */
-export async function loadLineItemInput(req: LineRequest): Promise<LineItemInput> {
+export async function loadLineItemInput(db: BusinessTx, req: LineRequest): Promise<LineItemInput> {
   const product = await db.product.findUnique({
     where: { id: req.productId },
     include: {
@@ -108,7 +108,7 @@ export async function loadLineItemInput(req: LineRequest): Promise<LineItemInput
     });
   }
 
-  const settings = await db.shopSettings.findUnique({ where: { id: 1 } });
+  const business = await db.business.findUniqueOrThrow({ where: { id: db.$businessId } });
   return {
     sizes,
     garmentShade: color.shade,
@@ -122,13 +122,15 @@ export async function loadLineItemInput(req: LineRequest): Promise<LineItemInput
     },
     quantityDiscountTiers: product.quantityDiscount?.tiers.map((t) => ({ minQty: t.minQty, pct: t.pct.toString() })) ?? [],
     decorations,
-    rounding: settings?.priceRounding ?? "CENT",
+    rounding: business.priceRounding,
     allowBlankSale: product.allowBlankSale,
   };
 }
 
 /** Active tax rates matching a ship-to address (country, state, ZIP). */
-export async function loadTaxRates(address: { country: string; region?: string | null; postalCode?: string | null }): Promise<TaxRateInput[]> {
+export async function loadTaxRates(
+  db: BusinessTx,
+  address: { country: string; region?: string | null; postalCode?: string | null }): Promise<TaxRateInput[]> {
   const rates = await db.taxRate.findMany({ where: { active: true, country: address.country.toUpperCase() } });
   const region = address.region?.toUpperCase() ?? null;
   const zip = address.postalCode?.replace(/\s/g, "") ?? "";

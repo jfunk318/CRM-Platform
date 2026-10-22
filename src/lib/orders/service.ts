@@ -1,6 +1,6 @@
 import "server-only";
-import type { OrderEventType, OrderType, Prisma } from "@prisma/client";
-import { db } from "@/lib/db";
+import type { OrderEventType, OrderType } from "@prisma/client";
+import type { BusinessDb, BusinessTx } from "@/lib/db";
 import { nextOrderNumber, orderRef } from "./numbers";
 import { repriceOrder } from "./pricing";
 
@@ -31,21 +31,21 @@ export interface LineSpec {
 }
 
 async function logEvent(
-  tx: Prisma.TransactionClient,
+  tx: BusinessTx,
+  businessId: string,
   orderId: string,
   type: OrderEventType,
   body: string,
   staffId: string | null,
 ) {
-  await tx.orderEvent.create({ data: { orderId, type, body, staffId } });
+  await tx.orderEvent.create({ data: { businessId, orderId, type, body, staffId } });
 }
 
-export async function createOrder(input: {
-  type: OrderType;
-  customerId: string;
-  staffId: string | null;
-  title?: string | null;
-}): Promise<string> {
+export async function createOrder(
+  db: BusinessDb,
+  input: { type: OrderType; customerId: string; staffId: string | null; title?: string | null },
+): Promise<string> {
+  const businessId = db.$businessId;
   const id = await db.$transaction(async (tx) => {
     const customer = await tx.customer.findUniqueOrThrow({
       where: { id: input.customerId },
@@ -58,8 +58,9 @@ export async function createOrder(input: {
     const ship = customer.addresses[0];
     const order = await tx.order.create({
       data: {
+        businessId,
         type: input.type,
-        number: await nextOrderNumber(tx, input.type),
+        number: await nextOrderNumber(tx, businessId, input.type),
         title: input.title,
         customerId: customer.id,
         companyId: customer.companyId,
@@ -77,14 +78,14 @@ export async function createOrder(input: {
         }),
       },
     });
-    await logEvent(tx, order.id, "CREATED", `${input.type === "QUOTE" ? "Quote" : "Order"} ${orderRef(order)} created`, input.staffId);
+    await logEvent(tx, businessId, order.id, "CREATED", `${input.type === "QUOTE" ? "Quote" : "Order"} ${orderRef(order)} created`, input.staffId);
     return order.id;
   });
-  await repriceOrder(id);
+  await repriceOrder(db, id);
   return id;
 }
 
-async function validateLine(spec: LineSpec) {
+async function validateLine(db: BusinessDb, spec: LineSpec) {
   const product = await db.product.findUnique({
     where: { id: spec.productId },
     include: { colors: true, sizes: true, variants: { where: { colorId: spec.colorId } } },
@@ -124,12 +125,14 @@ const decorationData = (d: DecorationSpec, i: number) => ({
   sortOrder: i,
 });
 
-export async function addLine(orderId: string, spec: LineSpec, staffId: string | null): Promise<string> {
-  const { product, color, sizes } = await validateLine(spec);
+export async function addLine(db: BusinessDb, orderId: string, spec: LineSpec, staffId: string | null): Promise<string> {
+  const businessId = db.$businessId;
+  const { product, color, sizes } = await validateLine(db, spec);
   const lineId = await db.$transaction(async (tx) => {
     const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { _count: { select: { lines: true } } } });
     const design = await tx.design.create({
       data: {
+        businessId,
         name: `${product.name} — ${color.name}`,
         productId: product.id,
         colorId: color.id,
@@ -139,6 +142,7 @@ export async function addLine(orderId: string, spec: LineSpec, staffId: string |
     });
     const line = await tx.orderLine.create({
       data: {
+        businessId,
         orderId,
         designId: design.id,
         notes: spec.notes,
@@ -146,10 +150,10 @@ export async function addLine(orderId: string, spec: LineSpec, staffId: string |
         sizes: { create: sizes.map(([sizeId, qty]) => ({ sizeId, qty })) },
       },
     });
-    await logEvent(tx, orderId, "EDITED", `Added ${product.name} (${color.name})`, staffId);
+    await logEvent(tx, businessId, orderId, "EDITED", `Added ${product.name} (${color.name})`, staffId);
     return line.id;
   });
-  await repriceOrder(orderId);
+  await repriceOrder(db, orderId);
   return lineId;
 }
 
@@ -158,8 +162,9 @@ export async function addLine(orderId: string, spec: LineSpec, staffId: string |
  * also uses it, in which case the line gets its own copy so the others are
  * unaffected.
  */
-export async function updateLine(lineId: string, spec: LineSpec, staffId: string | null): Promise<void> {
-  const { product, color, sizes } = await validateLine(spec);
+export async function updateLine(db: BusinessDb, lineId: string, spec: LineSpec, staffId: string | null): Promise<void> {
+  const businessId = db.$businessId;
+  const { product, color, sizes } = await validateLine(db, spec);
   const line = await db.orderLine.findUniqueOrThrow({
     where: { id: lineId },
     include: { order: true, design: { include: { _count: { select: { orderLines: true } } } } },
@@ -170,62 +175,67 @@ export async function updateLine(lineId: string, spec: LineSpec, staffId: string
     let designId = line.designId;
     if (shared) {
       const copy = await tx.design.create({
-        data: { ...designData, customerId: line.order.customerId, decorations: { create: spec.decorations.map(decorationData) } },
+        data: { ...designData, businessId, customerId: line.order.customerId, decorations: { create: spec.decorations.map(decorationData) } },
       });
       designId = copy.id;
     } else {
       await tx.design.update({ where: { id: designId }, data: designData });
       await tx.designDecoration.deleteMany({ where: { designId } });
-      await tx.designDecoration.createMany({ data: spec.decorations.map((d, i) => ({ ...decorationData(d, i), designId })) });
+      await tx.designDecoration.createMany({ data: spec.decorations.map((d, i) => ({ ...decorationData(d, i), businessId, designId })) });
     }
     await tx.orderLine.update({ where: { id: lineId }, data: { designId, notes: spec.notes } });
     await tx.orderLineSize.deleteMany({ where: { lineId } });
-    await tx.orderLineSize.createMany({ data: sizes.map(([sizeId, qty]) => ({ lineId, sizeId, qty })) });
-    await logEvent(tx, line.orderId, "EDITED", `Updated ${product.name} (${color.name})`, staffId);
+    await tx.orderLineSize.createMany({ data: sizes.map(([sizeId, qty]) => ({ businessId, lineId, sizeId, qty })) });
+    await logEvent(tx, businessId, line.orderId, "EDITED", `Updated ${product.name} (${color.name})`, staffId);
   });
-  await repriceOrder(line.orderId);
+  await repriceOrder(db, line.orderId);
 }
 
-export async function removeLine(lineId: string, staffId: string | null): Promise<void> {
+export async function removeLine(db: BusinessDb, lineId: string, staffId: string | null): Promise<void> {
+  const businessId = db.$businessId;
   const line = await db.orderLine.findUniqueOrThrow({
     where: { id: lineId },
     include: { design: { include: { product: true, color: true } } },
   });
   await db.$transaction(async (tx) => {
     await tx.orderLine.delete({ where: { id: lineId } });
-    await logEvent(tx, line.orderId, "EDITED", `Removed ${line.design.product.name} (${line.design.color.name})`, staffId);
+    await logEvent(tx, businessId, line.orderId, "EDITED", `Removed ${line.design.product.name} (${line.design.color.name})`, staffId);
   });
-  await repriceOrder(line.orderId);
+  await repriceOrder(db, line.orderId);
 }
 
-export async function setStatus(orderId: string, statusId: string, staffId: string | null): Promise<void> {
+export async function setStatus(db: BusinessDb, orderId: string, statusId: string, staffId: string | null): Promise<void> {
+  const businessId = db.$businessId;
   await db.$transaction(async (tx) => {
     const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { status: true } });
     const status = await tx.orderStatus.findUniqueOrThrow({ where: { id: statusId } });
     if (status.type !== order.type) throw new OrderError("That status belongs to the other document type");
     if (status.id === order.statusId) return;
     await tx.order.update({ where: { id: orderId }, data: { statusId } });
-    await logEvent(tx, orderId, "STATUS", `Status: ${order.status.name} → ${status.name}`, staffId);
+    await logEvent(tx, businessId, orderId, "STATUS", `Status: ${order.status.name} → ${status.name}`, staffId);
   });
 }
 
-export async function assign(orderId: string, assigneeId: string | null, staffId: string | null): Promise<void> {
+export async function assign(db: BusinessDb, orderId: string, assigneeId: string | null, staffId: string | null): Promise<void> {
+  const businessId = db.$businessId;
   await db.$transaction(async (tx) => {
     const order = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
     if (order.assignedToId === assigneeId) return;
     const who = assigneeId ? (await tx.staffUser.findUniqueOrThrow({ where: { id: assigneeId } })).name : "nobody";
     await tx.order.update({ where: { id: orderId }, data: { assignedToId: assigneeId } });
-    await logEvent(tx, orderId, "ASSIGNED", `Assigned to ${who}`, staffId);
+    await logEvent(tx, businessId, orderId, "ASSIGNED", `Assigned to ${who}`, staffId);
   });
 }
 
-export async function addNote(orderId: string, body: string, staffId: string | null): Promise<void> {
+export async function addNote(db: BusinessDb, orderId: string, body: string, staffId: string | null): Promise<void> {
+  const businessId = db.$businessId;
   if (!body.trim()) throw new OrderError("Write a note first");
-  await db.orderEvent.create({ data: { orderId, type: "NOTE", body: body.trim(), staffId } });
+  await db.orderEvent.create({ data: { businessId, orderId, type: "NOTE", body: body.trim(), staffId } });
 }
 
 /** Turn a quote into a new order. The quote keeps its lines and is marked converted. */
-export async function convertQuote(quoteId: string, staffId: string | null): Promise<string> {
+export async function convertQuote(db: BusinessDb, quoteId: string, staffId: string | null): Promise<string> {
+  const businessId = db.$businessId;
   const orderId = await db.$transaction(async (tx) => {
     const quote = await tx.order.findUniqueOrThrow({
       where: { id: quoteId },
@@ -246,8 +256,9 @@ export async function convertQuote(quoteId: string, staffId: string | null): Pro
 
     const order = await tx.order.create({
       data: {
+        businessId,
         type: "ORDER",
-        number: await nextOrderNumber(tx, "ORDER"),
+        number: await nextOrderNumber(tx, businessId, "ORDER"),
         quoteId: quote.id,
         title: quote.title,
         customerId: quote.customerId,
@@ -280,11 +291,11 @@ export async function convertQuote(quoteId: string, staffId: string | null): Pro
       },
     });
     if (convertedStatus) await tx.order.update({ where: { id: quote.id }, data: { statusId: convertedStatus.id } });
-    await logEvent(tx, quote.id, "CONVERTED", `Converted to order ${orderRef(order)}`, staffId);
-    await logEvent(tx, order.id, "CREATED", `Order ${orderRef(order)} created from quote ${orderRef(quote)}`, staffId);
+    await logEvent(tx, businessId, quote.id, "CONVERTED", `Converted to order ${orderRef(order)}`, staffId);
+    await logEvent(tx, businessId, order.id, "CREATED", `Order ${orderRef(order)} created from quote ${orderRef(quote)}`, staffId);
     return order.id;
   });
-  await repriceOrder(orderId);
+  await repriceOrder(db, orderId);
   return orderId;
 }
 
@@ -307,7 +318,8 @@ export interface OrderDetailsInput {
   };
 }
 
-export async function updateDetails(orderId: string, input: OrderDetailsInput, staffId: string | null): Promise<void> {
+export async function updateDetails(db: BusinessDb, orderId: string, input: OrderDetailsInput, staffId: string | null): Promise<void> {
+  const businessId = db.$businessId;
   await db.$transaction(async (tx) => {
     await tx.order.update({
       where: { id: orderId },
@@ -328,7 +340,7 @@ export async function updateDetails(orderId: string, input: OrderDetailsInput, s
         shipCountry: input.ship.country.toUpperCase() || "US",
       },
     });
-    await logEvent(tx, orderId, "EDITED", "Updated details", staffId);
+    await logEvent(tx, businessId, orderId, "EDITED", "Updated details", staffId);
   });
-  await repriceOrder(orderId);
+  await repriceOrder(db, orderId);
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { forBusiness } from "@/lib/db";
 import { getCurrentStaff } from "@/lib/auth/session";
+import { getRequestBusiness } from "@/lib/business";
 import { hasAnyRole } from "@/lib/auth/roles";
 
 export type OrderOptions = {
@@ -14,8 +15,12 @@ export type OrderOptions = {
 
 /** What the order line editor needs to configure one product. */
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const staff = await getCurrentStaff();
-  if (!staff || !hasAnyRole(staff.roles, ["SALES"])) return NextResponse.json({ error: "Not allowed" }, { status: 403 });
+  // getCurrentStaff only returns staff of the business this host belongs to.
+  const [staff, business] = [await getCurrentStaff(), await getRequestBusiness()];
+  if (!staff || !business || !hasAnyRole(staff.roles, ["SALES"])) {
+    return NextResponse.json({ error: "Not allowed" }, { status: 403 });
+  }
+  const db = forBusiness(business.id);
   const { id } = await params;
   const p = await db.product.findUnique({
     where: { id },

@@ -1,11 +1,10 @@
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
 import { ActionForm } from "@/components/admin/action-form";
 import { RowsEditor } from "@/components/admin/rows-editor";
 import { saveStatuses } from "./actions";
 
 export default async function OrderStatusesPage() {
-  await requireStaff(["ADMIN"]);
+  const { db } = await requireStaff(["ADMIN"]);
   const statuses = await db.orderStatus.findMany({
     orderBy: { sortOrder: "asc" },
     include: { _count: { select: { orders: true } } },

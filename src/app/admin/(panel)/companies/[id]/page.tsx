@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
 import { ActionForm } from "@/components/admin/action-form";
 import { OrderTable, orderTableInclude } from "@/components/admin/order-table";
 import { saveCompany } from "../../customers/actions";
 
 export default async function CompanyPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["SALES"]);
   const { id } = await params;
   const [company, groups] = await Promise.all([
     db.company.findUnique({

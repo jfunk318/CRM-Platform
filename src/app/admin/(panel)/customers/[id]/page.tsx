@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
 import { ActionForm } from "@/components/admin/action-form";
 import { CompanyPicker } from "@/components/admin/company-picker";
@@ -9,7 +8,7 @@ import { RowsEditor } from "@/components/admin/rows-editor";
 import { saveAddresses, saveCustomer, startOrder } from "../actions";
 
 export default async function CustomerPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["SALES"]);
   const { id } = await params;
   const [customer, companies, groups] = await Promise.all([
     db.customer.findUnique({

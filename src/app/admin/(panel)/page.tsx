@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
 import { OrderTable, orderTableInclude } from "@/components/admin/order-table";
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string }> }) {
   const staff = await requireStaff();
+  const { db } = staff;
   const { denied } = await searchParams;
   const [products, methods, placeholderTables, mine] = await Promise.all([
     db.product.count(),

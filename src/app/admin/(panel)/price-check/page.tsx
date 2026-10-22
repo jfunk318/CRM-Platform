@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
 import { priceLineItem, priceOrder } from "@/lib/pricing";
 import { type DecorationRequest, LineRequestError, loadLineItemInput, loadTaxRates } from "@/lib/pricing/load";
@@ -15,7 +14,7 @@ const num = (v: string | undefined) => (v && Number.isFinite(Number(v)) ? Number
  * to check that catalog costs, markups and price tables are right.
  */
 export default async function PriceCheckPage({ searchParams }: { searchParams: Promise<Params> }) {
-  await requireStaff(["SALES"]);
+  const { db, business: settings } = await requireStaff(["SALES"]);
   const sp = await searchParams;
   const products = await db.product.findMany({
     where: { variants: { some: {} } },
@@ -35,10 +34,7 @@ export default async function PriceCheckPage({ searchParams }: { searchParams: P
         },
       })
     : null;
-  const [groups, settings] = await Promise.all([
-    db.pricingGroup.findMany({ orderBy: [{ isDefault: "desc" }, { name: "asc" }] }),
-    db.shopSettings.findUnique({ where: { id: 1 } }),
-  ]);
+  const groups = await db.pricingGroup.findMany({ orderBy: [{ isDefault: "desc" }, { name: "asc" }] });
 
   const colorId = sp.color ?? product?.colors[0]?.id ?? "";
   const methods =
@@ -69,14 +65,14 @@ export default async function PriceCheckPage({ searchParams }: { searchParams: P
       });
     }
     try {
-      const input = await loadLineItemInput({ productId: product.id, colorId, quantities, decorations, pricingGroupId: sp.group });
+      const input = await loadLineItemInput(db, { productId: product.id, colorId, quantities, decorations, pricingGroupId: sp.group });
       const line = priceLineItem(input);
-      const taxRates = sp.state ? await loadTaxRates({ country: "US", region: sp.state, postalCode: sp.zip }) : [];
+      const taxRates = sp.state ? await loadTaxRates(db, { country: "US", region: sp.state, postalCode: sp.zip }) : [];
       const totals = priceOrder({
         lines: [line],
         shipping: num(sp.shipping) ?? 0,
-        rushFeePct: sp.rush === "on" ? settings?.rushFeePct.toString() : 0,
-        paymentSurchargePct: sp.card === "on" ? settings?.paymentSurchargePct.toString() : 0,
+        rushFeePct: sp.rush === "on" ? settings.rushFeePct.toString() : 0,
+        paymentSurchargePct: sp.card === "on" ? settings.paymentSurchargePct.toString() : 0,
         taxRates,
       });
       result = { line, totals };

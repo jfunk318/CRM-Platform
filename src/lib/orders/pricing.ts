@@ -1,6 +1,6 @@
 import "server-only";
 import { Prisma } from "@prisma/client";
-import { db } from "@/lib/db";
+import type { BusinessDb } from "@/lib/db";
 import { type LineItemPrice, priceLineItem, priceOrder, type PricingIssue } from "@/lib/pricing";
 import { type DecorationRequest, LineRequestError, loadLineItemInput, loadTaxRates } from "@/lib/pricing/load";
 
@@ -42,7 +42,7 @@ export function pricingGroupFor(order: Pick<OrderForPricing, "pricingGroupId" | 
  * and tax for the ship-to address. Pricing problems are stored as issues
  * on each line rather than failing the save.
  */
-export async function repriceOrder(orderId: string): Promise<void> {
+export async function repriceOrder(db: BusinessDb, orderId: string): Promise<void> {
   const order = await db.order.findUniqueOrThrow({ where: { id: orderId }, include: orderForPricing });
   const combinable = await db.decorationMethod.findMany({ where: { combineSameDesignQty: true }, select: { id: true } });
   const combineIds = new Set(combinable.map((m) => m.id));
@@ -72,7 +72,7 @@ export async function repriceOrder(orderId: string): Promise<void> {
       pricingQty: combineIds.has(d.methodId) ? combinedQty.get(sameDesignKey(d)) : undefined,
     }));
     try {
-      const input = await loadLineItemInput({
+      const input = await loadLineItemInput(db, {
         productId: line.design.productId,
         colorId: line.design.colorId,
         quantities: Object.fromEntries(line.sizes.map((s) => [s.sizeId, s.qty])),
@@ -89,16 +89,16 @@ export async function repriceOrder(orderId: string): Promise<void> {
 
   shareScreenFees(order, priced, combineIds);
 
-  const settings = await db.shopSettings.findUnique({ where: { id: 1 } });
+  const business = await db.business.findUniqueOrThrow({ where: { id: db.$businessId } });
   const taxExempt = order.taxExempt || (order.customer.taxExempt ?? order.customer.company?.taxExempt ?? false);
   const taxRates =
     taxExempt || !order.shipRegion
       ? []
-      : await loadTaxRates({ country: order.shipCountry, region: order.shipRegion, postalCode: order.shipPostalCode });
+      : await loadTaxRates(db, { country: order.shipCountry, region: order.shipRegion, postalCode: order.shipPostalCode });
   const totals = priceOrder({
     lines: priced.flatMap((p) => (p.price ? [p.price] : [])),
     shipping: order.shipping.toString(),
-    rushFeePct: order.rush ? (settings?.rushFeePct.toString() ?? 0) : 0,
+    rushFeePct: order.rush ? business.rushFeePct.toString() : 0,
     taxRates,
   });
 

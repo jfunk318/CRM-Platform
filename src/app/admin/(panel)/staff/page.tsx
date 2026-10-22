@@ -1,5 +1,4 @@
 import type { StaffUser } from "@prisma/client";
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
 import { MIN_PASSWORD_LENGTH } from "@/lib/auth/password";
 import { ALL_ROLES, ROLE_LABELS } from "@/lib/auth/roles";
@@ -8,6 +7,7 @@ import { createStaff, saveStaff } from "./actions";
 
 export default async function StaffPage() {
   const me = await requireStaff(["ADMIN"]);
+  const { db } = me;
   const staff = await db.staffUser.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }] });
 
   return (

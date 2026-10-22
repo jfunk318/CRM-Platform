@@ -3,7 +3,6 @@
 import type { DecorationKind, DecorationPricingModel } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
 import {
   type ActionResult,
@@ -45,13 +44,14 @@ const defaultModel: Record<DecorationKind, DecorationPricingModel> = {
 };
 
 export async function createMethod(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff(["ADMIN"]);
+  const { db } = await requireStaff(["ADMIN"]);
   let id = "";
   const result = await runAction(async () => {
     const k = kind(form);
     const name = text(form, "name", "Name");
     const method = await db.decorationMethod.create({
       data: {
+        businessId: db.$businessId,
         name,
         shortName: name,
         code: text(form, "code", "Code").toUpperCase(),
@@ -62,7 +62,9 @@ export async function createMethod(_: ActionResult, form: FormData): Promise<Act
       },
     });
     const apparel = await db.productType.findFirst({ where: { name: "Apparel" } });
-    if (apparel) await db.productTypeDecoration.create({ data: { productTypeId: apparel.id, methodId: method.id } });
+    if (apparel) {
+      await db.productTypeDecoration.create({ data: { businessId: db.$businessId, productTypeId: apparel.id, methodId: method.id } });
+    }
     id = method.id;
   });
   if (result.error) return result;
@@ -70,7 +72,7 @@ export async function createMethod(_: ActionResult, form: FormData): Promise<Act
 }
 
 export async function saveMethod(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff(["ADMIN"]);
+  const { db } = await requireStaff(["ADMIN"]);
   return runAction(async () => {
     const id = text(form, "id");
     const current = await db.decorationMethod.findUniqueOrThrow({ where: { id } });
@@ -120,7 +122,7 @@ export async function saveMethod(_: ActionResult, form: FormData): Promise<Actio
 }
 
 export async function savePriceTable(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["SALES"]);
   return runAction(async () => {
     const methodId = text(form, "methodId");
     const pricingGroupId = optionalText(form, "pricingGroupId");
@@ -132,10 +134,10 @@ export async function savePriceTable(_: ActionResult, form: FormData): Promise<A
       const table =
         existing ??
         (await tx.decorationPriceTable.create({
-          data: { methodId, pricingGroupId, name: `${method.shortName} prices` },
+          data: { businessId: db.$businessId, methodId, pricingGroupId, name: `${method.shortName} prices` },
         }));
       await tx.decorationPriceCell.deleteMany({ where: { tableId: table.id } });
-      await tx.decorationPriceCell.createMany({ data: cells.map((c) => ({ ...c, tableId: table.id })) });
+      await tx.decorationPriceCell.createMany({ data: cells.map((c) => ({ ...c, businessId: db.$businessId, tableId: table.id })) });
       await tx.decorationPriceTable.update({ where: { id: table.id }, data: { isPlaceholder: false } });
     });
     revalidatePath(`/admin/methods/${methodId}`);
@@ -145,7 +147,7 @@ export async function savePriceTable(_: ActionResult, form: FormData): Promise<A
 }
 
 export async function deletePriceTable(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["SALES"]);
   return runAction(async () => {
     const methodId = text(form, "methodId");
     const pricingGroupId = text(form, "pricingGroupId"); // the default table can't be deleted

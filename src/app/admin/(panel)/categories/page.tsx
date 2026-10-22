@@ -1,5 +1,4 @@
 import type { Category } from "@prisma/client";
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
 import { ActionForm } from "@/components/admin/action-form";
 import { deleteCategory, saveCategory } from "./actions";
@@ -21,7 +20,7 @@ function flatten(all: (Category & { _count: { products: number } })[]): Node[] {
 }
 
 export default async function CategoriesPage() {
-  await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["SALES"]);
   const tree = flatten(await db.category.findMany({ include: { _count: { select: { products: true } } } }));
   const parentOptions = (excludeId?: string) =>
     tree

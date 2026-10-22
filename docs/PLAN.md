@@ -29,6 +29,11 @@ orders come before the public storefront.
    orders built from catalog products and decorations with live pricing,
    reusable designs, editable order statuses, staff assignment, activity
    timeline and notes, quote-to-order conversion.
+2b. ✅ **Multi-business platform.** Every record belongs to a business,
+   enforced by a business-scoped database client and composite foreign keys;
+   businesses resolved from the request's host; per-business staff sign-in;
+   platform admin to add, configure and suspend businesses. Platform billing
+   comes later.
 3. **Approvals, artwork, payments.** Customer quote approval links, artwork
    proofs with approve/request-changes, artwork file storage, recorded
    payments and deposits, invoices and emails.
@@ -68,3 +73,5 @@ phases 1–3 need real product data.
   activity timeline and notes; quote-to-order conversion (blocked while
   items have pricing problems); "assigned to me" on the dashboard. Lines
   point at reusable designs, ready for publishing to stores in phase 7.
+- **Multi-business (done):** Name TBD now hosts many businesses. Existing
+  data moved into Beeze Tees. Platform admin at `/platform`.

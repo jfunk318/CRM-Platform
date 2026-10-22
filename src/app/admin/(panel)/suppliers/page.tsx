@@ -1,6 +1,5 @@
 import type { Supplier } from "@prisma/client";
 import Link from "next/link";
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
 import { ActionForm } from "@/components/admin/action-form";
 import { saveSupplier } from "./actions";
@@ -13,7 +12,7 @@ const INTEGRATION_LABELS = {
 } as const;
 
 export default async function SuppliersPage() {
-  await requireStaff(["PURCHASING"]);
+  const { db } = await requireStaff(["PURCHASING"]);
   const suppliers = await db.supplier.findMany({
     orderBy: [{ active: "desc" }, { name: "asc" }],
     include: { _count: { select: { products: true } } },

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { OrderType, Prisma } from "@prisma/client";
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
 import { OrderTable, orderTableInclude } from "@/components/admin/order-table";
 
@@ -12,6 +11,7 @@ export default async function OrdersPage({
   searchParams: Promise<{ type?: string; status?: string; who?: string; q?: string; show?: string; page?: string }>;
 }) {
   const staff = await requireStaff();
+  const { db } = staff;
   const sp = await searchParams;
   const type: OrderType = sp.type === "QUOTE" ? "QUOTE" : "ORDER";
   const who = sp.who ?? "";

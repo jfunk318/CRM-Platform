@@ -14,6 +14,15 @@ Three levels, kept distinct throughout [B]:
 | **Business** using the platform | Beeze Tees | Its own name and domain, set in shop settings (e.g. `beezetees.com`) |
 | **Affiliate store** of that business | Lincoln Hockey | Subdomain of the business's domain (`lincoln-hockey.beezetees.com`) |
 
+**Multi-business** [B]: like DecoNetwork, many businesses use the platform.
+Each business's data is completely separate (enforced in the app and in the
+database). The platform operator manages businesses in a platform admin
+area: add a business with its first admin and starting setup, set its
+platform address and custom domain, suspend or reactivate it. Each business
+manages everything from its own back office (its overall dashboard), and
+each of its affiliate stores gets its own dashboard (14.7). Platform billing
+(subscriptions) is to be added later.
+
 Beeze Tees is the first business on the platform and the source of the
 feature requirements below (it is replacing a DecoNetwork subscription,
 which has ended). Customers of a business see that business's brand; the

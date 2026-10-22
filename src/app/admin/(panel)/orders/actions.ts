@@ -78,9 +78,10 @@ function parseLine(form: FormData): LineSpec {
 
 export async function addLineAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   const staff = await requireStaff(["SALES"]);
+  const { db } = staff;
   const orderId = text(form, "orderId");
   return run(async () => {
-    await addLine(orderId, parseLine(form), staff.id);
+    await addLine(db, orderId, parseLine(form), staff.id);
     refresh(orderId);
     return "Item added";
   });
@@ -88,18 +89,20 @@ export async function addLineAction(_: ActionResult, form: FormData): Promise<Ac
 
 export async function updateLineAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   const staff = await requireStaff(["SALES"]);
+  const { db } = staff;
   const orderId = text(form, "orderId");
   return run(async () => {
-    await updateLine(text(form, "lineId"), parseLine(form), staff.id);
+    await updateLine(db, text(form, "lineId"), parseLine(form), staff.id);
     refresh(orderId);
   });
 }
 
 export async function removeLineAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   const staff = await requireStaff(["SALES"]);
+  const { db } = staff;
   const orderId = text(form, "orderId");
   return run(async () => {
-    await removeLine(text(form, "lineId"), staff.id);
+    await removeLine(db, text(form, "lineId"), staff.id);
     refresh(orderId);
     return "Removed";
   });
@@ -108,9 +111,10 @@ export async function removeLineAction(_: ActionResult, form: FormData): Promise
 export async function setStatusAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   // Anyone working an order (production, shipping…) can move its status.
   const staff = await requireStaff();
+  const { db } = staff;
   const orderId = text(form, "orderId");
   return run(async () => {
-    await setStatus(orderId, text(form, "statusId", "Status"), staff.id);
+    await setStatus(db, orderId, text(form, "statusId", "Status"), staff.id);
     refresh(orderId);
     return "Status updated";
   });
@@ -118,9 +122,10 @@ export async function setStatusAction(_: ActionResult, form: FormData): Promise<
 
 export async function assignAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   const staff = await requireStaff();
+  const { db } = staff;
   const orderId = text(form, "orderId");
   return run(async () => {
-    await assign(orderId, optionalText(form, "assignedToId"), staff.id);
+    await assign(db, orderId, optionalText(form, "assignedToId"), staff.id);
     refresh(orderId);
     return "Assigned";
   });
@@ -128,9 +133,10 @@ export async function assignAction(_: ActionResult, form: FormData): Promise<Act
 
 export async function addNoteAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   const staff = await requireStaff();
+  const { db } = staff;
   const orderId = text(form, "orderId");
   return run(async () => {
-    await addNote(orderId, String(form.get("body") ?? ""), staff.id);
+    await addNote(db, orderId, String(form.get("body") ?? ""), staff.id);
     refresh(orderId);
     return "Note added";
   });
@@ -138,11 +144,12 @@ export async function addNoteAction(_: ActionResult, form: FormData): Promise<Ac
 
 export async function saveDetailsAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   const staff = await requireStaff(["SALES"]);
+  const { db } = staff;
   const orderId = text(form, "orderId");
   return run(async () => {
     const due = optionalText(form, "dueDate");
     if (due && !/^\d{4}-\d{2}-\d{2}$/.test(due)) throw new FormError("Due date must be a date");
-    await updateDetails(
+    await updateDetails(db, 
       orderId,
       {
         title: optionalText(form, "title"),
@@ -170,9 +177,10 @@ export async function saveDetailsAction(_: ActionResult, form: FormData): Promis
 
 export async function convertQuoteAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   const staff = await requireStaff(["SALES"]);
+  const { db } = staff;
   let orderId = "";
   const result = await run(async () => {
-    orderId = await convertQuote(text(form, "orderId"), staff.id);
+    orderId = await convertQuote(db, text(form, "orderId"), staff.id);
   });
   if (result.error) return result;
   redirect(`/admin/orders/${orderId}`);

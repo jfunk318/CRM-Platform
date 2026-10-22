@@ -2,7 +2,6 @@
 
 import type { StaffRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
 import { hashPassword, MIN_PASSWORD_LENGTH, verifyPassword } from "@/lib/auth/password";
 import { ALL_ROLES } from "@/lib/auth/roles";
@@ -23,14 +22,16 @@ function email(form: FormData) {
 }
 
 export async function createStaff(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff(["ADMIN"]);
+  const { db } = await requireStaff(["ADMIN"]);
   return runAction(async () => {
     const password = String(form.get("password") ?? "");
     checkPassword(password);
     const r = roles(form);
     if (r.length === 0) throw new FormError("Give the new staff member at least one role");
     const name = text(form, "name", "Name");
-    await db.staffUser.create({ data: { name, email: email(form), roles: r, passwordHash: await hashPassword(password) } });
+    await db.staffUser.create({
+      data: { businessId: db.$businessId, name, email: email(form), roles: r, passwordHash: await hashPassword(password) },
+    });
     revalidatePath("/admin/staff");
     return `Added ${name}`;
   });
@@ -38,6 +39,7 @@ export async function createStaff(_: ActionResult, form: FormData): Promise<Acti
 
 export async function saveStaff(_: ActionResult, form: FormData): Promise<ActionResult> {
   const me = await requireStaff(["ADMIN"]);
+  const { db } = me;
   return runAction(async () => {
     const id = text(form, "id");
     const newRoles = roles(form);
@@ -74,6 +76,7 @@ export async function saveStaff(_: ActionResult, form: FormData): Promise<Action
 
 export async function changeMyPassword(_: ActionResult, form: FormData): Promise<ActionResult> {
   const me = await requireStaff();
+  const { db } = me;
   return runAction(async () => {
     const user = await db.staffUser.findUniqueOrThrow({ where: { id: me.id } });
     const current = String(form.get("current") ?? "");

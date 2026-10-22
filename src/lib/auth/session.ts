@@ -1,21 +1,23 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
-import type { StaffRole } from "@prisma/client";
+import type { Business, StaffRole } from "@prisma/client";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
-import { db } from "@/lib/db";
+import { type BusinessDb, forBusiness, prisma } from "@/lib/db";
+import { getRequestBusiness } from "@/lib/business";
 import { hasAnyRole } from "./roles";
 
-export const SESSION_COOKIE = "beeze_staff";
+export const SESSION_COOKIE = "staff_session";
 const SESSION_DAYS = 14;
 
-const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
+export const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 
+/** Session cookies are per host, so each business's site has its own sign-in. */
 export async function createStaffSession(userId: string): Promise<void> {
   const token = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
-  await db.staffSession.create({ data: { tokenHash: hashToken(token), userId, expiresAt } });
+  await prisma.staffSession.create({ data: { tokenHash: hashToken(token), userId, expiresAt } });
   (await cookies()).set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -28,32 +30,46 @@ export async function createStaffSession(userId: string): Promise<void> {
 export async function destroyStaffSession(): Promise<void> {
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
-  if (token) await db.staffSession.deleteMany({ where: { tokenHash: hashToken(token) } });
+  if (token) await prisma.staffSession.deleteMany({ where: { tokenHash: hashToken(token) } });
   jar.delete(SESSION_COOKIE);
 }
 
 export type CurrentStaff = { id: string; email: string; name: string; roles: StaffRole[] };
 
-/** The signed-in staff member for this request, or null. */
+/** Signed-in staff member of the business this request is for, or null. */
 export const getCurrentStaff = cache(async (): Promise<CurrentStaff | null> => {
-  const token = (await cookies()).get(SESSION_COOKIE)?.value;
-  if (!token) return null;
-  const session = await db.staffSession.findUnique({
+  const [token, business] = [(await cookies()).get(SESSION_COOKIE)?.value, await getRequestBusiness()];
+  if (!token || !business || business.status !== "ACTIVE") return null;
+  const session = await prisma.staffSession.findUnique({
     where: { tokenHash: hashToken(token) },
     include: { user: true },
   });
   if (!session || session.expiresAt < new Date() || !session.user.active) return null;
+  // A session from one business is never valid on another business's site.
+  if (session.user.businessId !== business.id) return null;
   const { id, email, name, roles } = session.user;
   return { id, email, name, roles };
 });
 
+export type StaffContext = CurrentStaff & {
+  business: Business;
+  /** Database client limited to this business's data. */
+  db: BusinessDb;
+};
+
+const scopedDb = cache((businessId: string) => forBusiness(businessId));
+
 /**
- * Require a signed-in staff member (and optionally one of `roles`).
- * Redirects to login when signed out, or to the admin home when the role is missing.
+ * Require a signed-in staff member (and optionally one of `roles`) for the
+ * business this request is for. Returns them with that business and a
+ * database client scoped to it.
  */
-export async function requireStaff(roles: StaffRole[] = []): Promise<CurrentStaff> {
+export async function requireStaff(roles: StaffRole[] = []): Promise<StaffContext> {
+  const business = await getRequestBusiness();
+  if (!business) notFound();
+  if (business.status !== "ACTIVE") redirect("/admin/login?suspended=1");
   const staff = await getCurrentStaff();
   if (!staff) redirect("/admin/login");
   if (!hasAnyRole(staff.roles, roles)) redirect("/admin?denied=1");
-  return staff;
+  return { ...staff, business, db: scopedDb(business.id) };
 }

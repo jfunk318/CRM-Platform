@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
 import { hasAnyRole } from "@/lib/auth/roles";
 import { orderRef } from "@/lib/orders/numbers";
@@ -25,6 +24,7 @@ const when = (d: Date) =>
 
 export default async function OrderPage({ params }: { params: Promise<{ id: string }> }) {
   const staff = await requireStaff();
+  const { db } = staff;
   const canEdit = hasAnyRole(staff.roles, ["SALES"]);
   const { id } = await params;
   const order = await db.order.findUnique({

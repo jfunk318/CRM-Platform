@@ -69,8 +69,11 @@ export async function runAction(fn: () => Promise<string | void>): Promise<Actio
     return { ok: (await fn()) || "Saved" };
   } catch (e) {
     if (e instanceof FormError) return { error: e.message };
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-      return { error: "That would create a duplicate (a name or code is already in use)" };
+    if (e instanceof Prisma.PrismaClientKnownRequestError) {
+      if (e.code === "P2002") return { error: "That would create a duplicate (a name or code is already in use)" };
+      // A link to a record that's still in use, or to one that doesn't exist (or belongs to another business).
+      if (e.code === "P2003") return { error: "That's still used by other records (such as quotes or orders), or refers to something that doesn't exist" };
+      if (e.code === "P2025") return { error: "That record no longer exists. Reload the page." };
     }
     throw e;
   }

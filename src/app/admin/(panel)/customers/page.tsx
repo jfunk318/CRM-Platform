@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { Prisma } from "@prisma/client";
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
 import { ActionForm } from "@/components/admin/action-form";
 import { CompanyPicker } from "@/components/admin/company-picker";
@@ -9,7 +8,7 @@ import { createCustomer } from "./actions";
 const PAGE_SIZE = 50;
 
 export default async function CustomersPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
-  await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["SALES"]);
   const { q = "", page = "1" } = await searchParams;
   const pageNum = Math.max(1, Number(page) || 1);
   const terms = q.trim().split(/\s+/).filter(Boolean);

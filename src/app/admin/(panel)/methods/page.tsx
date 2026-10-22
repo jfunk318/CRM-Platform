@@ -1,12 +1,11 @@
 import Link from "next/link";
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
 import { KIND_LABELS, PRICING_MODEL_LABELS } from "@/lib/catalog/methods";
 import { ActionForm } from "@/components/admin/action-form";
 import { createMethod } from "./actions";
 
 export default async function MethodsPage() {
-  await requireStaff(["SALES", "PRODUCTION"]);
+  const { db } = await requireStaff(["SALES", "PRODUCTION"]);
   const methods = await db.decorationMethod.findMany({
     orderBy: [{ active: "desc" }, { sortOrder: "asc" }],
     include: { priceTables: { select: { isPlaceholder: true, pricingGroupId: true } } },

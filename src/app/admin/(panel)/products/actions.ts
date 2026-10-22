@@ -3,8 +3,8 @@
 import { Prisma, type GarmentShade, type ProductStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
+import type { BusinessTx } from "@/lib/db";
 import {
   all,
   type ActionResult,
@@ -26,7 +26,7 @@ const refresh = (id: string) => {
   revalidatePath(`/admin/products/${id}`);
 };
 
-async function uniqueSlug(base: string, excludeId?: string) {
+async function uniqueSlug(db: BusinessTx, base: string, excludeId?: string) {
   const root = slugify(base) || "product";
   for (let n = 1; ; n++) {
     const slug = n === 1 ? root : `${root}-${n}`;
@@ -36,7 +36,7 @@ async function uniqueSlug(base: string, excludeId?: string) {
 }
 
 /** Every SKU on the product, rebuilt after a style code, color or size rename. */
-async function resyncSkus(tx: Prisma.TransactionClient, productId: string) {
+async function resyncSkus(tx: BusinessTx, productId: string) {
   const product = await tx.product.findUniqueOrThrow({
     where: { id: productId },
     include: { variants: { include: { color: true, size: true } } },
@@ -54,16 +54,17 @@ async function resyncSkus(tx: Prisma.TransactionClient, productId: string) {
 }
 
 export async function createProduct(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff([...EDITORS]);
+  const { db } = await requireStaff([...EDITORS]);
   let id = "";
   const result = await runAction(async () => {
     const name = text(form, "name", "Name");
     const productTypeId = text(form, "productTypeId", "Product type");
     const product = await db.product.create({
       data: {
+        businessId: db.$businessId,
         name,
         styleCode: text(form, "styleCode", "Style code").toUpperCase(),
-        slug: await uniqueSlug(name),
+        slug: await uniqueSlug(db, name),
         supplierId: optionalText(form, "supplierId"),
         productTypeId,
         isCustom: !optionalText(form, "supplierId"),
@@ -78,7 +79,7 @@ export async function createProduct(_: ActionResult, form: FormData): Promise<Ac
 const STATUSES: ProductStatus[] = ["ACTIVE", "CLOSING_OUT", "DISCONTINUED"];
 
 export async function saveProductDetails(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff([...EDITORS]);
+  const { db } = await requireStaff([...EDITORS]);
   return runAction(async () => {
     const id = text(form, "id");
     const status = field(form, "status") as ProductStatus;
@@ -92,7 +93,7 @@ export async function saveProductDetails(_: ActionResult, form: FormData): Promi
         where: { id },
         data: {
           name: text(form, "name", "Name"),
-          slug: await uniqueSlug(optionalText(form, "slug") ?? text(form, "name"), id),
+          slug: await uniqueSlug(tx, optionalText(form, "slug") ?? text(form, "name"), id),
           styleCode,
           brand: optionalText(form, "brand"),
           description: optionalText(form, "description"),
@@ -109,7 +110,7 @@ export async function saveProductDetails(_: ActionResult, form: FormData): Promi
       });
       await tx.productCategory.deleteMany({ where: { productId: id } });
       if (categoryIds.length) {
-        await tx.productCategory.createMany({ data: categoryIds.map((categoryId) => ({ productId: id, categoryId })) });
+        await tx.productCategory.createMany({ data: categoryIds.map((categoryId) => ({ businessId: db.$businessId, productId: id, categoryId })) });
       }
       if (before.styleCode !== styleCode) await resyncSkus(tx, id);
     });
@@ -120,7 +121,7 @@ export async function saveProductDetails(_: ActionResult, form: FormData): Promi
 const SHADES: GarmentShade[] = ["WHITE", "LIGHT", "DARK"];
 
 export async function saveColors(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff([...EDITORS]);
+  const { db } = await requireStaff([...EDITORS]);
   return runAction(async () => {
     const productId = text(form, "productId");
     const ids = all(form, "colorId");
@@ -149,7 +150,7 @@ export async function saveColors(_: ActionResult, form: FormData): Promise<Actio
       for (const r of d.update) {
         await tx.productColor.update({ where: { id: r.id }, data: { name: r.name, hex: r.hex, shade: r.shade, sortOrder: r.sortOrder } });
       }
-      for (const r of d.create) await tx.productColor.create({ data: { ...r, productId } });
+      for (const r of d.create) await tx.productColor.create({ data: { ...r, businessId: db.$businessId, productId } });
       await resyncSkus(tx, productId);
     });
     refresh(productId);
@@ -158,7 +159,7 @@ export async function saveColors(_: ActionResult, form: FormData): Promise<Actio
 }
 
 export async function saveSizes(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff([...EDITORS]);
+  const { db } = await requireStaff([...EDITORS]);
   return runAction(async () => {
     const productId = text(form, "productId");
     const ids = all(form, "sizeId");
@@ -177,7 +178,7 @@ export async function saveSizes(_: ActionResult, form: FormData): Promise<Action
       for (const r of d.update) {
         await tx.productSize.update({ where: { id: r.id }, data: { code: r.code, label: r.label, sortOrder: r.sortOrder } });
       }
-      for (const r of d.create) await tx.productSize.create({ data: { ...r, productId } });
+      for (const r of d.create) await tx.productSize.create({ data: { ...r, businessId: db.$businessId, productId } });
       await resyncSkus(tx, productId);
     });
     refresh(productId);
@@ -190,13 +191,33 @@ export async function saveSizes(_: ActionResult, form: FormData): Promise<Action
  * A blank cost means that combination isn't offered (its SKU is removed).
  */
 export async function saveCosts(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff([...EDITORS]);
+  const { db } = await requireStaff([...EDITORS]);
   return runAction(async () => {
     const productId = text(form, "productId");
     const product = await db.product.findUniqueOrThrow({
       where: { id: productId },
       include: { colors: true, sizes: true, variants: true },
     });
+    // New SKUs must not clash with another product's (e.g. two products
+    // sharing a style code).
+    const newSkus = product.colors.flatMap((c) =>
+      product.sizes
+        .filter((sz) => field(form, `cost_${c.id}_${sz.id}`).trim() !== "")
+        .filter((sz) => !product.variants.some((v) => v.colorId === c.id && v.sizeId === sz.id))
+        .map((sz) => variantSku(product.styleCode, c.name, sz.code)),
+    );
+    if (newSkus.length) {
+      const clash = await db.productVariant.findFirst({
+        where: { sku: { in: newSkus }, productId: { not: productId } },
+        include: { product: { select: { name: true } } },
+      });
+      if (clash) {
+        throw new FormError(
+          `SKU ${clash.sku} is already used by "${clash.product.name}". Give this product a different style code.`,
+        );
+      }
+    }
+
     const ops: Prisma.PrismaPromise<unknown>[] = [];
     let offered = 0;
     for (const color of product.colors) {
@@ -219,6 +240,7 @@ export async function saveCosts(_: ActionResult, form: FormData): Promise<Action
             : db.productVariant.create({
                 data: {
                   ...data,
+                  businessId: db.$businessId,
                   productId,
                   colorId: color.id,
                   sizeId: size.id,
@@ -235,7 +257,7 @@ export async function saveCosts(_: ActionResult, form: FormData): Promise<Action
 }
 
 export async function saveViews(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff([...EDITORS]);
+  const { db } = await requireStaff([...EDITORS]);
   return runAction(async () => {
     const productId = text(form, "productId");
     const ids = all(form, "viewId");
@@ -251,7 +273,7 @@ export async function saveViews(_: ActionResult, form: FormData): Promise<Action
       await tx.productView.deleteMany({ where: { id: { in: d.deleteIds } } });
       for (const r of d.update) await tx.productView.update({ where: { id: r.id }, data: { name: `~${r.id}` } });
       for (const r of d.update) await tx.productView.update({ where: { id: r.id }, data: { name: r.name, sortOrder: r.sortOrder } });
-      for (const r of d.create) await tx.productView.create({ data: { ...r, productId } });
+      for (const r of d.create) await tx.productView.create({ data: { ...r, businessId: db.$businessId, productId } });
     });
     refresh(productId);
   });
@@ -259,7 +281,7 @@ export async function saveViews(_: ActionResult, form: FormData): Promise<Action
 
 /** One view's print areas and its product photo per color. */
 export async function saveViewDetails(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff([...EDITORS]);
+  const { db } = await requireStaff([...EDITORS]);
   return runAction(async () => {
     const viewId = text(form, "viewId");
     const view = await db.productView.findUniqueOrThrow({ where: { id: viewId }, include: { product: { include: { colors: true } } } });
@@ -274,6 +296,7 @@ export async function saveViewDetails(_: ActionResult, form: FormData): Promise<
       .map((name, i) => ({ name, i }))
       .filter((r) => r.name)
       .map(({ name, i }) => ({
+        businessId: db.$businessId,
         viewId,
         name,
         widthIn: decimal(widths[i] ?? "", `${name} width`),
@@ -290,11 +313,13 @@ export async function saveViewDetails(_: ActionResult, form: FormData): Promise<
     }
 
     await db.$transaction([
+      // Quote/order items keep their location name when a print area is replaced.
+      db.designDecoration.updateMany({ where: { area: { viewId } }, data: { areaId: null } }),
       db.decorationArea.deleteMany({ where: { viewId } }),
       db.decorationArea.createMany({ data: areas }),
       db.viewImage.deleteMany({ where: { viewId } }),
       db.viewImage.createMany({
-        data: images.filter((i) => i.url).map((i) => ({ viewId, colorId: i.colorId, url: i.url! })),
+        data: images.filter((i) => i.url).map((i) => ({ businessId: db.$businessId, viewId, colorId: i.colorId, url: i.url! })),
       }),
     ]);
     refresh(view.productId);
@@ -302,7 +327,7 @@ export async function saveViewDetails(_: ActionResult, form: FormData): Promise<
 }
 
 export async function saveMethodRules(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff([...EDITORS]);
+  const { db } = await requireStaff([...EDITORS]);
   return runAction(async () => {
     const productId = text(form, "productId");
     const methodIds = all(form, "methodId");
@@ -315,7 +340,7 @@ export async function saveMethodRules(_: ActionResult, form: FormData): Promise<
         : db.productDecorationRule.upsert({
             where: { productId_methodId: { productId, methodId } },
             update: { enabled, minQty },
-            create: { productId, methodId, enabled, minQty },
+            create: { businessId: db.$businessId, productId, methodId, enabled, minQty },
           });
     });
     await db.$transaction(ops);
@@ -324,7 +349,7 @@ export async function saveMethodRules(_: ActionResult, form: FormData): Promise<
 }
 
 export async function deleteProduct(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff(["ADMIN"]);
+  const { db } = await requireStaff(["ADMIN"]);
   const result = await runAction(async () => {
     await db.product.delete({ where: { id: text(form, "id") } });
   });

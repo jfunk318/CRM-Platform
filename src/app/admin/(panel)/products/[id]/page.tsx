@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
 import { hasAnyRole } from "@/lib/auth/roles";
 import { blankUnitPrice } from "@/lib/pricing";
@@ -26,6 +25,7 @@ const pct = (n: number) => String(Math.round(n * 1000) / 10);
 
 export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const staff = await requireStaff(["SALES", "PURCHASING"]);
+  const { db } = staff;
   const { id } = await params;
   const [product, suppliers, types, categories, discounts, pricing] = await Promise.all([
     db.product.findUnique({

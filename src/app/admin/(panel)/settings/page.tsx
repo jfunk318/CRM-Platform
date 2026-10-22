@@ -1,6 +1,6 @@
 import type { TaxRate } from "@prisma/client";
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
+import { businessDomain } from "@/lib/business";
 import { toPercentInput } from "@/lib/admin/form";
 import { ActionForm } from "@/components/admin/action-form";
 import { deleteTaxRate, saveShopSettings, saveTaxRate } from "./actions";
@@ -15,11 +15,9 @@ const TAX_FLAGS: [keyof TaxRate, string][] = [
 ];
 
 export default async function SettingsPage() {
-  await requireStaff(["ADMIN"]);
-  const [settings, rates] = await Promise.all([
-    db.shopSettings.findUnique({ where: { id: 1 } }),
-    db.taxRate.findMany({ orderBy: [{ country: "asc" }, { region: "asc" }, { name: "asc" }] }),
-  ]);
+  const { db, business: settings } = await requireStaff(["ADMIN"]);
+  const rates = await db.taxRate.findMany({ orderBy: [{ country: "asc" }, { region: "asc" }, { name: "asc" }] });
+  const domain = businessDomain(settings);
 
   return (
     <div className="space-y-10">
@@ -29,34 +27,35 @@ export default async function SettingsPage() {
           <ActionForm action={saveShopSettings}>
             <div className="grid gap-3 sm:grid-cols-3">
               <div>
-                <label className="label" htmlFor="shopName">Shop name</label>
-                <input className="input" id="shopName" name="shopName" defaultValue={settings?.shopName ?? "Beeze Tees"} required />
+                <label className="label" htmlFor="shopName">Business name</label>
+                <input className="input" id="shopName" name="shopName" defaultValue={settings.name} required />
               </div>
               <div>
-                <label className="label" htmlFor="primaryDomain">Main domain</label>
-                <input className="input" id="primaryDomain" name="primaryDomain" defaultValue={settings?.primaryDomain ?? "beezetees.com"} required />
-                <p className="mt-1 text-xs text-gray-500">
-                  Stores will live at <span className="font-mono">storename.{settings?.primaryDomain ?? "beezetees.com"}</span>
+                <div className="label">Web address</div>
+                <p className="py-1.5 font-mono text-sm">{domain}</p>
+                <p className="text-xs text-gray-500">
+                  Stores will live at <span className="font-mono">storename.{domain}</span>. To use your own domain,
+                  contact the platform team.
                 </p>
               </div>
               <div>
                 <label className="label" htmlFor="currency">Currency</label>
-                <input className="input" id="currency" name="currency" defaultValue={settings?.currency ?? "USD"} required />
+                <input className="input" id="currency" name="currency" defaultValue={settings.currency} required />
               </div>
               <div>
                 <label className="label" htmlFor="priceRounding">Unit price rounding</label>
-                <select className="input" id="priceRounding" name="priceRounding" defaultValue={settings?.priceRounding ?? "CENT"}>
+                <select className="input" id="priceRounding" name="priceRounding" defaultValue={settings.priceRounding}>
                   <option value="CENT">Nearest cent</option>
                   <option value="UP_TO_99">Up to .99</option>
                 </select>
               </div>
               <div>
                 <label className="label" htmlFor="rushFeePct">Rush fee (% of merchandise)</label>
-                <input className="input" id="rushFeePct" name="rushFeePct" defaultValue={toPercentInput(settings?.rushFeePct)} placeholder="0" />
+                <input className="input" id="rushFeePct" name="rushFeePct" defaultValue={toPercentInput(settings.rushFeePct)} placeholder="0" />
               </div>
               <div>
                 <label className="label" htmlFor="paymentSurchargePct">Card surcharge (%)</label>
-                <input className="input" id="paymentSurchargePct" name="paymentSurchargePct" defaultValue={toPercentInput(settings?.paymentSurchargePct)} placeholder="0" />
+                <input className="input" id="paymentSurchargePct" name="paymentSurchargePct" defaultValue={toPercentInput(settings.paymentSurchargePct)} placeholder="0" />
               </div>
             </div>
           </ActionForm>

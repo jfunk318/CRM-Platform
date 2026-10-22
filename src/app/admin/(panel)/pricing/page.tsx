@@ -1,4 +1,3 @@
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
 import { hasAnyRole } from "@/lib/auth/roles";
 import { toPercentInput } from "@/lib/admin/form";
@@ -25,6 +24,7 @@ const discountColumns = [
 
 export default async function PricingPage() {
   const staff = await requireStaff(["SALES"]);
+  const { db } = staff;
   const isAdmin = hasAnyRole(staff.roles, ["ADMIN"]);
   const [groups, discounts] = await Promise.all([
     db.pricingGroup.findMany({

@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/auth/session";
 import { all, type ActionResult, checkbox, FormError, runAction, text } from "@/lib/admin/form";
 import { parseDiscountTiers, parseMarkupTiers } from "@/lib/admin/validate";
@@ -9,7 +8,7 @@ import { parseDiscountTiers, parseMarkupTiers } from "@/lib/admin/validate";
 const done = () => revalidatePath("/admin/pricing");
 
 export async function savePricingGroup(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["SALES"]);
   return runAction(async () => {
     const id = text(form, "id");
     const name = text(form, "name", "Name");
@@ -20,19 +19,20 @@ export async function savePricingGroup(_: ActionResult, form: FormData): Promise
       if (isDefault) await tx.pricingGroup.updateMany({ where: { id: { not: id } }, data: { isDefault: false } });
       await tx.pricingGroup.update({ where: { id }, data: { name, markupMode, isDefault } });
       await tx.markupTier.deleteMany({ where: { pricingGroupId: id } });
-      await tx.markupTier.createMany({ data: tiers.map((t) => ({ ...t, pricingGroupId: id })) });
+      await tx.markupTier.createMany({ data: tiers.map((t) => ({ ...t, businessId: db.$businessId, pricingGroupId: id })) });
     });
     done();
   });
 }
 
 export async function createPricingGroup(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["SALES"]);
   return runAction(async () => {
     const name = text(form, "name", "Name");
     const base = await db.pricingGroup.findFirst({ where: { isDefault: true }, include: { markupTiers: true } });
     await db.pricingGroup.create({
       data: {
+        businessId: db.$businessId,
         name,
         markupMode: base?.markupMode ?? "MARKUP",
         // Start from the default group's tiers so the new group prices sensibly right away.
@@ -49,18 +49,24 @@ export async function createPricingGroup(_: ActionResult, form: FormData): Promi
 }
 
 export async function deletePricingGroup(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff(["ADMIN"]);
+  const { db } = await requireStaff(["ADMIN"]);
   return runAction(async () => {
     const group = await db.pricingGroup.findUniqueOrThrow({ where: { id: text(form, "id") } });
     if (group.isDefault) throw new FormError("Make another group the default before deleting this one");
-    await db.pricingGroup.delete({ where: { id: group.id } });
+    // Customers, companies and orders on this group fall back to the default.
+    await db.$transaction([
+      db.company.updateMany({ where: { pricingGroupId: group.id }, data: { pricingGroupId: null } }),
+      db.customer.updateMany({ where: { pricingGroupId: group.id }, data: { pricingGroupId: null } }),
+      db.order.updateMany({ where: { pricingGroupId: group.id }, data: { pricingGroupId: null } }),
+      db.pricingGroup.delete({ where: { id: group.id } }),
+    ]);
     done();
     return "Deleted";
   });
 }
 
 export async function saveQuantityDiscount(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["SALES"]);
   return runAction(async () => {
     const id = text(form, "id");
     const name = text(form, "name", "Name");
@@ -68,25 +74,25 @@ export async function saveQuantityDiscount(_: ActionResult, form: FormData): Pro
     await db.$transaction([
       db.quantityDiscount.update({ where: { id }, data: { name } }),
       db.quantityDiscountTier.deleteMany({ where: { discountId: id } }),
-      db.quantityDiscountTier.createMany({ data: tiers.map((t) => ({ ...t, discountId: id })) }),
+      db.quantityDiscountTier.createMany({ data: tiers.map((t) => ({ ...t, businessId: db.$businessId, discountId: id })) }),
     ]);
     done();
   });
 }
 
 export async function createQuantityDiscount(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["SALES"]);
   return runAction(async () => {
     const name = text(form, "name", "Name");
     const tiers = parseDiscountTiers(all(form, "minQty"), all(form, "pct"));
-    await db.quantityDiscount.create({ data: { name, tiers: { create: tiers } } });
+    await db.quantityDiscount.create({ data: { businessId: db.$businessId, name, tiers: { create: tiers } } });
     done();
     return `Created ${name}`;
   });
 }
 
 export async function deleteQuantityDiscount(_: ActionResult, form: FormData): Promise<ActionResult> {
-  await requireStaff(["SALES"]);
+  const { db } = await requireStaff(["SALES"]);
   return runAction(async () => {
     const id = text(form, "id");
     const inUse = await db.product.count({ where: { quantityDiscountId: id } });
