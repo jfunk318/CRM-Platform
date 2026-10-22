@@ -8,7 +8,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const [products, methods, placeholderTables] = await Promise.all([
     db.product.count(),
     db.decorationMethod.count({ where: { active: true } }),
-    db.decorationPriceTable.count({ where: { name: { contains: "placeholder" } } }),
+    db.decorationPriceTable.count({ where: { isPlaceholder: true } }),
   ]);
 
   return (

@@ -326,6 +326,8 @@ model DecorationPriceTable {
   pricingGroupId String? // null = default table for the method
   pricingGroup   PricingGroup?         @relation(fields: [pricingGroupId], references: [id], onDelete: Cascade)
   name           String
+  // Seeded tables start as placeholders; saving real prices clears this.
+  isPlaceholder  Boolean               @default(false)
   cells          DecorationPriceCell[]
 
   @@unique([methodId, pricingGroupId])

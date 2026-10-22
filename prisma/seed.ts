@@ -60,7 +60,8 @@ async function main() {
       await prisma.decorationPriceTable.create({
         data: {
           methodId: method.id,
-          name: `${m.shortName} (placeholder — replace with real prices)`,
+          name: `${m.shortName} default prices`,
+          isPlaceholder: true,
           cells: {
             create: placeholderPrices.map(([minQty, dimensionMax, unitPrice]) => ({
               minQty,
