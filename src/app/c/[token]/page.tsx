@@ -5,6 +5,7 @@ import { getRequestBusiness } from "@/lib/business";
 import { invoiceRef, orderRef } from "@/lib/orders/numbers";
 import { orderByToken } from "@/lib/orders/customer-flow";
 import { balances } from "@/lib/orders/payments";
+import { carrierName, trackingUrl } from "@/lib/shipping/labels";
 import { ActionForm } from "@/components/admin/action-form";
 import { CustomerShell } from "@/components/customer/shell";
 import { OrderItems } from "@/components/customer/order-items";
@@ -55,6 +56,7 @@ export default async function CustomerOrderPage({ params }: { params: Promise<{ 
           <p className="text-sm text-gray-600">
             For {order.customer.firstName} {order.customer.lastName} · {day(order.createdAt)}
             {!isQuote && <> · Status: {order.status.name}</>}
+            {!isQuote && order.deliveryMethod && <> · {order.deliveryMethod.name}</>}
             {order.dueDate && <> · Needed by {day(order.dueDate)}</>}
           </p>
         </div>
@@ -124,6 +126,31 @@ export default async function CustomerOrderPage({ params }: { params: Promise<{ 
           <div className="label">How to pay</div>
           <p className="whitespace-pre-wrap">{business.paymentInstructions}</p>
         </div>
+      )}
+
+      {!isQuote && order.shipments.length > 0 && (
+        <section className="card" data-testid="customer-shipments">
+          <h2 className="mb-2 font-semibold">Delivery</h2>
+          <ul className="divide-y divide-gray-100 text-sm">
+            {order.shipments.map((sh) => {
+              const url = trackingUrl(sh.carrier, sh.trackingNumber);
+              return (
+                <li key={sh.id} className="py-2">
+                  <div>
+                    {sh.kind === "PICKUP" ? "Picked up" : sh.kind === "DELIVERY" ? "Delivered" : `Shipped${sh.carrier ? ` with ${carrierName(sh.carrier)}` : ""}`} {day(sh.shippedAt)}
+                    {sh.trackingNumber && (
+                      <>
+                        {" · "}
+                        {url ? <a href={url} target="_blank" rel="noreferrer" className="text-amber-700 hover:underline">Track {sh.trackingNumber}</a> : `Tracking ${sh.trackingNumber}`}
+                      </>
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-600">{sh.items.map((i) => `${i.qty} × ${i.description}`).join(", ")}</div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       )}
 
       {!isQuote && order.proofs.length > 0 && (

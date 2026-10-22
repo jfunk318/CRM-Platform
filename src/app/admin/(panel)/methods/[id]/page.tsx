@@ -6,7 +6,8 @@ import { hasAnyRole } from "@/lib/auth/roles";
 import { CAPABILITIES, DIMENSION_UNIT, KIND_LABELS, PRICING_MODEL_LABELS } from "@/lib/catalog/methods";
 import { ActionForm } from "@/components/admin/action-form";
 import { type GridValue, PriceGridEditor } from "@/components/admin/price-grid-editor";
-import { deletePriceTable, savePriceTable, saveMethod } from "../actions";
+import { DEFAULT_WORKFLOW_STEPS } from "@/lib/production/defaults";
+import { deletePriceTable, savePriceTable, saveMethod, saveWorkflow } from "../actions";
 
 function toGrid(cells: Pick<DecorationPriceCell, "minQty" | "dimensionMax" | "unitPrice">[], flat: boolean): GridValue {
   const quantities = [...new Set(cells.map((c) => c.minQty))].sort((a, b) => a - b);
@@ -43,11 +44,15 @@ export default async function MethodPage({
   const { db } = staff;
   const canEditSettings = hasAnyRole(staff.roles, ["ADMIN"]);
   const canEditPrices = hasAnyRole(staff.roles, ["SALES"]);
+  const canEditProduction = hasAnyRole(staff.roles, ["PRODUCTION"]);
   const { id } = await params;
   const { group } = await searchParams;
 
   const [m, groups] = await Promise.all([
-    db.decorationMethod.findUnique({ where: { id }, include: { priceTables: { include: { cells: true } } } }),
+    db.decorationMethod.findUnique({
+      where: { id },
+      include: { priceTables: { include: { cells: true } }, workflowSteps: { orderBy: { sortOrder: "asc" } } },
+    }),
     db.pricingGroup.findMany({ orderBy: [{ isDefault: "desc" }, { name: "asc" }] }),
   ]);
   if (!m) notFound();
@@ -182,6 +187,34 @@ export default async function MethodPage({
           </ActionForm>
         </fieldset>
         {!canEditSettings && <p className="mt-2 text-sm text-gray-500">Only admins can change method settings.</p>}
+      </section>
+
+      <section className="card space-y-3" data-testid="production-settings">
+        <div>
+          <h2 className="font-semibold">Production</h2>
+          <p className="text-sm text-gray-500">
+            Each order gets a job for this method with these steps to tick off. Changing the steps affects new jobs only.
+            Daily capacity spreads jobs across the production calendar.
+          </p>
+        </div>
+        <fieldset disabled={!canEditProduction}>
+          <ActionForm action={saveWorkflow} className="grid gap-4 sm:grid-cols-3">
+            <input type="hidden" name="id" value={m.id} />
+            <div className="sm:col-span-2">
+              <label className="label" htmlFor="steps">Steps, one per line</label>
+              <textarea
+                className="input min-h-32 font-mono text-sm"
+                id="steps"
+                name="steps"
+                defaultValue={(m.workflowSteps.length ? m.workflowSteps.map((s) => s.name) : DEFAULT_WORKFLOW_STEPS[m.kind]).join("\n")}
+              />
+              {m.workflowSteps.length === 0 && <p className="mt-1 text-xs text-gray-500">Using the standard steps for {KIND_LABELS[m.kind]}.</p>}
+            </div>
+            <div>
+              <Field label="Daily capacity (pieces)" name="dailyCapacity" defaultValue={m.dailyCapacity?.toString() ?? ""} placeholder="no limit" />
+            </div>
+          </ActionForm>
+        </fieldset>
       </section>
     </div>
   );

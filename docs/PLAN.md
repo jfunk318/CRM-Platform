@@ -37,7 +37,7 @@ orders come before the public storefront.
 3. ✅ **Approvals, artwork, payments.** Customer quote approval links, artwork
    proofs with approve/request-changes, artwork file storage, recorded
    payments and deposits, invoices and emails.
-4. **Production, purchasing, shipping.** Workflow steps per method,
+4. ✅ **Production, purchasing, shipping.** Workflow steps per method,
    production calendar, consolidated supplier POs and receiving, shipping
    (ShipStation) and business-wide delivery methods, packing slips,
    tracking notifications.
@@ -90,3 +90,14 @@ phases 1–3 need real product data.
   the customer link; email via Resend or Postmark with every message listed
   on the order. Deferred: online card payments (phase 5 checkout), file
   storage on S3/R2, QuickBooks invoice sync (phase 8).
+- **Phase 4 (done):** production jobs per order and decoration method with
+  editable workflow steps, a production board and a weekly drag-and-drop
+  calendar with daily capacity and auto-scheduling, printable work orders;
+  blanks needed by open orders, consolidated purchase orders per supplier
+  (emailed or marked sent, printable, partial receiving), in-house stock with
+  low-stock levels and history, customer-supplied blanks; business-wide
+  delivery methods, partial shipments and pickups with tracking emails, a
+  shipping list with batch packing slips, delivery shown to the customer;
+  statuses that move forward automatically. Deferred: ShipStation and
+  supplier API ordering (phase 8), carrier rates and labels (through
+  ShipStation), batching store orders into one run (phase 6).

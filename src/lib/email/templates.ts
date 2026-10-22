@@ -79,3 +79,75 @@ export function staffAlertEmail(o: { brand: Brand; heading: string; lines: strin
   const button = { label: "Open in the back office", url: o.url };
   return { subject: o.heading, text: text([o.heading, ...o.lines], button), html: layout(o.brand, o.heading, o.lines, button) };
 }
+
+/** A purchase order for a supplier, with its items in a table. */
+export function purchaseOrderEmail(o: {
+  brand: Brand;
+  supplierName: string;
+  poRef: string;
+  accountNumber?: string | null;
+  lines: { sku: string; description: string; qty: number; unitCost: string }[];
+  total: string;
+  shipTo: string[];
+  blindShip: boolean;
+  notes?: string | null;
+}): EmailContent {
+  const subject = `Purchase order ${o.poRef} from ${o.brand.name}`;
+  const intro = [
+    `Hello ${o.supplierName},`,
+    `Please process purchase order ${o.poRef}${o.accountNumber ? ` for account ${o.accountNumber}` : ""}.`,
+    ...(o.blindShip ? ["Please ship blind: no packing list, invoice or supplier branding in the box."] : []),
+    ...(o.notes ? [o.notes] : []),
+  ];
+  const ship = `Ship to:\n${o.shipTo.join("\n")}`;
+  const rows = o.lines
+    .map(
+      (l) =>
+        `<tr><td style="padding:4px 6px;border-bottom:1px solid #e5e7eb;font-family:monospace">${escapeHtml(l.sku)}</td><td style="padding:4px 6px;border-bottom:1px solid #e5e7eb">${escapeHtml(l.description)}</td><td style="padding:4px 6px;border-bottom:1px solid #e5e7eb;text-align:right">${l.qty}</td><td style="padding:4px 6px;border-bottom:1px solid #e5e7eb;text-align:right">${money(l.unitCost)}</td></tr>`,
+    )
+    .join("");
+  const table = `<table style="width:100%;border-collapse:collapse;font-size:13px;margin:0 0 14px"><thead><tr><th align="left" style="padding:4px 6px">SKU</th><th align="left" style="padding:4px 6px">Item</th><th align="right" style="padding:4px 6px">Qty</th><th align="right" style="padding:4px 6px">Cost</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="3" style="padding:6px;text-align:right;font-weight:700">Total</td><td style="padding:6px;text-align:right;font-weight:700">${money(o.total)}</td></tr></tfoot></table>`;
+  // The items table goes just before the ship-to paragraph.
+  const html = layout(o.brand, `Purchase order ${o.poRef}`, [...intro, ship]).replace(
+    '<p style="margin:0 0 14px;line-height:1.5">Ship to:',
+    (m) => table + m,
+  );
+  const lines = o.lines.map((l) => `${l.qty} × ${l.sku} ${l.description} @ ${money(l.unitCost)}`);
+  return { subject, text: [...intro, "", ...lines, `Total: ${money(o.total)}`, "", ship, "", o.brand.name].join("\n"), html };
+}
+
+export function shipmentEmail(o: {
+  brand: Brand;
+  customerName: string;
+  ref: string;
+  pickup: boolean;
+  carrier?: string | null;
+  trackingNumber?: string | null;
+  trackingUrl?: string | null;
+  items: string[];
+  complete: boolean;
+  url?: string | null;
+}): EmailContent {
+  const what = o.complete ? "Your order" : "Part of your order";
+  const subject = o.pickup ? `Order ${o.ref} picked up` : `Order ${o.ref} has shipped`;
+  const paragraphs = [
+    `Hi ${o.customerName},`,
+    o.pickup
+      ? `${what} ${o.ref} has been picked up. Thank you!`
+      : `${what} ${o.ref} is on its way${o.carrier ? ` with ${o.carrier.toUpperCase()}` : ""}.${o.trackingNumber ? ` Tracking number: ${o.trackingNumber}` : ""}`,
+    `Items:\n${o.items.join("\n")}`,
+  ];
+  const button = o.trackingUrl ? { label: "Track your package", url: o.trackingUrl } : o.url ? { label: "View your order", url: o.url } : undefined;
+  return { subject, text: text(paragraphs, button, o.brand), html: layout(o.brand, subject, paragraphs, button) };
+}
+
+export function pickupReadyEmail(o: { brand: Brand; customerName: string; ref: string; address: string[]; url?: string | null }): EmailContent {
+  const subject = `Order ${o.ref} is ready for pickup`;
+  const paragraphs = [
+    `Hi ${o.customerName},`,
+    `Good news: your order ${o.ref} is ready to pick up.`,
+    ...(o.address.length ? [`Pick it up at:\n${o.address.join("\n")}`] : []),
+  ];
+  const button = o.url ? { label: "View your order", url: o.url } : undefined;
+  return { subject, text: text(paragraphs, button, o.brand), html: layout(o.brand, subject, paragraphs, button) };
+}

@@ -56,12 +56,15 @@ export async function moveToRole(
   role: StatusRole,
   staffId: string | null,
   reason: string,
+  { forwardOnly = false }: { forwardOnly?: boolean } = {},
 ): Promise<void> {
   const [order, status] = await Promise.all([
     tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { status: true } }),
     tx.orderStatus.findFirst({ where: { role } }),
   ]);
   if (!status || status.type !== order.type || status.id === order.statusId || order.status.isClosed) return;
+  // Production, purchasing and shipping only move an order further along the list.
+  if (forwardOnly && status.sortOrder <= order.status.sortOrder) return;
   await tx.order.update({ where: { id: orderId }, data: { statusId: status.id } });
   await logEvent(tx, businessId, orderId, "STATUS", `Status: ${order.status.name} → ${status.name} (${reason})`, staffId);
 }
@@ -233,6 +236,7 @@ export async function removeLine(db: BusinessDb, lineId: string, staffId: string
     include: { design: { include: { product: true, color: true } } },
   });
   await db.$transaction(async (tx) => {
+    await tx.shipmentItem.updateMany({ where: { lineId }, data: { lineId: null } });
     await tx.orderLine.delete({ where: { id: lineId } });
     await logEvent(tx, businessId, line.orderId, "EDITED", `Removed ${line.design.product.name} (${line.design.color.name})`, staffId);
   });
@@ -347,6 +351,7 @@ export interface OrderDetailsInput {
   taxExempt: boolean;
   pricingGroupId: string | null;
   shipping: string;
+  deliveryMethodId?: string | null;
   customerNotes: string | null;
   ship: {
     name: string | null;
@@ -361,6 +366,15 @@ export interface OrderDetailsInput {
 
 export async function updateDetails(db: BusinessDb, orderId: string, input: OrderDetailsInput, staffId: string | null): Promise<void> {
   const businessId = db.$businessId;
+  const current = await db.order.findUniqueOrThrow({ where: { id: orderId } });
+  let shipping = input.shipping;
+  // Picking a different delivery method fills in its charge, unless the
+  // shipping amount was changed by hand at the same time.
+  const methodId = input.deliveryMethodId === undefined ? current.deliveryMethodId : input.deliveryMethodId;
+  if (methodId && methodId !== current.deliveryMethodId && current.shipping.equals(input.shipping)) {
+    const method = await db.deliveryMethod.findUniqueOrThrow({ where: { id: methodId } });
+    shipping = method.freeOver && current.merchandise.gte(method.freeOver) ? "0.00" : method.price.toFixed(2);
+  }
   await db.$transaction(async (tx) => {
     await tx.order.update({
       where: { id: orderId },
@@ -370,7 +384,8 @@ export async function updateDetails(db: BusinessDb, orderId: string, input: Orde
         rush: input.rush,
         taxExempt: input.taxExempt,
         pricingGroupId: input.pricingGroupId,
-        shipping: input.shipping,
+        shipping,
+        deliveryMethodId: methodId,
         customerNotes: input.customerNotes,
         shipName: input.ship.name,
         shipLine1: input.ship.line1,

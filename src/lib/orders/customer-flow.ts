@@ -4,6 +4,7 @@ import type { BusinessDb, BusinessTx } from "@/lib/db";
 import { deliveryNote, isValidEmail, sendEmail } from "@/lib/email/mailer";
 import { proofEmail, quoteEmail, staffAlertEmail } from "@/lib/email/templates";
 import { saveUpload } from "@/lib/files/storage";
+import { createProductionJobs } from "@/lib/production/jobs";
 import { orderRef } from "./numbers";
 import { logEvent, moveToRole, newToken, OrderError } from "./service";
 
@@ -93,6 +94,8 @@ export async function orderByToken(db: BusinessTx, token: string) {
       },
       proofs: { where: { status: { not: "DRAFT" } }, orderBy: { number: "desc" } },
       payments: { orderBy: { receivedAt: "asc" } },
+      deliveryMethod: true,
+      shipments: { include: { items: true }, orderBy: { shippedAt: "asc" } },
     },
   });
 }
@@ -273,6 +276,12 @@ export async function customerRespondToProof(
     null,
     o.approve ? `customer approved proof ${proof.number}` : `customer asked for changes to proof ${proof.number}`,
   );
+  // Approved artwork is ready for the floor.
+  if (o.approve) {
+    await createProductionJobs(db, proof.orderId, null).catch((e) => {
+      if (!(e instanceof OrderError)) throw e;
+    });
+  }
   await alertStaff(
     db,
     proof.order,

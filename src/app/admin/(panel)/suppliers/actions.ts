@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/auth/session";
 import { type ActionResult, checkbox, FormError, optionalText, runAction, text } from "@/lib/admin/form";
 import { slugify } from "@/lib/catalog/products";
+import { isValidEmail } from "@/lib/email/mailer";
 
 const INTEGRATIONS: SupplierIntegration[] = ["REST_API", "PROMOSTANDARDS", "CSV", "MANUAL"];
 
@@ -20,7 +21,12 @@ export async function saveSupplier(_: ActionResult, form: FormData): Promise<Act
       code: slugify(optionalText(form, "code") ?? name),
       integration,
       active: id ? checkbox(form, "active") : true,
+      email: optionalText(form, "email"),
+      phone: optionalText(form, "phone"),
+      accountNumber: optionalText(form, "accountNumber"),
+      notes: optionalText(form, "notes"),
     };
+    if (data.email && !isValidEmail(data.email)) throw new FormError("That email address doesn't look right");
     if (id) await db.supplier.update({ where: { id }, data });
     else await db.supplier.create({ data: { ...data, businessId: db.$businessId } });
     revalidatePath("/admin/suppliers");

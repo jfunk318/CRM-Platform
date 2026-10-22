@@ -8,7 +8,9 @@ import { ActionForm } from "@/components/admin/action-form";
 import { LineEditor, type LineValue } from "@/components/admin/line-editor";
 import { StatusBadge } from "@/components/admin/order-table";
 import { requestOrigin } from "@/lib/business";
+import { orderBlankStatus } from "@/lib/purchasing/service";
 import { CustomerLinkSection, EmailsSection, FilesSection, orderSectionsInclude, PaymentsSection, ProofsSection } from "./sections";
+import { BlanksSection, fulfillmentInclude, ProductionSection, ShippingSection } from "./fulfillment";
 import {
   addLineAction,
   addNoteAction,
@@ -53,6 +55,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       },
       events: { orderBy: { createdAt: "desc" }, include: { staff: { select: { name: true } } } },
       ...orderSectionsInclude,
+      ...fulfillmentInclude,
     },
   });
   if (!order) notFound();
@@ -60,13 +63,16 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const canArtwork = hasAnyRole(staff.roles, ["SALES", "ARTWORK", "ARTWORK_MANAGER"]);
   const suggestedDeposit = order.total.times(staff.business.defaultDepositPct).toFixed(2);
 
-  const [statuses, staffList, products, groups] = await Promise.all([
+  const isOrder = order.type === "ORDER";
+  const [statuses, staffList, products, groups, deliveryMethods, blanks] = await Promise.all([
     db.orderStatus.findMany({ where: { type: order.type }, orderBy: { sortOrder: "asc" } }),
     db.staffUser.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
     canEdit
       ? db.product.findMany({ where: { status: { not: "DISCONTINUED" }, variants: { some: {} } }, orderBy: { name: "asc" }, select: { id: true, name: true, styleCode: true } })
       : [],
     db.pricingGroup.findMany({ orderBy: [{ isDefault: "desc" }, { name: "asc" }] }),
+    db.deliveryMethod.findMany({ where: { OR: [{ active: true }, { id: order.deliveryMethodId ?? "" }] }, orderBy: { sortOrder: "asc" } }),
+    isOrder ? orderBlankStatus(db, order.id) : null,
   ]);
 
   const isQuote = order.type === "QUOTE";
@@ -121,7 +127,8 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           )}
         </div>
         <div className="flex flex-wrap items-end gap-3">
-          <ActionForm action={setStatusAction} submitLabel="Set" className="flex items-end gap-2">
+          {/* Keyed so the dropdowns follow automatic status changes after a refresh. */}
+          <ActionForm key={`s-${order.statusId}`} action={setStatusAction} submitLabel="Set" className="flex items-end gap-2">
             <input type="hidden" name="orderId" value={order.id} />
             <div>
               <label className="label" htmlFor="statusId">Status</label>
@@ -130,7 +137,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               </select>
             </div>
           </ActionForm>
-          <ActionForm action={assignAction} submitLabel="Assign" className="flex items-end gap-2">
+          <ActionForm key={`a-${order.assignedToId}`} action={assignAction} submitLabel="Assign" className="flex items-end gap-2">
             <input type="hidden" name="orderId" value={order.id} />
             <div>
               <label className="label" htmlFor="assignedToId">Assigned to</label>
@@ -280,6 +287,9 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
 
           <FilesSection order={order} canEdit={canArtwork && !locked} />
           {!isQuote && <ProofsSection order={order} origin={origin} canEdit={canArtwork} />}
+          {isOrder && <ProductionSection order={order} canEdit={hasAnyRole(staff.roles, ["PRODUCTION"])} />}
+          {blanks && <BlanksSection status={blanks} canEdit={hasAnyRole(staff.roles, ["PURCHASING"])} />}
+          {isOrder && <ShippingSection order={order} methods={deliveryMethods} canEdit={hasAnyRole(staff.roles, ["SHIPPING"])} />}
 
           <section className="card">
             <h2 className="mb-3 font-semibold">Details</h2>
@@ -289,6 +299,15 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                 <div className="grid gap-3 sm:grid-cols-3">
                   <Field label="Title / job name" name="title" value={order.title ?? ""} />
                   <Field label="Due date" name="dueDate" type="date" value={order.dueDate?.toISOString().slice(0, 10) ?? ""} />
+                  <div>
+                    <label className="label" htmlFor="deliveryMethodId">Delivery method</label>
+                    <select className="input" id="deliveryMethodId" name="deliveryMethodId" defaultValue={order.deliveryMethodId ?? ""}>
+                      <option value="">Not chosen</option>
+                      {deliveryMethods.map((m) => (
+                        <option key={m.id} value={m.id}>{m.name}{m.price.isZero() ? "" : ` (${money(m.price)})`}</option>
+                      ))}
+                    </select>
+                  </div>
                   <Field label="Shipping ($)" name="shipping" value={order.shipping.toFixed(2)} />
                   <div>
                     <label className="label" htmlFor="pricingGroupId">Pricing group</label>

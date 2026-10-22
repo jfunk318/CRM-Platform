@@ -14,6 +14,10 @@ const NAV: { href: string; label: string; roles: StaffRole[] }[] = [
   { href: "/admin", label: "Dashboard", roles: [] },
   { href: "/admin/orders?type=ORDER", label: "Orders", roles: [] },
   { href: "/admin/orders?type=QUOTE", label: "Quotes", roles: ["SALES"] },
+  { href: "/admin/production", label: "Production", roles: ["PRODUCTION"] },
+  { href: "/admin/purchasing", label: "Purchasing", roles: ["PURCHASING"] },
+  { href: "/admin/inventory", label: "Inventory", roles: ["PURCHASING"] },
+  { href: "/admin/shipping", label: "Shipping", roles: ["SHIPPING"] },
   { href: "/admin/customers", label: "Customers", roles: ["SALES"] },
   { href: "/admin/products", label: "Products", roles: ["SALES", "PURCHASING"] },
   { href: "/admin/categories", label: "Categories", roles: ["SALES"] },
@@ -23,6 +27,7 @@ const NAV: { href: string; label: string; roles: StaffRole[] }[] = [
   { href: "/admin/price-check", label: "Price check", roles: ["SALES"] },
   { href: "/admin/settings", label: "Shop & tax", roles: ["ADMIN"] },
   { href: "/admin/order-statuses", label: "Order statuses", roles: ["ADMIN"] },
+  { href: "/admin/delivery-methods", label: "Delivery methods", roles: ["ADMIN"] },
   { href: "/admin/staff", label: "Staff", roles: ["ADMIN"] },
 ];
 

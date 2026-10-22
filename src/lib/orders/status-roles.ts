@@ -9,6 +9,10 @@ export const STATUS_ROLES: Record<StatusRole, { type: OrderType; label: string }
   ORDER_PROOF_SENT: { type: "ORDER", label: "When a proof is sent" },
   ORDER_CHANGES_REQUESTED: { type: "ORDER", label: "When the customer asks for proof changes" },
   ORDER_ARTWORK_APPROVED: { type: "ORDER", label: "When the customer approves a proof" },
+  ORDER_BLANKS_ORDERED: { type: "ORDER", label: "When blanks are ordered from a supplier" },
+  ORDER_IN_PRODUCTION: { type: "ORDER", label: "When production starts" },
+  ORDER_READY: { type: "ORDER", label: "When production is finished" },
+  ORDER_FULFILLED: { type: "ORDER", label: "When everything has shipped or been picked up" },
 };
 
 export const rolesFor = (type: OrderType) =>

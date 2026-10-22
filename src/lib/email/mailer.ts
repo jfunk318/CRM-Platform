@@ -44,16 +44,17 @@ async function deliver(m: Outgoing): Promise<{ provider: string; status: EmailSt
 
 export const isValidEmail = (v: string | null | undefined): v is string => !!v && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
-/** Send (or record) an email for the business, optionally tied to an order. */
+/** Send (or record) an email for the business, optionally tied to an order or purchase order. */
 export async function sendEmail(
   db: BusinessTx,
-  m: Outgoing & { orderId?: string | null },
+  m: Outgoing & { orderId?: string | null; purchaseOrderId?: string | null },
 ): Promise<{ status: EmailStatus; error?: string }> {
   const result = await deliver(m);
   await db.emailMessage.create({
     data: {
       businessId: db.$businessId,
       orderId: m.orderId ?? null,
+      purchaseOrderId: m.purchaseOrderId ?? null,
       to: m.to,
       subject: m.subject,
       text: m.text,

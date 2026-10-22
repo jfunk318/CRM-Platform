@@ -165,6 +165,7 @@ export async function saveDetailsAction(_: ActionResult, form: FormData): Promis
         taxExempt: checkbox(form, "taxExempt"),
         pricingGroupId: optionalText(form, "pricingGroupId"),
         shipping: decimal(String(form.get("shipping") ?? "") || "0", "Shipping").toFixed(2),
+        deliveryMethodId: form.has("deliveryMethodId") ? optionalText(form, "deliveryMethodId") : undefined,
         customerNotes: optionalText(form, "customerNotes"),
         ship: {
           name: optionalText(form, "shipName"),

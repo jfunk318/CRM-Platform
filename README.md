@@ -72,6 +72,28 @@ Every business table has a `businessId`, and:
   the web root; they're only served to signed-in staff of the business, or
   to the customer through a proof link on the business's own address.
 
+## Production, purchasing and shipping
+
+- **Production:** each order gets a job per decoration method, with steps to
+  tick off (set per method under Decoration methods, along with daily
+  capacity). Jobs are created when the customer approves a proof, or from the
+  order page. The Production board and the weekly calendar (drag jobs between
+  days, or Auto-schedule) show what's up next; each order has a printable
+  work order.
+- **Purchasing:** the Purchasing page lists blanks open orders still need.
+  Ordering uses in-house stock first, then adds to each supplier's draft PO,
+  so several orders go out on one PO. Send (email) or mark sent, then receive
+  in parts; extras go into stock. Blanks can also be marked as supplied by
+  the customer. Inventory tracks stock with low-stock levels.
+- **Shipping:** delivery methods are one business-wide list (Delivery
+  methods), chosen on each order, which fills in its charge. Record
+  shipments, pickups or local deliveries, in parts if needed, with tracking
+  links emailed to the customer and shown on their order page. The Shipping
+  page lists orders ready to go and prints packing slips together.
+- **Statuses:** orders move to "Ordering blanks", "In production", "Ready
+  for pickup / shipping" and "Completed" on their own, and only forward
+  (Order statuses → Set automatically).
+
 ## Production notes
 
 - Set `PLATFORM_DOMAIN`. `localhost` shortcuts are off in production.
@@ -94,6 +116,10 @@ Every business table has a `businessId`, and:
 | `src/lib/pricing/` | Pricing engine (pure functions) and `load.ts`, which builds engine input from the database |
 | `src/lib/auth/` | Passwords, staff and platform sessions, roles |
 | `src/lib/orders/` | Quotes and orders: numbering, line/design editing, conversion, repricing, customer links and proofs (`customer-flow.ts`), payments and invoices |
+| `src/lib/production/` | Production jobs, workflow steps, scheduling |
+| `src/lib/purchasing/` | Blank needs, purchase orders, receiving, stock |
+| `src/lib/shipping/` | Shipments, pickups, tracking links, delivery methods |
+| `src/app/admin/(print)/` | Printable work orders, packing slips and purchase orders |
 | `src/lib/files/` | Upload checks, file storage, order files |
 | `src/lib/email/` | Email templates and sending (Resend or Postmark) |
 | `src/app/c/`, `src/app/proof/` | Customer pages: quote/order/invoice and proof review |

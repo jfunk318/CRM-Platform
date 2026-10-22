@@ -156,3 +156,24 @@ export async function deletePriceTable(_: ActionResult, form: FormData): Promise
     return "Group now uses the default prices";
   });
 }
+
+export async function saveWorkflow(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["PRODUCTION"]);
+  return runAction(async () => {
+    const id = text(form, "id");
+    const steps = field(form, "steps")
+      .split("\n")
+      .map((s) => s.trim().slice(0, 80))
+      .filter(Boolean);
+    if (steps.length === 0) throw new FormError("Add at least one step");
+    if (steps.length > 20) throw new FormError("Keep it to 20 steps or fewer");
+    const dailyCapacity = optionalInt(field(form, "dailyCapacity"), "Daily capacity");
+    if (dailyCapacity === 0) throw new FormError("Daily capacity must be more than 0, or blank for no limit");
+    await db.$transaction([
+      db.decorationMethod.update({ where: { id }, data: { dailyCapacity } }),
+      db.workflowStep.deleteMany({ where: { methodId: id } }),
+      db.workflowStep.createMany({ data: steps.map((name, i) => ({ businessId: db.$businessId, methodId: id, name, sortOrder: i })) }),
+    ]);
+    revalidatePath(`/admin/methods/${id}`);
+  });
+}

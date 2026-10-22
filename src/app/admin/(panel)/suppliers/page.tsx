@@ -23,8 +23,8 @@ export default async function SuppliersPage() {
       <div>
         <h1 className="page-title">Suppliers</h1>
         <p className="text-sm text-gray-500">
-          Where blanks come from. Live catalog connections for SanMar and S&amp;S are coming next; until then
-          products can be entered by hand.
+          Where blanks come from. Purchase orders are emailed to the address here. Live catalog and ordering
+          connections for SanMar and S&amp;S come with the integrations phase; until then products are entered by hand.
         </p>
       </div>
       {suppliers.map((s) => (
@@ -70,6 +70,22 @@ function SupplierFields({ supplier }: { supplier?: Supplier }) {
         <select className="input" id={`si-${k}`} name="integration" defaultValue={supplier?.integration ?? "MANUAL"}>
           {Object.entries(INTEGRATION_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
+      </div>
+      <div className="sm:col-span-2">
+        <label className="label" htmlFor={`se-${k}`}>Email for purchase orders</label>
+        <input className="input" id={`se-${k}`} name="email" type="email" defaultValue={supplier?.email ?? ""} />
+      </div>
+      <div>
+        <label className="label" htmlFor={`sp-${k}`}>Phone</label>
+        <input className="input" id={`sp-${k}`} name="phone" defaultValue={supplier?.phone ?? ""} />
+      </div>
+      <div>
+        <label className="label" htmlFor={`sa-${k}`}>Our account #</label>
+        <input className="input" id={`sa-${k}`} name="accountNumber" defaultValue={supplier?.accountNumber ?? ""} />
+      </div>
+      <div className="sm:col-span-5">
+        <label className="label" htmlFor={`sno-${k}`}>Notes (staff only)</label>
+        <input className="input" id={`sno-${k}`} name="notes" defaultValue={supplier?.notes ?? ""} placeholder="e.g. cutoff 3pm for same-day shipping" />
       </div>
     </>
   );

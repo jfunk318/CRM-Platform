@@ -103,6 +103,16 @@ model Business {
   proofFiles             ProofFile[]
   payments               Payment[]
   emailMessages          EmailMessage[]
+  workflowSteps          WorkflowStep[]
+  productionJobs         ProductionJob[]
+  productionJobSteps     ProductionJobStep[]
+  purchaseOrders         PurchaseOrder[]
+  purchaseOrderLines     PurchaseOrderLine[]
+  blankAllocations       BlankAllocation[]
+  stockMovements         StockMovement[]
+  deliveryMethods        DeliveryMethod[]
+  shipments              Shipment[]
+  shipmentItems          ShipmentItem[]
 }
 
 // People who run the platform itself (not staff of a business).
@@ -142,23 +152,28 @@ enum StaffRole {
 }
 
 model StaffUser {
-  id             String         @id @default(cuid())
+  id             String              @id @default(cuid())
   businessId     String
-  business       Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business       Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
   email          String
   name           String
   passwordHash   String?
   roles          StaffRole[]
-  active         Boolean        @default(true)
+  active         Boolean             @default(true)
   sessions       StaffSession[]
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  assignedOrders Order[]        @relation("OrderAssignee")
-  createdOrders  Order[]        @relation("OrderCreator")
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  assignedOrders Order[]             @relation("OrderAssignee")
+  createdOrders  Order[]             @relation("OrderCreator")
   orderEvents    OrderEvent[]
   uploadedFiles  StoredFile[]
   proofsCreated  Proof[]
   payments       Payment[]
+  assignedJobs   ProductionJob[]     @relation("JobAssignee")
+  jobStepsDone   ProductionJobStep[]
+  purchaseOrders PurchaseOrder[]
+  stockMovements StockMovement[]
+  shipments      Shipment[]
 
   @@unique([businessId, id])
   @@unique([businessId, email])
@@ -186,16 +201,22 @@ enum SupplierIntegration {
 }
 
 model Supplier {
-  id          String              @id @default(cuid())
-  businessId  String
-  business    Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  code        String // "sanmar", "ss", "charles-river", "pennant"
-  name        String
-  integration SupplierIntegration @default(MANUAL)
-  active      Boolean             @default(true)
-  products    Product[]
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  id             String              @id @default(cuid())
+  businessId     String
+  business       Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  code           String // "sanmar", "ss", "charles-river", "pennant"
+  name           String
+  integration    SupplierIntegration @default(MANUAL)
+  active         Boolean             @default(true)
+  // Where purchase orders are sent, and our account with the supplier.
+  email          String?
+  phone          String?
+  accountNumber  String?
+  notes          String?
+  products       Product[]
+  purchaseOrders PurchaseOrder[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
 
   @@unique([businessId, id])
   @@unique([businessId, code])
@@ -337,25 +358,30 @@ model ProductSize {
 }
 
 model ProductVariant {
-  id             String       @id @default(cuid())
+  id             String              @id @default(cuid())
   businessId     String
-  business       Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business       Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
   productId      String
-  product        Product      @relation(fields: [businessId, productId], references: [businessId, id], onDelete: Cascade)
+  product        Product             @relation(fields: [businessId, productId], references: [businessId, id], onDelete: Cascade)
   colorId        String
-  color          ProductColor @relation(fields: [businessId, colorId], references: [businessId, id], onDelete: Cascade)
+  color          ProductColor        @relation(fields: [businessId, colorId], references: [businessId, id], onDelete: Cascade)
   sizeId         String
-  size           ProductSize  @relation(fields: [businessId, sizeId], references: [businessId, id], onDelete: Cascade)
+  size           ProductSize         @relation(fields: [businessId, sizeId], references: [businessId, id], onDelete: Cascade)
   sku            String
   supplierSku    String?
-  wholesaleCost  Decimal      @db.Decimal(10, 2)
+  wholesaleCost  Decimal             @db.Decimal(10, 2)
   stockOnHand    Int? // null = not stocked in-house
+  reorderPoint   Int? // low-stock alert at or below this
   supplierStock  Int?
-  active         Boolean      @default(true)
+  active         Boolean             @default(true)
   externalSource String?
   externalId     String?
-  updatedAt      DateTime     @updatedAt
+  updatedAt      DateTime            @updatedAt
+  poLines        PurchaseOrderLine[]
+  allocations    BlankAllocation[]
+  stockMovements StockMovement[]
 
+  @@unique([businessId, id])
   @@unique([businessId, sku])
   @@unique([productId, colorId, sizeId])
   @@unique([businessId, externalSource, externalId])
@@ -446,6 +472,7 @@ model DecorationMethod {
   minDpi                Int?
   perfectDpi            Int?
   productionLeadDays    Int                     @default(14)
+  dailyCapacity         Int? // pieces per day, for the production calendar
   // Fees (per job unless noted)
   screenSetupFee        Decimal                 @default(0) @db.Decimal(10, 2) // per screen
   chargeWhiteBaseScreen Boolean                 @default(true)
@@ -461,6 +488,8 @@ model DecorationMethod {
   productTypes          ProductTypeDecoration[]
   productRules          ProductDecorationRule[]
   designDecorations     DesignDecoration[]
+  workflowSteps         WorkflowStep[]
+  productionJobs        ProductionJob[]
   externalSource        String?
   externalId            String?
   createdAt             DateTime                @default(now())
@@ -744,7 +773,11 @@ enum StatusRole {
   QUOTE_CHANGES_REQUESTED // the customer asked for changes to the quote
   QUOTE_CONVERTED // the quote became an order
   ORDER_PROOF_SENT // a proof was sent for approval
-  ORDER_ARTWORK_APPROVED // the customer approved the latest proof
+  ORDER_ARTWORK_APPROVED
+  ORDER_BLANKS_ORDERED
+  ORDER_IN_PRODUCTION
+  ORDER_READY
+  ORDER_FULFILLED // the customer approved the latest proof
   ORDER_CHANGES_REQUESTED // the customer asked for changes to a proof
 }
 
@@ -768,70 +801,77 @@ model OrderStatus {
 }
 
 model Order {
-  id              String         @id @default(cuid())
-  businessId      String
-  business        Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  type            OrderType
-  number          Int // per business and type: quotes Q-1001…, orders 1001…
-  title           String?
-  customerId      String
-  customer        Customer       @relation(fields: [businessId, customerId], references: [businessId, id], onDelete: NoAction)
-  companyId       String?
-  company         Company?       @relation(fields: [businessId, companyId], references: [businessId, id], onDelete: NoAction)
-  statusId        String
-  status          OrderStatus    @relation(fields: [businessId, statusId], references: [businessId, id], onDelete: NoAction)
-  assignedToId    String?
-  assignedTo      StaffUser?     @relation("OrderAssignee", fields: [businessId, assignedToId], references: [businessId, id], onDelete: NoAction)
-  createdById     String?
-  createdBy       StaffUser?     @relation("OrderCreator", fields: [businessId, createdById], references: [businessId, id], onDelete: NoAction)
-  pricingGroupId  String?
-  pricingGroup    PricingGroup?  @relation(fields: [businessId, pricingGroupId], references: [businessId, id], onDelete: NoAction)
-  dueDate         DateTime?      @db.Date
-  rush            Boolean        @default(false)
-  taxExempt       Boolean        @default(false)
-  customerNotes   String? // shown on the quote/order the customer sees
+  id               String            @id @default(cuid())
+  businessId       String
+  business         Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  type             OrderType
+  number           Int // per business and type: quotes Q-1001…, orders 1001…
+  title            String?
+  customerId       String
+  customer         Customer          @relation(fields: [businessId, customerId], references: [businessId, id], onDelete: NoAction)
+  companyId        String?
+  company          Company?          @relation(fields: [businessId, companyId], references: [businessId, id], onDelete: NoAction)
+  statusId         String
+  status           OrderStatus       @relation(fields: [businessId, statusId], references: [businessId, id], onDelete: NoAction)
+  assignedToId     String?
+  assignedTo       StaffUser?        @relation("OrderAssignee", fields: [businessId, assignedToId], references: [businessId, id], onDelete: NoAction)
+  createdById      String?
+  createdBy        StaffUser?        @relation("OrderCreator", fields: [businessId, createdById], references: [businessId, id], onDelete: NoAction)
+  pricingGroupId   String?
+  pricingGroup     PricingGroup?     @relation(fields: [businessId, pricingGroupId], references: [businessId, id], onDelete: NoAction)
+  dueDate          DateTime?         @db.Date
+  rush             Boolean           @default(false)
+  taxExempt        Boolean           @default(false)
+  customerNotes    String? // shown on the quote/order the customer sees
   // Ship-to, copied onto the order so later address edits don't change it.
-  shipName        String?
-  shipLine1       String?
-  shipLine2       String?
-  shipCity        String?
-  shipRegion      String?
-  shipPostalCode  String?
-  shipCountry     String         @default("US")
+  shipName         String?
+  shipLine1        String?
+  shipLine2        String?
+  shipCity         String?
+  shipRegion       String?
+  shipPostalCode   String?
+  shipCountry      String            @default("US")
   // Price snapshot, recalculated whenever the order changes.
-  shipping        Decimal        @default(0) @db.Decimal(10, 2)
-  merchandise     Decimal        @default(0) @db.Decimal(10, 2)
-  feesTotal       Decimal        @default(0) @db.Decimal(10, 2)
-  rushFee         Decimal        @default(0) @db.Decimal(10, 2)
-  tax             Decimal        @default(0) @db.Decimal(10, 2)
-  total           Decimal        @default(0) @db.Decimal(10, 2)
-  pricedAt        DateTime?
+  shipping         Decimal           @default(0) @db.Decimal(10, 2)
+  merchandise      Decimal           @default(0) @db.Decimal(10, 2)
+  feesTotal        Decimal           @default(0) @db.Decimal(10, 2)
+  rushFee          Decimal           @default(0) @db.Decimal(10, 2)
+  tax              Decimal           @default(0) @db.Decimal(10, 2)
+  total            Decimal           @default(0) @db.Decimal(10, 2)
+  pricedAt         DateTime?
   // Customer-facing link (quote approval, order status, invoice). Random and
   // unguessable; created the first time it's needed.
-  publicToken     String?        @unique
-  approvedAt      DateTime?
-  approvedByName  String?
+  publicToken      String?           @unique
+  approvedAt       DateTime?
+  approvedByName   String?
   // Deposit the customer must pay before production (amount).
-  depositRequired Decimal        @default(0) @db.Decimal(10, 2)
+  depositRequired  Decimal           @default(0) @db.Decimal(10, 2)
   // Sum of payments minus refunds, kept up to date with each payment.
-  paidTotal       Decimal        @default(0) @db.Decimal(10, 2)
-  invoiceNumber   Int?
-  invoicedAt      DateTime?
-  invoiceDueDate  DateTime?      @db.Date
-  files           OrderFile[]
-  proofs          Proof[]
-  payments        Payment[]
-  emails          EmailMessage[]
+  paidTotal        Decimal           @default(0) @db.Decimal(10, 2)
+  invoiceNumber    Int?
+  invoicedAt       DateTime?
+  invoiceDueDate   DateTime?         @db.Date
+  deliveryMethodId String?
+  deliveryMethod   DeliveryMethod?   @relation(fields: [businessId, deliveryMethodId], references: [businessId, id], onDelete: NoAction)
+  readyNotifiedAt  DateTime? // "ready for pickup" email sent
+  productionJobs   ProductionJob[]
+  blankAllocations BlankAllocation[]
+  stockMovements   StockMovement[]
+  shipments        Shipment[]
+  files            OrderFile[]
+  proofs           Proof[]
+  payments         Payment[]
+  emails           EmailMessage[]
   // A quote converted to an order points at the order it became.
-  quoteId         String?
-  quote           Order?         @relation("QuoteToOrder", fields: [businessId, quoteId], references: [businessId, id], onDelete: NoAction)
-  convertedTo     Order?         @relation("QuoteToOrder")
-  lines           OrderLine[]
-  events          OrderEvent[]
-  externalSource  String?
-  externalId      String?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  quoteId          String?
+  quote            Order?            @relation("QuoteToOrder", fields: [businessId, quoteId], references: [businessId, id], onDelete: NoAction)
+  convertedTo      Order?            @relation("QuoteToOrder")
+  lines            OrderLine[]
+  events           OrderEvent[]
+  externalSource   String?
+  externalId       String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
   @@unique([businessId, id])
   @@unique([businessId, type, number])
@@ -861,6 +901,7 @@ model OrderLine {
   total          Decimal         @default(0) @db.Decimal(10, 2) // merchandise + fees
   issues         Json            @default("[]") // pricing problems to show staff
   sizes          OrderLineSize[]
+  shipmentItems  ShipmentItem[]
 
   @@unique([businessId, id])
 }
@@ -893,6 +934,9 @@ enum OrderEventType {
   PROOF // a proof was created, sent or cancelled
   PAYMENT // a payment or refund was recorded
   INVOICE // an invoice was issued
+  PRODUCTION // production jobs created, steps done, scheduled
+  PURCHASING // blanks ordered, received or taken from stock
+  SHIPMENT // shipped, picked up or delivered
 }
 
 model OrderEvent {
@@ -1048,19 +1092,272 @@ enum EmailStatus {
 
 // Every email the app sends on a business's behalf.
 model EmailMessage {
-  id         String      @id @default(cuid())
-  businessId String
-  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  orderId    String?
-  order      Order?      @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: NoAction)
-  to         String
-  subject    String
-  text       String
-  html       String
-  status     EmailStatus
-  provider   String
-  error      String?
-  createdAt  DateTime    @default(now())
+  id              String         @id @default(cuid())
+  businessId      String
+  business        Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orderId         String?
+  order           Order?         @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: NoAction)
+  purchaseOrderId String?
+  purchaseOrder   PurchaseOrder? @relation(fields: [businessId, purchaseOrderId], references: [businessId, id], onDelete: NoAction)
+  to              String
+  subject         String
+  text            String
+  html            String
+  status          EmailStatus
+  provider        String
+  error           String?
+  createdAt       DateTime       @default(now())
 
   @@index([businessId, orderId])
+  @@index([businessId, purchaseOrderId])
+}
+
+// ─── Production ──────────────────────────────────────────────────────────
+
+// A decoration method's production steps, e.g. Burn screens → Print → Cure.
+model WorkflowStep {
+  id         String           @id @default(cuid())
+  businessId String
+  business   Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  methodId   String
+  method     DecorationMethod @relation(fields: [businessId, methodId], references: [businessId, id], onDelete: Cascade)
+  name       String
+  sortOrder  Int              @default(0)
+
+  @@unique([businessId, id])
+}
+
+enum JobStatus {
+  QUEUED
+  IN_PROGRESS
+  DONE
+}
+
+// One job per order and decoration method. Its steps are copied from the
+// method's workflow when the job is created, so later workflow edits don't
+// change jobs already on the floor.
+model ProductionJob {
+  id           String              @id @default(cuid())
+  businessId   String
+  business     Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orderId      String
+  order        Order               @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: Cascade)
+  methodId     String
+  method       DecorationMethod    @relation(fields: [businessId, methodId], references: [businessId, id], onDelete: NoAction)
+  status       JobStatus           @default(QUEUED)
+  scheduledFor DateTime?           @db.Date
+  assignedToId String?
+  assignedTo   StaffUser?          @relation("JobAssignee", fields: [businessId, assignedToId], references: [businessId, id], onDelete: NoAction)
+  notes        String?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  steps        ProductionJobStep[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@unique([businessId, id])
+  @@unique([orderId, methodId])
+  @@index([businessId, status, scheduledFor])
+}
+
+model ProductionJobStep {
+  id         String        @id @default(cuid())
+  businessId String
+  business   Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  jobId      String
+  job        ProductionJob @relation(fields: [businessId, jobId], references: [businessId, id], onDelete: Cascade)
+  name       String
+  sortOrder  Int           @default(0)
+  doneAt     DateTime?
+  doneById   String?
+  doneBy     StaffUser?    @relation(fields: [businessId, doneById], references: [businessId, id], onDelete: NoAction)
+
+  @@unique([businessId, id])
+}
+
+// ─── Purchasing & inventory ──────────────────────────────────────────────
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SENT
+  PARTIAL // some items received
+  RECEIVED
+  CANCELLED
+}
+
+model PurchaseOrder {
+  id             String              @id @default(cuid())
+  businessId     String
+  business       Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  number         Int // PO-1001…
+  supplierId     String
+  supplier       Supplier            @relation(fields: [businessId, supplierId], references: [businessId, id], onDelete: NoAction)
+  status         PurchaseOrderStatus @default(DRAFT)
+  shipToName     String?
+  shipLine1      String?
+  shipLine2      String?
+  shipCity       String?
+  shipRegion     String?
+  shipPostalCode String?
+  shipCountry    String              @default("US")
+  // Ship without supplier branding or invoice in the box (straight to a customer).
+  blindShip      Boolean             @default(false)
+  notes          String? // printed on the PO
+  expectedAt     DateTime?           @db.Date
+  sentAt         DateTime?
+  receivedAt     DateTime?
+  total          Decimal             @default(0) @db.Decimal(10, 2)
+  createdById    String?
+  createdBy      StaffUser?          @relation(fields: [businessId, createdById], references: [businessId, id], onDelete: NoAction)
+  lines          PurchaseOrderLine[]
+  emails         EmailMessage[]
+  stockMovements StockMovement[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@unique([businessId, id])
+  @@unique([businessId, number])
+  @@index([businessId, status])
+}
+
+model PurchaseOrderLine {
+  id              String            @id @default(cuid())
+  businessId      String
+  business        Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder     @relation(fields: [businessId, purchaseOrderId], references: [businessId, id], onDelete: Cascade)
+  variantId       String
+  variant         ProductVariant    @relation(fields: [businessId, variantId], references: [businessId, id], onDelete: NoAction)
+  qty             Int
+  unitCost        Decimal           @db.Decimal(10, 2)
+  qtyReceived     Int               @default(0)
+  allocations     BlankAllocation[]
+
+  @@unique([businessId, id])
+  @@unique([purchaseOrderId, variantId])
+}
+
+enum BlankSource {
+  PO // on a purchase order line
+  STOCK // taken from in-house stock
+  OTHER // supplied by the customer or already on hand, not tracked
+}
+
+// Blanks set aside for an order.
+model BlankAllocation {
+  id         String             @id @default(cuid())
+  businessId String
+  business   Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orderId    String
+  order      Order              @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: Cascade)
+  variantId  String
+  variant    ProductVariant     @relation(fields: [businessId, variantId], references: [businessId, id], onDelete: NoAction)
+  qty        Int
+  source     BlankSource
+  poLineId   String? // set when source is PO
+  poLine     PurchaseOrderLine? @relation(fields: [businessId, poLineId], references: [businessId, id], onDelete: Cascade)
+  note       String?
+  createdAt  DateTime           @default(now())
+
+  @@unique([businessId, id])
+  @@index([businessId, orderId])
+  @@index([businessId, variantId])
+}
+
+enum StockReason {
+  RECEIVED // from a purchase order
+  ADJUSTED // counted or corrected by hand
+  USED // taken for an order
+  RETURNED // an order gave blanks back
+}
+
+// Every change to in-house stock, for the history on the inventory page.
+model StockMovement {
+  id              String         @id @default(cuid())
+  businessId      String
+  business        Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  variantId       String
+  variant         ProductVariant @relation(fields: [businessId, variantId], references: [businessId, id], onDelete: Cascade)
+  change          Int
+  reason          StockReason
+  note            String?
+  orderId         String?
+  order           Order?         @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: NoAction)
+  purchaseOrderId String?
+  purchaseOrder   PurchaseOrder? @relation(fields: [businessId, purchaseOrderId], references: [businessId, id], onDelete: NoAction)
+  staffId         String?
+  staff           StaffUser?     @relation(fields: [businessId, staffId], references: [businessId, id], onDelete: NoAction)
+  createdAt       DateTime       @default(now())
+
+  @@index([businessId, variantId])
+}
+
+// ─── Shipping ────────────────────────────────────────────────────────────
+
+enum DeliveryKind {
+  SHIP
+  PICKUP
+  DELIVERY // local delivery by the shop
+}
+
+// The business-wide list of delivery options, used on orders now and
+// offered by storefronts later.
+model DeliveryMethod {
+  id          String       @id @default(cuid())
+  businessId  String
+  business    Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name        String
+  kind        DeliveryKind @default(SHIP)
+  description String?
+  price       Decimal      @default(0) @db.Decimal(10, 2)
+  freeOver    Decimal?     @db.Decimal(10, 2) // free when the order's items reach this
+  // Carrier and service codes, e.g. for ShipStation ("ups_walleted", "ups_ground").
+  carrier     String?
+  service     String?
+  active      Boolean      @default(true)
+  sortOrder   Int          @default(0)
+  orders      Order[]
+  shipments   Shipment[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, name])
+}
+
+model Shipment {
+  id               String          @id @default(cuid())
+  businessId       String
+  business         Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orderId          String
+  order            Order           @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: Cascade)
+  kind             DeliveryKind
+  deliveryMethodId String?
+  deliveryMethod   DeliveryMethod? @relation(fields: [businessId, deliveryMethodId], references: [businessId, id], onDelete: NoAction)
+  methodName       String? // snapshot, in case the method is renamed or removed
+  carrier          String? // "ups", "usps", "fedex", "dhl" or free text
+  trackingNumber   String?
+  cost             Decimal?        @db.Decimal(10, 2) // what the shop paid
+  note             String? // e.g. who picked it up
+  shippedAt        DateTime        @default(now())
+  notifiedAt       DateTime?
+  createdById      String?
+  createdBy        StaffUser?      @relation(fields: [businessId, createdById], references: [businessId, id], onDelete: NoAction)
+  items            ShipmentItem[]
+  createdAt        DateTime        @default(now())
+
+  @@unique([businessId, id])
+  @@index([businessId, orderId])
+}
+
+model ShipmentItem {
+  id          String     @id @default(cuid())
+  businessId  String
+  business    Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  shipmentId  String
+  shipment    Shipment   @relation(fields: [businessId, shipmentId], references: [businessId, id], onDelete: Cascade)
+  // Cleared if the line is later removed from the order; the description stays.
+  lineId      String?
+  line        OrderLine? @relation(fields: [businessId, lineId], references: [businessId, id], onDelete: NoAction)
+  sizeId      String
+  description String // "Gildan 5000 · Navy · M"
+  qty         Int
 }
