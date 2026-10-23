@@ -62,11 +62,15 @@ describe("catalog import", () => {
 
   it("updates costs and adds new colors from a newer file, keeping your edits", async () => {
     await t.db.product.updateMany({ where: { styleCode: "PC54" }, data: { name: "Our Classic Tee", description: "Edited" } });
+    // Earlier imports left every size at the same position.
+    await t.db.productSize.updateMany({ where: { product: { styleCode: "PC54" } }, data: { sortOrder: 1 } });
     const second = await createCatalogImport(t.db, { supplierId, file: upload(tee("PC54", { piece: "3.75", colors: ["Jet Black", "White", "Navy"] })), staffId: null });
     const r = await importAll(second, "case");
     expect(r).toMatchObject({ productsAdded: 0, productsUpdated: 1, colorsAdded: 1, skusAdded: 2, skusUpdated: 4 });
-    const p = await t.db.product.findFirstOrThrow({ where: { styleCode: "PC54" }, include: { variants: true, colors: true } });
+    const p = await t.db.product.findFirstOrThrow({ where: { styleCode: "PC54" }, include: { variants: true, colors: true, sizes: { orderBy: { sortOrder: "asc" } } } });
     expect(p.name).toBe("Our Classic Tee");
+    expect(p.sizes.map((x) => x.code)).toEqual(["S", "M"]);
+    expect(p.sizes[0].sortOrder).toBeLessThan(p.sizes[1].sortOrder);
     expect(p.description).toBe("Edited");
     expect(new Set(p.variants.map((v) => v.wholesaleCost.toFixed(2)))).toEqual(new Set(["2.50"]));
     expect(await t.db.product.count({ where: { styleCode: "PC54" } })).toBe(1);

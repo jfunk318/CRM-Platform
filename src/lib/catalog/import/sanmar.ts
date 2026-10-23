@@ -14,7 +14,6 @@ export type SupplierRow = {
   color: string;
   supplierColor: string; // the color name the supplier uses for ordering
   size: string;
-  sizeOrder: number;
   cost: { piece: number | null; dozen: number | null; case: number | null };
   discontinued: boolean;
   externalId: string; // the supplier's id for this style/color/size
@@ -107,7 +106,6 @@ export function sanmarRow(r: Record<string, string>, text: RowText = plainText):
     color,
     supplierColor: clean(r.SANMAR_MAINFRAME_COLOR) || color,
     size,
-    sizeOrder: num(r.SIZE_INDEX) ?? 0,
     cost: { piece: num(r.PIECE_PRICE), dozen: num(r.DOZENS_PRICE), case: num(r.CASE_PRICE) },
     discontinued: status === "discontinued",
     externalId: clean(r.UNIQUE_KEY) || `${style}|${color}|${size}`,
@@ -125,7 +123,7 @@ export class ImportFileError extends Error {}
 
 /** The SanMar columns the importer reads. */
 const COLUMNS = [
-  "STYLE#", "PRODUCT_TITLE", "MILL", "PRODUCT_DESCRIPTION", "CATEGORY_NAME", "COLOR_NAME", "SANMAR_MAINFRAME_COLOR", "SIZE", "SIZE_INDEX",
+  "STYLE#", "PRODUCT_TITLE", "MILL", "PRODUCT_DESCRIPTION", "CATEGORY_NAME", "COLOR_NAME", "SANMAR_MAINFRAME_COLOR", "SIZE",
   "PIECE_PRICE", "DOZENS_PRICE", "CASE_PRICE", "PRODUCT_STATUS", "UNIQUE_KEY", "GTIN", "FRONT_MODEL_IMAGE_URL", "FRONT_FLAT_IMAGE_URL",
   "BACK_MODEL_IMAGE_URL", "BACK_FLAT_IMAGE_URL", "DECORATION_SPEC_SHEET",
 ];

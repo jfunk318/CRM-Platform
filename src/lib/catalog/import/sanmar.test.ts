@@ -36,7 +36,7 @@ describe("reading the file", () => {
     const fromZip = await collect(readSanmarFile(zipSync({ "SanMar_SDL_N.csv": strToU8(csv) }), "SanMar_SDL_N.zip"));
     expect(fromZip).toEqual(fromCsv);
     expect(fromCsv).toHaveLength(8);
-    expect(fromCsv[0]).toMatchObject({ style: "PC54", name: "Core Cotton Tee", brand: "Port & Co", categories: ["T-Shirts", "Youth"], color: "Jet Black", supplierColor: "JET BLACK", size: "S", cost: { piece: 3.5, dozen: 3.5, case: 2.5 }, discontinued: false });
+    expect(fromCsv[0]).toMatchObject({ style: "PC54", name: "Core Cotton Tee", brand: "Port & Co", categories: ["T-Shirts", "Youth"], color: "Jet Black", supplierColor: "JET BLACK", size: "M", cost: { piece: 3.5, dozen: 3.5, case: 2.5 }, discontinued: false });
     expect(fromCsv[0].backImage).toBe("https://cdnm.sanmar.com/PC54_0_back.jpg");
   });
 

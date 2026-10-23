@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ProductImage } from "@/components/product-image";
 import type { Prisma, Store, StoreGroup } from "@prisma/client";
 import { itemPrice } from "@/lib/store/settings";
 
@@ -36,8 +37,7 @@ export function ItemGrid({ items, store, showPrices }: { items: ShopItem[]; stor
           <Link key={item.id} href={`/shop/${item.slug}`} className="group block">
             <div className="flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-gray-100">
               {img ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={img} alt={item.name} className="h-full w-full object-cover transition group-hover:scale-105" />
+                <ProductImage src={img} alt={item.name} width={500} height={500} sizes="(min-width: 768px) 25vw, 50vw" className="h-full w-full object-cover transition group-hover:scale-105" />
               ) : (
                 <span className="h-16 w-16 rounded-full border" style={{ background: item.design.color.hex ?? "#e5e7eb" }} />
               )}

@@ -5,6 +5,7 @@ import { productSearch } from "@/lib/catalog/search";
 import { getRequestStore } from "@/lib/store/resolve";
 import { blankFromPrices } from "@/lib/store/catalog";
 import { money } from "@/components/store/items";
+import { ProductImage } from "@/components/product-image";
 
 export const metadata = { title: "Catalog" };
 
@@ -86,8 +87,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
               <Link key={p.id} href={`/catalog/${p.slug}`} className="group block">
                 <div className="flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-gray-100">
                   {img && /^https:\/\//.test(img) ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={img} alt={p.name} className="h-full w-full object-cover" />
+                    <ProductImage src={img} alt={p.name} width={600} height={600} sizes="(min-width: 1024px) 300px, 50vw" className="h-full w-full object-cover" />
                   ) : (
                     <span className="text-4xl font-bold text-gray-300">{p.styleCode}</span>
                   )}

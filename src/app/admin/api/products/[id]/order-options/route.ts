@@ -8,7 +8,7 @@ export type OrderOptions = {
   id: string;
   name: string;
   styleCode: string;
-  colors: { id: string; name: string; hex: string | null; sizeIds: string[] }[];
+  colors: { id: string; name: string; hex: string | null; image: string | null; sizeIds: string[] }[];
   sizes: { id: string; code: string }[];
   methods: { id: string; name: string; pricingModel: string; minQty: number; maxColors: number | null }[];
   areas: { id: string; label: string; widthIn: number; heightIn: number }[];
@@ -29,7 +29,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       colors: { orderBy: { sortOrder: "asc" } },
       sizes: { orderBy: { sortOrder: "asc" } },
       variants: { where: { active: true }, select: { colorId: true, sizeId: true } },
-      views: { orderBy: { sortOrder: "asc" }, include: { areas: true } },
+      views: { orderBy: { sortOrder: "asc" }, include: { areas: true, images: true } },
       methodRules: true,
       productType: { include: { decorationMethods: { include: { method: true } } } },
     },
@@ -44,6 +44,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       id: c.id,
       name: c.name,
       hex: c.hex,
+      // The first view that has a photo in this color.
+      image: p.views.map((v) => v.images.find((i) => i.colorId === c.id)?.url).find(Boolean) ?? null,
       sizeIds: p.variants.filter((v) => v.colorId === c.id).map((v) => v.sizeId),
     })),
     sizes: p.sizes.map((s) => ({ id: s.id, code: s.code })),

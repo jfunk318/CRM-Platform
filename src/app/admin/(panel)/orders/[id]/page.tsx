@@ -6,6 +6,8 @@ import { orderRef } from "@/lib/orders/numbers";
 import type { Fee, PricingIssue } from "@/lib/pricing";
 import { ActionForm } from "@/components/admin/action-form";
 import { LineEditor, type LineValue } from "@/components/admin/line-editor";
+import { ProductThumb } from "@/components/admin/product-thumb";
+import { colorThumbnails } from "@/lib/catalog/thumbnails";
 import { SourceTag, StatusBadge } from "@/components/admin/order-table";
 import { requestOrigin } from "@/lib/business";
 import { orderBlankStatus } from "@/lib/purchasing/service";
@@ -62,6 +64,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   });
   if (!order) notFound();
   const origin = await requestOrigin();
+  const lineThumbs = await colorThumbnails(db.$businessId, [...new Set(order.lines.map((l) => l.design.colorId))]);
   const canArtwork = hasAnyRole(staff.roles, ["SALES", "ARTWORK", "ARTWORK_MANAGER"]);
   const suggestedDeposit = order.total.times(staff.business.defaultDepositPct).toFixed(2);
 
@@ -186,14 +189,17 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               return (
                 <div key={line.id} className="card space-y-3" data-testid="line">
                   <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <div className="font-medium">
-                        {line.design.product.name}{" "}
-                        <span className="font-mono text-xs text-gray-500">{line.design.product.styleCode}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                        <span className="inline-block h-3 w-3 rounded-full border" style={{ background: line.design.color.hex ?? "#fff" }} />
-                        {line.design.color.name} · {qty} pcs
+                    <div className="flex items-start gap-3">
+                      <ProductThumb url={lineThumbs.get(line.design.colorId)} label={line.design.product.styleCode} size={56} />
+                      <div>
+                        <div className="font-medium">
+                          {line.design.product.name}{" "}
+                          <span className="font-mono text-xs text-gray-500">{line.design.product.styleCode}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                          <span className="inline-block h-3 w-3 rounded-full border" style={{ background: line.design.color.hex ?? "#fff" }} />
+                          {line.design.color.name} · {qty} pcs
+                        </div>
                       </div>
                     </div>
                     <div className="text-right">

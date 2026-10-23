@@ -13,7 +13,8 @@ export function sampleCsv(rows: SampleRow[]): string {
 export function tee(style: string, o: { brand?: string; piece?: string; status?: string; colors?: string[]; category?: string } = {}): SampleRow[] {
   const brand = o.brand ?? "Port & Co";
   return (o.colors ?? ["Jet Black", "White"]).flatMap((color, ci) =>
-    ["S", "M"].map((size, si) => ({
+    // Listed M before S, as supplier files sometimes do; the import sorts them.
+    ["M", "S"].map((size, si) => ({
       UNIQUE_KEY: `${style}-${ci}-${si}`,
       PRODUCT_TITLE: `${brand} -  Core Cotton Tee.  ${style}`,
       PRODUCT_DESCRIPTION: "5.4-ounce cottonTear-away label",

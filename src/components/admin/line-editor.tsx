@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { OrderOptions } from "@/app/admin/api/products/[id]/order-options/route";
 import { ProductPicker, type PickedProduct } from "./product-picker";
+import { ProductThumb } from "./product-thumb";
 
 export type DecorationValue = {
   methodId: string;
@@ -87,34 +88,37 @@ export function LineEditor({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <label className="label" htmlFor="le-product">Product</label>
-          <ProductPicker
-            id="le-product"
-            name="productId"
-            selected={options ? { id: options.id, name: options.name, styleCode: options.styleCode } : (product ?? null)}
-            onChange={(p) => {
-              if (p.id === value.productId) return;
-              setOptions(null);
-              setValue((v) => ({ ...v, productId: p.id }));
-            }}
-            required
-          />
-        </div>
-        <div>
-          <label className="label" htmlFor="le-color">Color</label>
-          <select
-            className="input"
-            id="le-color"
-            name="colorId"
-            value={value.colorId}
-            onChange={(e) => setValue((v) => ({ ...v, colorId: e.target.value }))}
-            disabled={!options}
-            required
-          >
-            {options?.colors.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+      <div className="flex items-end gap-3">
+        <ProductThumb url={color?.image} label={options?.styleCode ?? product?.styleCode ?? ""} size={72} />
+        <div className="grid flex-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="le-product">Product</label>
+            <ProductPicker
+              id="le-product"
+              name="productId"
+              selected={options ? { id: options.id, name: options.name, styleCode: options.styleCode } : (product ?? null)}
+              onChange={(p) => {
+                if (p.id === value.productId) return;
+                setOptions(null);
+                setValue((v) => ({ ...v, productId: p.id }));
+              }}
+              required
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="le-color">Color</label>
+            <select
+              className="input"
+              id="le-color"
+              name="colorId"
+              value={value.colorId}
+              onChange={(e) => setValue((v) => ({ ...v, colorId: e.target.value }))}
+              disabled={!options}
+              required
+            >
+              {options?.colors.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
         </div>
       </div>
       {loadError && <p className="text-sm text-red-600">{loadError}</p>}

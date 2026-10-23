@@ -87,6 +87,8 @@ export function RowsEditor({
                           name={c.name}
                           aria-label={c.label}
                           placeholder={c.placeholder}
+                          // Keep narrow number columns readable when the table is squeezed.
+                          style={c.width ? { minWidth: c.suffix ? `calc(${c.width} - 1.5rem)` : c.width } : undefined}
                           value={String(row[c.name] ?? "")}
                           onChange={(e) => update(i, c.name, e.target.value)}
                         />

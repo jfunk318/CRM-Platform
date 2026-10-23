@@ -23,7 +23,7 @@ const EDITORS = ["SALES", "PURCHASING"] as const;
 const field = (form: FormData, name: string) => String(form.get(name) ?? "");
 const refresh = (id: string) => {
   revalidatePath("/admin/products");
-  revalidatePath(`/admin/products/${id}`);
+  revalidatePath(`/admin/products/${id}`, "layout");
 };
 
 async function uniqueSlug(db: BusinessTx, base: string, excludeId?: string) {
@@ -78,43 +78,89 @@ export async function createProduct(_: ActionResult, form: FormData): Promise<Ac
 
 const STATUSES: ProductStatus[] = ["ACTIVE", "CLOSING_OUT", "DISCONTINUED"];
 
-export async function saveProductDetails(_: ActionResult, form: FormData): Promise<ActionResult> {
+/** Update some of a product's own fields; each section of the product page saves its own. */
+async function saveFields(form: FormData, build: (id: string, db: BusinessTx) => Promise<Prisma.ProductUpdateInput>, after?: (tx: BusinessTx, id: string) => Promise<void>) {
   const { db } = await requireStaff([...EDITORS]);
   return runAction(async () => {
     const id = text(form, "id");
-    const status = field(form, "status") as ProductStatus;
-    if (!STATUSES.includes(status)) throw new FormError("Choose a status");
-    const categoryIds = form.getAll("categoryIds").map(String);
-    const styleCode = text(form, "styleCode", "Style code").toUpperCase();
-    const before = await db.product.findUniqueOrThrow({ where: { id }, select: { styleCode: true } });
-
+    const data = await build(id, db);
     await db.$transaction(async (tx) => {
-      await tx.product.update({
-        where: { id },
-        data: {
-          name: text(form, "name", "Name"),
-          slug: await uniqueSlug(tx, optionalText(form, "slug") ?? text(form, "name"), id),
-          styleCode,
-          brand: optionalText(form, "brand"),
-          description: optionalText(form, "description"),
-          status,
-          supplierId: optionalText(form, "supplierId"),
-          productTypeId: text(form, "productTypeId", "Product type"),
-          quantityDiscountId: optionalText(form, "quantityDiscountId"),
-          isCustom: checkbox(form, "isCustom"),
-          allowBlankSale: checkbox(form, "allowBlankSale"),
-          productionLeadDays: optionalInt(field(form, "productionLeadDays"), "Lead days"),
-          sizeChartImageUrl: optionalText(form, "sizeChartImageUrl"),
-          specSheetUrl: optionalText(form, "specSheetUrl"),
-        },
-      });
-      await tx.productCategory.deleteMany({ where: { productId: id } });
-      if (categoryIds.length) {
-        await tx.productCategory.createMany({ data: categoryIds.map((categoryId) => ({ businessId: db.$businessId, productId: id, categoryId })) });
-      }
-      if (before.styleCode !== styleCode) await resyncSkus(tx, id);
+      await tx.product.update({ where: { id }, data });
+      await after?.(tx, id);
     });
     refresh(id);
+  });
+}
+
+export async function saveGeneral(_: ActionResult, form: FormData): Promise<ActionResult> {
+  let styleChanged = false;
+  return saveFields(
+    form,
+    async (id, db) => {
+      const status = field(form, "status") as ProductStatus;
+      if (!STATUSES.includes(status)) throw new FormError("Choose a status");
+      const styleCode = text(form, "styleCode", "Product code").toUpperCase();
+      const before = await db.product.findUniqueOrThrow({ where: { id }, select: { styleCode: true } });
+      styleChanged = before.styleCode !== styleCode;
+      return {
+        name: text(form, "name", "Product name"),
+        slug: await uniqueSlug(db, optionalText(form, "slug") ?? text(form, "name"), id),
+        styleCode,
+        brand: optionalText(form, "brand"),
+        description: optionalText(form, "description"),
+        status,
+        productType: { connect: { businessId_id: { businessId: db.$businessId, id: text(form, "productTypeId", "Product type") } } },
+        isCustom: checkbox(form, "isCustom"),
+        allowBlankSale: checkbox(form, "allowBlankSale"),
+      };
+    },
+    async (tx, id) => {
+      if (styleChanged) await resyncSkus(tx, id);
+    },
+  );
+}
+
+export async function saveCategories(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const categoryIds = form.getAll("categoryIds").map(String);
+  return saveFields(
+    form,
+    async () => ({}),
+    async (tx, id) => {
+      await tx.productCategory.deleteMany({ where: { productId: id } });
+      if (categoryIds.length) {
+        const businessId = (await tx.product.findUniqueOrThrow({ where: { id }, select: { businessId: true } })).businessId;
+        await tx.productCategory.createMany({ data: categoryIds.map((categoryId, i) => ({ businessId, productId: id, categoryId, sortOrder: i })) });
+      }
+    },
+  );
+}
+
+export async function saveSupplierInfo(_: ActionResult, form: FormData): Promise<ActionResult> {
+  return saveFields(form, async (_id, db) => {
+    const supplierId = optionalText(form, "supplierId");
+    return {
+      supplier: supplierId ? { connect: { businessId_id: { businessId: db.$businessId, id: supplierId } } } : { disconnect: true },
+      specSheetUrl: optionalText(form, "specSheetUrl"),
+    };
+  });
+}
+
+export async function saveProductionSettings(_: ActionResult, form: FormData): Promise<ActionResult> {
+  return saveFields(form, async () => ({ productionLeadDays: optionalInt(field(form, "productionLeadDays"), "Lead days") }));
+}
+
+export async function saveSizeChart(_: ActionResult, form: FormData): Promise<ActionResult> {
+  return saveFields(form, async () => {
+    const url = optionalText(form, "sizeChartImageUrl");
+    if (url && !/^https?:\/\//.test(url)) throw new FormError("The size chart link must start with http:// or https://");
+    return { sizeChartImageUrl: url };
+  });
+}
+
+export async function saveQuantityDiscount(_: ActionResult, form: FormData): Promise<ActionResult> {
+  return saveFields(form, async (_id, db) => {
+    const discountId = optionalText(form, "quantityDiscountId");
+    return { quantityDiscount: discountId ? { connect: { businessId_id: { businessId: db.$businessId, id: discountId } } } : { disconnect: true } };
   });
 }
 
@@ -223,23 +269,22 @@ export async function saveCosts(_: ActionResult, form: FormData): Promise<Action
     for (const color of product.colors) {
       for (const size of product.sizes) {
         const key = `${color.id}_${size.id}`;
+        // Only colors shown on the page are submitted; leave the rest alone.
+        if (!form.has(`cost_${key}`)) continue;
         const cost = optionalDecimal(field(form, `cost_${key}`), `${color.name} ${size.code} cost`);
-        const stockRaw = field(form, `stock_${key}`);
-        const stockOnHand = optionalInt(stockRaw, `${color.name} ${size.code} stock`);
-        const supplierSku = optionalText(form, `ssku_${key}`);
         const existing = product.variants.find((v) => v.colorId === color.id && v.sizeId === size.id);
         if (cost === null) {
           if (existing) ops.push(db.productVariant.delete({ where: { id: existing.id } }));
           continue;
         }
         offered++;
-        const data = { wholesaleCost: cost, stockOnHand, supplierSku };
+        if (existing?.wholesaleCost.equals(cost)) continue;
         ops.push(
           existing
-            ? db.productVariant.update({ where: { id: existing.id }, data })
+            ? db.productVariant.update({ where: { id: existing.id }, data: { wholesaleCost: cost } })
             : db.productVariant.create({
                 data: {
-                  ...data,
+                  wholesaleCost: cost,
                   businessId: db.$businessId,
                   productId,
                   colorId: color.id,
@@ -252,7 +297,32 @@ export async function saveCosts(_: ActionResult, form: FormData): Promise<Action
     }
     await db.$transaction(ops);
     refresh(productId);
-    return `Saved ${offered} SKU(s)`;
+    return ops.length ? `Saved ${ops.length} change(s); ${offered} SKU(s) offered` : "No changes";
+  });
+}
+
+/** SKU table: supplier order code, in-house stock, reorder level and on/off, per existing SKU. */
+export async function saveInventory(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff([...EDITORS]);
+  return runAction(async () => {
+    const productId = text(form, "productId");
+    const ids = all(form, "variantId");
+    const variants = await db.productVariant.findMany({ where: { productId, id: { in: ids } }, include: { color: true, size: true } });
+    const ops = variants.map((v) => {
+      const label = `${v.color.name} ${v.size.code}`;
+      return db.productVariant.update({
+        where: { id: v.id },
+        data: {
+          supplierSku: optionalText(form, `ssku_${v.id}`),
+          stockOnHand: optionalInt(field(form, `stock_${v.id}`), `${label} stock`),
+          reorderPoint: optionalInt(field(form, `reorder_${v.id}`), `${label} reorder level`),
+          active: checkbox(form, `active_${v.id}`),
+        },
+      });
+    });
+    await db.$transaction(ops);
+    refresh(productId);
+    return `Saved ${ops.length} SKU(s)`;
   });
 }
 
@@ -279,25 +349,24 @@ export async function saveViews(_: ActionResult, form: FormData): Promise<Action
   });
 }
 
-/** One view's print areas and its product photo per color. */
-export async function saveViewDetails(_: ActionResult, form: FormData): Promise<ActionResult> {
+/** One view's print areas, edited in place so quote and order items stay linked to them. */
+export async function saveViewAreas(_: ActionResult, form: FormData): Promise<ActionResult> {
   const { db } = await requireStaff([...EDITORS]);
   return runAction(async () => {
     const viewId = text(form, "viewId");
-    const view = await db.productView.findUniqueOrThrow({ where: { id: viewId }, include: { product: { include: { colors: true } } } });
+    const view = await db.productView.findUniqueOrThrow({ where: { id: viewId }, include: { areas: { select: { id: true } } } });
 
-    const [names, widths, heights, xs, ys, ws, hs] = ["name", "widthIn", "heightIn", "x", "y", "w", "h"].map((n) => all(form, n));
+    const [ids, names, widths, heights, xs, ys, ws, hs] = ["areaId", "name", "widthIn", "heightIn", "x", "y", "w", "h"].map((n) => all(form, n));
     const fraction = (raw: string, label: string) => {
       const n = Number(raw || "0") / 100;
       if (!Number.isFinite(n) || n < 0 || n > 1) throw new FormError(`${label} must be between 0 and 100%`);
       return n;
     };
-    const areas = names
+    const rows = names
       .map((name, i) => ({ name, i }))
       .filter((r) => r.name)
       .map(({ name, i }) => ({
-        businessId: db.$businessId,
-        viewId,
+        id: ids[i] || null,
         name,
         widthIn: decimal(widths[i] ?? "", `${name} width`),
         heightIn: decimal(heights[i] ?? "", `${name} height`),
@@ -306,23 +375,45 @@ export async function saveViewDetails(_: ActionResult, form: FormData): Promise<
         w: fraction(ws[i] ?? "", `${name} box width`),
         h: fraction(hs[i] ?? "", `${name} box height`),
       }));
-
-    const images = view.product.colors.map((c) => ({ colorId: c.id, url: optionalText(form, `img_${c.id}`) }));
-    for (const img of images) {
-      if (img.url && !/^https?:\/\//.test(img.url)) throw new FormError("Image links must start with http:// or https://");
-    }
-
-    await db.$transaction([
-      // Quote/order items keep their location name when a print area is replaced.
-      db.designDecoration.updateMany({ where: { area: { viewId } }, data: { areaId: null } }),
-      db.decorationArea.deleteMany({ where: { viewId } }),
-      db.decorationArea.createMany({ data: areas }),
-      db.viewImage.deleteMany({ where: { viewId } }),
-      db.viewImage.createMany({
-        data: images.filter((i) => i.url).map((i) => ({ businessId: db.$businessId, viewId, colorId: i.colorId, url: i.url! })),
-      }),
-    ]);
+    const d = diffRows(view.areas.map((a) => a.id), rows);
+    await db.$transaction(async (tx) => {
+      // Quote/order items keep their location name when a print area is removed.
+      await tx.designDecoration.updateMany({ where: { areaId: { in: d.deleteIds } }, data: { areaId: null } });
+      await tx.decorationArea.deleteMany({ where: { id: { in: d.deleteIds } } });
+      for (const { id, ...data } of d.update) await tx.decorationArea.update({ where: { id }, data });
+      if (d.create.length) await tx.decorationArea.createMany({ data: d.create.map((r) => ({ ...r, businessId: db.$businessId, viewId })) });
+    });
     refresh(view.productId);
+  });
+}
+
+/** Product photos: one link per view and color, named img_<viewId>_<colorId>. */
+export async function saveImages(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff([...EDITORS]);
+  return runAction(async () => {
+    const productId = text(form, "productId");
+    const product = await db.product.findUniqueOrThrow({ where: { id: productId }, include: { views: { include: { images: true } }, colors: true } });
+    const ops: Prisma.PrismaPromise<unknown>[] = [];
+    for (const view of product.views) {
+      for (const color of product.colors) {
+        const name = `img_${view.id}_${color.id}`;
+        // Only colors shown on the page are submitted; leave the rest alone.
+        if (!form.has(name)) continue;
+        const url = optionalText(form, name);
+        if (url && !/^https?:\/\//.test(url)) throw new FormError(`${view.name} / ${color.name}: image links must start with http:// or https://`);
+        const existing = view.images.find((i) => i.colorId === color.id);
+        if (!url) {
+          if (existing) ops.push(db.viewImage.delete({ where: { id: existing.id } }));
+        } else if (!existing) {
+          ops.push(db.viewImage.create({ data: { businessId: db.$businessId, viewId: view.id, colorId: color.id, url } }));
+        } else if (existing.url !== url) {
+          ops.push(db.viewImage.update({ where: { id: existing.id }, data: { url } }));
+        }
+      }
+    }
+    await db.$transaction(ops);
+    refresh(productId);
+    return ops.length ? `Saved ${ops.length} photo change(s)` : "No changes";
   });
 }
 
@@ -351,7 +442,11 @@ export async function saveMethodRules(_: ActionResult, form: FormData): Promise<
 export async function deleteProduct(_: ActionResult, form: FormData): Promise<ActionResult> {
   const { db } = await requireStaff(["ADMIN"]);
   const result = await runAction(async () => {
-    await db.product.delete({ where: { id: text(form, "id") } });
+    const id = text(form, "id");
+    if (await db.design.count({ where: { productId: id } })) {
+      throw new FormError("This product is on quotes, orders or store items. Set it to Discontinued instead.");
+    }
+    await db.product.delete({ where: { id } });
   });
   if (result.error) return result;
   revalidatePath("/admin/products");

@@ -130,6 +130,20 @@ Every business table has a `businessId`, and:
 - The back office only opens on the business's own address, never on a
   store subdomain.
 
+## Products
+
+Each product has one page with a section list on the left (General, Colors,
+Views & Decoration Areas, Images, Pricing, Decoration Methods & Minimums,
+Sizing, Production, Supplier & Purchasing, SKUs & Inventory, Categories,
+Decorated Products). Each section saves on its own. Decoration areas are
+edited in place, so quote and order items stay linked when one is renamed or
+resized.
+
+Products show a thumbnail (the first view's photo in the first color) in the
+products list, the product picker and on quote/order items. Photos from
+supplier servers (`src/lib/catalog/image-hosts.ts`) are resized and cached by
+Next.js; other photo links are shown as they are.
+
 ## Supplier catalogs
 
 Suppliers → **Import a supplier catalog file** loads SanMar's product data
@@ -137,6 +151,8 @@ download (SanMar_SDL_N, as the zip or the CSV inside it, up to 50 MB). After
 the file is read you choose brands, categories, whether to include
 discontinued styles, and which SanMar price is your cost (piece, dozen or
 case), then the import runs in the background with progress on the page.
+Sizes are put in the usual garment order (S, M, L … 5XL, talls, youth,
+toddler), since SanMar's own size index isn't reliable.
 
 - New styles become products with colors (swatch color and white/light/dark
   guessed from the name), sizes, SKUs with costs and SanMar's order code,

@@ -5,8 +5,9 @@ import { getCurrentStaff } from "@/lib/auth/session";
 import { getRequestBusiness } from "@/lib/business";
 import { hasAnyRole } from "@/lib/auth/roles";
 import { productSearch } from "@/lib/catalog/search";
+import { productThumbnails } from "@/lib/catalog/thumbnails";
 
-export type ProductHit = { id: string; name: string; styleCode: string; brand: string | null; status: string };
+export type ProductHit = { id: string; name: string; styleCode: string; brand: string | null; status: string; thumbnail: string | null };
 
 const LIMIT = 20;
 
@@ -34,6 +35,8 @@ export async function GET(req: NextRequest) {
     orderBy,
     take: LIMIT - byStyle.length,
   });
-  const hits: ProductHit[] = [...byStyle, ...rest];
+  const found = [...byStyle, ...rest];
+  const thumbs = await productThumbnails(business.id, found.map((p) => p.id));
+  const hits: ProductHit[] = found.map((p) => ({ ...p, thumbnail: thumbs.get(p.id) ?? null }));
   return NextResponse.json(hits);
 }

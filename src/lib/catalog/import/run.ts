@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { type BusinessDb, type BusinessTx, forBusiness } from "@/lib/db";
 import { fileStore } from "@/lib/files/storage";
+import { sizeSortOrder, sortSizes } from "@/lib/catalog/sizes";
 import { slugify } from "@/lib/catalog/products";
 import {
   colorHex,
@@ -202,13 +203,16 @@ export async function runCatalogImport(businessId: string, importId: string) {
           result.colorsAdded++;
         }
         const sizeIds = new Map(product.sizes.map((s) => [s.code.toUpperCase(), s.id]));
-        const sizeOrder = new Map<string, number>();
-        for (const r of rows) sizeOrder.set(r.size, Math.min(sizeOrder.get(r.size) ?? Infinity, r.sizeOrder));
-        for (const [code, order] of [...sizeOrder].sort((a, b) => a[1] - b[1])) {
+        for (const [i, code] of sortSizes([...new Set(rows.map((r) => r.size))]).entries()) {
           if (sizeIds.has(code.toUpperCase())) continue;
-          const s = await tx.productSize.create({ data: { businessId, productId, code, label: code, sortOrder: Number.isFinite(order) ? order : sizeIds.size } });
+          const s = await tx.productSize.create({ data: { businessId, productId, code, label: code, sortOrder: sizeSortOrder(code, i) } });
           sizeIds.set(code.toUpperCase(), s.id);
           result.sizesAdded++;
+        }
+        // Sizes that were never put in order (all the same position, as early
+        // imports left them) get the usual garment order.
+        if (product.sizes.length > 1 && new Set(product.sizes.map((s) => s.sortOrder)).size === 1) {
+          for (const [i, s] of product.sizes.entries()) await tx.productSize.update({ where: { id: s.id }, data: { sortOrder: sizeSortOrder(s.code, i) } });
         }
 
         // Front and back views with standard print areas, and each color's photos.

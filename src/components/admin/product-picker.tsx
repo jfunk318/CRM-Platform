@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import type { ProductHit } from "@/app/admin/api/products/search/route";
+import { ProductThumb } from "./product-thumb";
 
 export type PickedProduct = { id: string; name: string; styleCode: string };
 
@@ -122,7 +123,7 @@ export function ProductPicker({
               key={h.id}
               role="option"
               aria-selected={i === active}
-              className={`cursor-pointer px-3 py-1.5 ${i === active ? "bg-amber-50" : ""}`}
+              className={`flex cursor-pointer items-center gap-2 px-2 py-1 ${i === active ? "bg-amber-50" : ""}`}
               onMouseEnter={() => setActive(i)}
               // mousedown, not click: it lands before the input's blur closes the list.
               onMouseDown={(e) => {
@@ -130,9 +131,12 @@ export function ProductPicker({
                 choose(h);
               }}
             >
-              <span className="font-mono text-xs text-gray-500">{h.styleCode}</span> {h.name}
-              {h.brand && <span className="text-gray-500"> · {h.brand}</span>}
-              {h.status !== "ACTIVE" && <span className="ml-1 text-xs text-gray-400">({h.status.toLowerCase().replace("_", " ")})</span>}
+              <ProductThumb url={h.thumbnail} label={h.styleCode} size={36} />
+              <span>
+                <span className="font-mono text-xs text-gray-500">{h.styleCode}</span> {h.name}
+                {h.brand && <span className="text-gray-500"> · {h.brand}</span>}
+                {h.status !== "ACTIVE" && <span className="ml-1 text-xs text-gray-400">({h.status.toLowerCase().replace("_", " ")})</span>}
+              </span>
             </li>
           ))}
         </ul>

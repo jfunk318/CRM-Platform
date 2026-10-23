@@ -3,6 +3,8 @@ import { productSearch } from "@/lib/catalog/search";
 import type { Prisma } from "@prisma/client";
 import { requireStaff } from "@/lib/auth/session";
 import { ActionForm } from "@/components/admin/action-form";
+import { ProductThumb } from "@/components/admin/product-thumb";
+import { productThumbnails } from "@/lib/catalog/thumbnails";
 import { createProduct } from "./actions";
 
 const STATUS_LABELS = { ACTIVE: "Active", CLOSING_OUT: "Closing out", DISCONTINUED: "Discontinued" } as const;
@@ -36,6 +38,7 @@ export default async function ProductsPage({
     db.category.findMany({ orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }] }),
     db.productType.findMany({ orderBy: { name: "asc" } }),
   ]);
+  const thumbs = await productThumbnails(db.$businessId, products.map((p) => p.id));
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const qs = (p: number) => new URLSearchParams({ q, supplier, category, page: String(p) }).toString();
 
@@ -66,9 +69,10 @@ export default async function ProductsPage({
       </form>
 
       <div className="card overflow-x-auto p-0">
-        <table className="table">
+        <table className="table" data-testid="products">
           <thead>
             <tr>
+              <th className="w-14"></th>
               <th>Product</th>
               <th>Style</th>
               <th>Supplier</th>
@@ -80,13 +84,18 @@ export default async function ProductsPage({
           <tbody>
             {products.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-6 text-center text-gray-500">
+                <td colSpan={7} className="py-6 text-center text-gray-500">
                   {total === 0 && !q && !supplier && !category ? "No products yet. Add the first one below." : "No matches."}
                 </td>
               </tr>
             )}
             {products.map((p) => (
               <tr key={p.id}>
+                <td className="py-1.5">
+                  <Link href={`/admin/products/${p.id}`} aria-hidden tabIndex={-1}>
+                    <ProductThumb url={thumbs.get(p.id)} label={p.styleCode} size={44} />
+                  </Link>
+                </td>
                 <td>
                   <Link href={`/admin/products/${p.id}`} className="font-medium text-amber-700 hover:underline">{p.name}</Link>
                   {p.brand && <div className="text-xs text-gray-500">{p.brand}</div>}
