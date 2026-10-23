@@ -7,6 +7,7 @@ import { hasAnyRole } from "@/lib/auth/roles";
 export type OrderOptions = {
   id: string;
   name: string;
+  styleCode: string;
   colors: { id: string; name: string; hex: string | null; sizeIds: string[] }[];
   sizes: { id: string; code: string }[];
   methods: { id: string; name: string; pricingModel: string; minQty: number; maxColors: number | null }[];
@@ -17,7 +18,7 @@ export type OrderOptions = {
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   // getCurrentStaff only returns staff of the business this host belongs to.
   const [staff, business] = [await getCurrentStaff(), await getRequestBusiness()];
-  if (!staff || !business || !hasAnyRole(staff.roles, ["SALES"])) {
+  if (!staff || !business || !hasAnyRole(staff.roles, ["SALES", "STORE_MANAGER"])) {
     return NextResponse.json({ error: "Not allowed" }, { status: 403 });
   }
   const db = forBusiness(business.id);
@@ -38,6 +39,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const body: OrderOptions = {
     id: p.id,
     name: p.name,
+    styleCode: p.styleCode,
     colors: p.colors.map((c) => ({
       id: c.id,
       name: c.name,

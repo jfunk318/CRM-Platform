@@ -27,6 +27,10 @@ export default async function SuppliersPage() {
           connections for SanMar and S&amp;S come with the integrations phase; until then products are entered by hand.
         </p>
       </div>
+      <Link href="/admin/suppliers/import" className="card block border-dashed hover:border-amber-300">
+        <div className="font-medium text-amber-700">Import a supplier catalog file →</div>
+        <div className="text-sm text-gray-500">Load SanMar&apos;s product data (products, colors, sizes, your costs and photos).</div>
+      </Link>
       {suppliers.map((s) => (
         <div key={s.id} className="card">
           <ActionForm action={saveSupplier} className="grid gap-3 sm:grid-cols-5 sm:items-end">

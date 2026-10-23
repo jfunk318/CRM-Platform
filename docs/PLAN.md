@@ -129,3 +129,11 @@ phases 1–3 need real product data.
   store, the store owner portal with requests and live request flags,
   name/number personalization, commissions, batching orders at store close,
   visit counts, drag-and-drop showcase editor.
+- **Supplier catalog file import (done):** SanMar's product data download
+  (SanMar_SDL_N) imports from Suppliers, choosing brands, categories,
+  discontinued styles and which price is the cost; it runs in the background,
+  repeats without duplicating, and keeps staff edits. Products with thousands
+  of styles are handled with a type-to-search product picker (order lines,
+  store items, price check) and a paged, searchable storefront catalog.
+  Still to do: S&S Activewear's file format, and live API connections once
+  SanMar/S&S credentials are available (phase 8).

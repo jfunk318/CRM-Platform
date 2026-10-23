@@ -125,6 +125,7 @@ model Business {
   storeGroups            StoreGroup[]
   promoCodeStores        PromoCodeStore[]
   giftCodeStores         GiftCodeStore[]
+  catalogImports         CatalogImport[]
   storeDeliveryMethods   StoreDeliveryMethod[]
   storePages             StorePage[]
   storeItems             StoreItem[]
@@ -195,6 +196,7 @@ model StaffUser {
   payments       Payment[]
   assignedJobs   ProductionJob[]     @relation("JobAssignee")
   managedStores  Store[]             @relation("StoreManager")
+  catalogImports CatalogImport[]
   jobStepsDone   ProductionJobStep[]
   purchaseOrders PurchaseOrder[]
   stockMovements StockMovement[]
@@ -240,6 +242,7 @@ model Supplier {
   notes          String?
   products       Product[]
   purchaseOrders PurchaseOrder[]
+  catalogImports CatalogImport[]
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 
@@ -1772,4 +1775,40 @@ model GiftCodeStore {
   store      Store    @relation(fields: [businessId, storeId], references: [businessId, id], onDelete: Cascade)
 
   @@id([giftCodeId, storeId])
+}
+
+// ─── Supplier catalog imports ────────────────────────────────────────────
+
+enum CatalogImportStatus {
+  READY // file read; waiting for the user to choose what to import
+  RUNNING
+  DONE
+  FAILED
+}
+
+// A supplier's product data file (e.g. SanMar's SDL download) being loaded
+// into the catalog. The file stays in storage until the import is done.
+model CatalogImport {
+  id          String              @id @default(cuid())
+  businessId  String
+  business    Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  supplierId  String
+  supplier    Supplier            @relation(fields: [businessId, supplierId], references: [businessId, id], onDelete: Cascade)
+  format      String // "SANMAR_SDL"
+  fileName    String
+  storageKey  String
+  status      CatalogImportStatus @default(READY)
+  summary     Json // what the file holds: styles per brand, category and status
+  options     Json? // what the user chose to import
+  progress    Int                 @default(0) // styles done
+  total       Int                 @default(0)
+  result      Json? // added / updated counts
+  error       String?
+  createdById String?
+  createdBy   StaffUser?          @relation(fields: [businessId, createdById], references: [businessId, id], onDelete: NoAction)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt // also shows an import is still moving
+  finishedAt  DateTime?
+
+  @@unique([businessId, id])
 }

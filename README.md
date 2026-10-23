@@ -130,6 +130,26 @@ Every business table has a `businessId`, and:
 - The back office only opens on the business's own address, never on a
   store subdomain.
 
+## Supplier catalogs
+
+Suppliers → **Import a supplier catalog file** loads SanMar's product data
+download (SanMar_SDL_N, as the zip or the CSV inside it, up to 50 MB). After
+the file is read you choose brands, categories, whether to include
+discontinued styles, and which SanMar price is your cost (piece, dozen or
+case), then the import runs in the background with progress on the page.
+
+- New styles become products with colors (swatch color and white/light/dark
+  guessed from the name), sizes, SKUs with costs and SanMar's order code,
+  SanMar's photos per color, the decoration spec sheet, categories, and
+  starter print areas (shirts, caps and bags each get their own).
+- Importing again (a newer file, or more brands) updates costs, adds new
+  colors and sizes and flags discontinued ones. It keeps your edits to
+  names, descriptions and categories, and never duplicates. A product you
+  entered by hand with the same style code is adopted, not duplicated.
+- The file is read in a worker thread (`src/lib/catalog/import/read-worker.mjs`,
+  started by path from the app folder) so the site stays responsive.
+- Supplier files hold your account pricing: don't commit them to the repo.
+
 ## Production notes
 
 - Set `PLATFORM_DOMAIN`. `localhost` shortcuts are off in production.
@@ -161,6 +181,7 @@ Every business table has a `businessId`, and:
 | `src/lib/files/` | Upload checks, file storage, order files |
 | `src/lib/email/` | Email templates and sending (Resend or Postmark) |
 | `src/app/c/`, `src/app/proof/` | Customer pages: quote/order/invoice and proof review |
+| `src/lib/catalog/import/` | Supplier catalog import (SanMar file reader, background import) |
 | `src/lib/store/` | Storefront engine: stores and inherited settings, items and prices, cart, checkout, accounts, quote requests, showcase |
 | `src/lib/payments/` | Stripe (hosted Checkout and signed webhooks) |
 | `src/app/(store)/` | The public storefront |

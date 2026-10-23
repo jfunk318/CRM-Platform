@@ -14,7 +14,9 @@
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",
+    "csv-parse": "^5.6.0",
     "decimal.js": "^10.6.0",
+    "fflate": "^0.8.2",
     "next": "15.5.4",
     "prisma": "^6.16.2",
     "react": "19.1.0",

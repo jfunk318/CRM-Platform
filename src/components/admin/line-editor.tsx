@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { OrderOptions } from "@/app/admin/api/products/[id]/order-options/route";
+import { ProductPicker, type PickedProduct } from "./product-picker";
 
 export type DecorationValue = {
   methodId: string;
@@ -45,11 +46,12 @@ const blankDecoration = (): DecorationValue => ({
  * decoration rows use repeated `d_*` names aligned by position.
  */
 export function LineEditor({
-  products,
+  product,
   initial,
   sizeMode = "quantity",
 }: {
-  products: { id: string; name: string; styleCode: string }[];
+  /** The product of `initial`, so its name shows before its options load. */
+  product?: PickedProduct;
   initial?: LineValue;
   /** "select": tick which sizes to sell (store items) instead of entering quantities. */
   sizeMode?: "quantity" | "select";
@@ -88,20 +90,17 @@ export function LineEditor({
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="label" htmlFor="le-product">Product</label>
-          <select
-            className="input"
+          <ProductPicker
             id="le-product"
             name="productId"
-            value={value.productId}
-            onChange={(e) => {
+            selected={options ? { id: options.id, name: options.name, styleCode: options.styleCode } : (product ?? null)}
+            onChange={(p) => {
+              if (p.id === value.productId) return;
               setOptions(null);
-              setValue((v) => ({ ...v, productId: e.target.value }));
+              setValue((v) => ({ ...v, productId: p.id }));
             }}
             required
-          >
-            <option value="" disabled>Choose a product…</option>
-            {products.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.styleCode})</option>)}
-          </select>
+          />
         </div>
         <div>
           <label className="label" htmlFor="le-color">Color</label>

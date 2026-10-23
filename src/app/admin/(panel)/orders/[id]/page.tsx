@@ -66,12 +66,9 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const suggestedDeposit = order.total.times(staff.business.defaultDepositPct).toFixed(2);
 
   const isOrder = order.type === "ORDER";
-  const [statuses, staffList, products, groups, deliveryMethods, blanks] = await Promise.all([
+  const [statuses, staffList, groups, deliveryMethods, blanks] = await Promise.all([
     db.orderStatus.findMany({ where: { type: order.type }, orderBy: { sortOrder: "asc" } }),
     db.staffUser.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    canEdit
-      ? db.product.findMany({ where: { status: { not: "DISCONTINUED" }, variants: { some: {} } }, orderBy: { name: "asc" }, select: { id: true, name: true, styleCode: true } })
-      : [],
     db.pricingGroup.findMany({ orderBy: [{ isDefault: "desc" }, { name: "asc" }] }),
     db.deliveryMethod.findMany({ where: { OR: [{ active: true }, { id: order.deliveryMethodId ?? "" }] }, orderBy: { sortOrder: "asc" } }),
     isOrder ? orderBlankStatus(db, order.id) : null,
@@ -268,7 +265,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                           <ActionForm action={updateLineAction} submitLabel="Save item">
                             <input type="hidden" name="orderId" value={order.id} />
                             <input type="hidden" name="lineId" value={line.id} />
-                            <LineEditor products={products} initial={lineValue(line)} />
+                            <LineEditor product={line.design.product} initial={lineValue(line)} />
                           </ActionForm>
                         </div>
                       </details>
@@ -288,7 +285,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                   {/* Keyed on the line count so the editor starts fresh after each add. */}
                   <ActionForm key={order.lines.length} action={addLineAction} submitLabel="Add item">
                     <input type="hidden" name="orderId" value={order.id} />
-                    <LineEditor products={products} />
+                    <LineEditor />
                   </ActionForm>
                 </div>
               </details>

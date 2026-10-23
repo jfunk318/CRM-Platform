@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { productSearch } from "@/lib/catalog/search";
 import type { Prisma } from "@prisma/client";
 import { requireStaff } from "@/lib/auth/session";
 import { ActionForm } from "@/components/admin/action-form";
@@ -17,13 +18,7 @@ export default async function ProductsPage({
   const pageNum = Math.max(1, Number(page) || 1);
 
   const where: Prisma.ProductWhereInput = {
-    ...(q && {
-      OR: [
-        { name: { contains: q, mode: "insensitive" } },
-        { styleCode: { contains: q, mode: "insensitive" } },
-        { brand: { contains: q, mode: "insensitive" } },
-      ],
-    }),
+    ...productSearch(q),
     ...(supplier && { supplierId: supplier }),
     ...(category && { categories: { some: { categoryId: category } } }),
   };

@@ -9,14 +9,11 @@ const money = (v: { toFixed(n: number): string }) => `$${v.toFixed(2)}`;
 
 export default async function ItemsPage({ params }: { params: Promise<{ id: string }> }) {
   const { db, store } = await loadAdminStore((await params).id);
-  const [items, products] = await Promise.all([
-    db.storeItem.findMany({
-      where: { storeId: store.id },
-      include: { prices: { include: { size: true }, orderBy: { size: { sortOrder: "asc" } } }, design: { include: { product: true, color: true } }, _count: { select: { orderLines: true } } },
-      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-    }),
-    db.product.findMany({ where: { status: { not: "DISCONTINUED" }, variants: { some: {} } }, orderBy: { name: "asc" }, select: { id: true, name: true, styleCode: true } }),
-  ]);
+  const items = await db.storeItem.findMany({
+    where: { storeId: store.id },
+    include: { prices: { include: { size: true }, orderBy: { size: { sortOrder: "asc" } } }, design: { include: { product: true, color: true } }, _count: { select: { orderLines: true } } },
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+  });
   return (
     <div className="space-y-6">
       <div className="card overflow-x-auto p-0">
@@ -77,7 +74,7 @@ export default async function ItemsPage({ params }: { params: Promise<{ id: stri
             <label className="label" htmlFor="item-desc">Description (optional)</label>
             <textarea className="input min-h-16" id="item-desc" name="description" />
           </div>
-          <LineEditor products={products} sizeMode="select" />
+          <LineEditor sizeMode="select" />
           <p className="text-xs text-gray-500">
             Base prices per size come from your pricing (garment, decoration at the batch quantity, and setup fees spread over the batch). You can
             change them, override them or add a markup on the next screen.

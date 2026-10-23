@@ -3,6 +3,7 @@ import { requireStaff } from "@/lib/auth/session";
 import { priceLineItem, priceOrder } from "@/lib/pricing";
 import { type DecorationRequest, LineRequestError, loadLineItemInput, loadTaxRates } from "@/lib/pricing/load";
 import { DIMENSION_UNIT } from "@/lib/catalog/methods";
+import { ProductPicker } from "@/components/admin/product-picker";
 
 type Params = Record<string, string | undefined>;
 const DECORATION_SLOTS = 3;
@@ -16,11 +17,6 @@ const num = (v: string | undefined) => (v && Number.isFinite(Number(v)) ? Number
 export default async function PriceCheckPage({ searchParams }: { searchParams: Promise<Params> }) {
   const { db, business: settings } = await requireStaff(["SALES"]);
   const sp = await searchParams;
-  const products = await db.product.findMany({
-    where: { variants: { some: {} } },
-    orderBy: { name: "asc" },
-    select: { id: true, name: true, styleCode: true },
-  });
   const product = sp.product
     ? await db.product.findUnique({
         where: { id: sp.product },
@@ -92,13 +88,10 @@ export default async function PriceCheckPage({ searchParams }: { searchParams: P
       <form className="card flex flex-wrap items-end gap-3">
         <div className="min-w-64 flex-1">
           <label className="label" htmlFor="product">Product</label>
-          <select className="input" id="product" name="product" defaultValue={product?.id ?? ""}>
-            <option value="" disabled>Choose a product…</option>
-            {products.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.styleCode})</option>)}
-          </select>
+          <ProductPicker id="product" name="product" selected={product && { id: product.id, name: product.name, styleCode: product.styleCode }} includeDiscontinued required />
         </div>
         <button className="btn-secondary">Choose</button>
-        {products.length === 0 && (
+        {!product && !(await db.product.findFirst({ where: { variants: { some: {} } }, select: { id: true } })) && (
           <p className="w-full text-sm text-gray-500">
             No products with costs yet. <Link href="/admin/products" className="text-amber-700 underline">Add one</Link>.
           </p>
