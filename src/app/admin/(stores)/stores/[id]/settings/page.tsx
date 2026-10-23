@@ -3,6 +3,7 @@ import { ACCOUNT_MODE_LABELS, effectiveMarkup, effectiveSettings } from "@/lib/s
 import { DELIVERY_KIND_LABELS } from "@/lib/shipping/labels";
 import { ActionButton } from "@/components/admin/action-button";
 import { ActionForm } from "@/components/admin/action-form";
+import { FilePicker } from "@/components/file-picker";
 import { deleteStoreAction, removeLogoAction, saveStoreAction, uploadLogoAction } from "../../actions";
 
 const yesNo = (v: boolean) => (v ? "yes" : "no");
@@ -153,9 +154,10 @@ export default async function StoreSettingsPage({ params }: { params: Promise<{ 
           ) : (
             <span className="text-sm text-gray-500">No logo; the store name is shown instead.</span>
           )}
-          <ActionForm action={uploadLogoAction} submitLabel="Upload" className="flex items-center gap-2">
+          <ActionForm action={uploadLogoAction} submitLabel="Upload" resetOnSuccess className="w-full max-w-md space-y-2">
             <input type="hidden" name="storeId" value={store.id} />
-            <input className="text-sm" type="file" name="logo" accept="image/png,image/jpeg,image/gif,image/webp" aria-label="Logo file" />
+            <label className="label" htmlFor="logo-file">Logo file</label>
+            <FilePicker id="logo-file" name="logo" accept="image/png,image/jpeg,image/gif,image/webp" required hint="PNG, JPG, GIF or WebP" />
           </ActionForm>
           {store.logoFileId && <ActionButton action={removeLogoAction} fields={{ storeId: store.id }} label="Remove" className="text-xs text-red-700 hover:underline" />}
         </div>

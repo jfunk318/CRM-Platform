@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireStaff } from "@/lib/auth/session";
 import { MAX_IMPORT_MB } from "@/lib/catalog/import/run";
 import { ActionForm } from "@/components/admin/action-form";
+import { FilePicker } from "@/components/file-picker";
 import { uploadImportAction } from "./actions";
 
 const when = (d: Date) => d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
@@ -39,7 +40,7 @@ export default async function ImportsPage() {
           </div>
           <div>
             <label className="label" htmlFor="file">File (.zip or .csv, up to {MAX_IMPORT_MB} MB)</label>
-            <input className="text-sm" id="file" name="file" type="file" accept=".zip,.csv" required />
+            <FilePicker id="file" name="file" accept=".zip,.csv" required maxMb={MAX_IMPORT_MB} hint="SanMar_SDL_N.zip" />
           </div>
         </ActionForm>
         <p className="text-xs text-gray-500">Reading a full SanMar file takes about 15–30 seconds.</p>

@@ -6,6 +6,7 @@ import { balances } from "@/lib/orders/payments";
 import { ActionForm } from "@/components/admin/action-form";
 import { CopyLink } from "@/components/admin/copy-link";
 import { Disclosure } from "@/components/admin/disclosure";
+import { FilePicker } from "@/components/file-picker";
 import {
   cancelProofAction,
   createLinkAction,
@@ -112,9 +113,9 @@ export function FilesSection({ order, canEdit }: { order: OrderWithSections; can
       {canEdit && (
         <ActionForm action={uploadFilesAction} submitLabel="Upload" resetOnSuccess className="flex flex-wrap items-end gap-3">
           <input type="hidden" name="orderId" value={order.id} />
-          <div>
+          <div className="min-w-72 flex-1">
             <label className="label" htmlFor="up-files">Add files (up to {MAX_UPLOAD_MB} MB each)</label>
-            <input className="text-sm" id="up-files" name="files" type="file" multiple required />
+            <FilePicker id="up-files" name="files" multiple required maxMb={MAX_UPLOAD_MB} />
           </div>
           <div>
             <label className="label" htmlFor="up-kind">Type</label>
@@ -200,7 +201,7 @@ export function ProofsSection({ order, origin, canEdit }: { order: OrderWithSect
             )}
             <div>
               <label className="label" htmlFor="pf-files">…and/or upload proof images or PDFs</label>
-              <input className="text-sm" id="pf-files" name="files" type="file" multiple />
+              <FilePicker id="pf-files" name="files" multiple maxMb={MAX_UPLOAD_MB} hint="images or PDFs" />
             </div>
             <div>
               <label className="label" htmlFor="pf-message">Message to the customer</label>

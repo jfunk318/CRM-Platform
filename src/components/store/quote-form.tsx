@@ -1,5 +1,6 @@
 import { MAX_UPLOAD_MB } from "@/lib/files/types";
 import { ActionForm } from "@/components/admin/action-form";
+import { FilePicker } from "@/components/file-picker";
 import { Honeypot } from "./honeypot";
 import { quoteRequestAction } from "@/app/(store)/actions";
 
@@ -59,7 +60,7 @@ export function QuoteForm({ product }: { product?: Product }) {
         </div>
         <div>
           <label className="label" htmlFor="q-files">Artwork or examples (optional, up to {MAX_UPLOAD_MB} MB each)</label>
-          <input className="text-sm" id="q-files" name="files" type="file" multiple />
+          <FilePicker id="q-files" name="files" multiple maxMb={MAX_UPLOAD_MB} />
         </div>
       </div>
     </ActionForm>

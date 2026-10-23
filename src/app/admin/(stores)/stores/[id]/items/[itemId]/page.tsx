@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { effectiveMarkup, itemPrice } from "@/lib/store/settings";
 import { ActionForm } from "@/components/admin/action-form";
+import { FilePicker } from "@/components/file-picker";
 import { loadAdminStore } from "@/lib/store/admin";
 import { deleteItemAction, repriceItemAction, saveItemAction, saveItemPricesAction, uploadItemImageAction } from "../../../actions";
 
@@ -118,9 +119,10 @@ export default async function ItemPage({ params }: { params: Promise<{ id: strin
             ) : (
               <p className="text-sm text-gray-500">No picture; the product photo (if any) or a color swatch is shown.</p>
             )}
-            <ActionForm action={uploadItemImageAction} submitLabel="Upload" className="flex items-center gap-2">
+            <ActionForm action={uploadItemImageAction} submitLabel="Upload" resetOnSuccess className="max-w-md space-y-2">
               <input type="hidden" name="id" value={item.id} />
-              <input className="text-sm" type="file" name="image" accept="image/png,image/jpeg,image/gif,image/webp" aria-label="Item picture" />
+              <label className="label" htmlFor="item-image">Item picture</label>
+              <FilePicker id="item-image" name="image" accept="image/png,image/jpeg,image/gif,image/webp" required hint="PNG, JPG, GIF or WebP" />
             </ActionForm>
           </section>
 
