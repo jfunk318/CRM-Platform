@@ -2,20 +2,11 @@ import "server-only";
 import { Prisma } from "@prisma/client";
 import type { BusinessDb } from "@/lib/db";
 import { slugify } from "@/lib/catalog/products";
-import { OrderError } from "@/lib/orders/service";
+import { decorationData, type DecorationSpec, OrderError } from "@/lib/orders/service";
 import { priceLineItem } from "@/lib/pricing";
 import { type DecorationRequest, LineRequestError, loadLineItemInput } from "@/lib/pricing/load";
 
-export type ItemDecoration = {
-  methodId: string;
-  areaId?: string | null;
-  location: string;
-  colors?: number | null;
-  stitches?: number | null;
-  widthIn?: number | null;
-  heightIn?: number | null;
-  inkColors?: string[];
-};
+export type ItemDecoration = DecorationSpec;
 
 /**
  * Per-size base prices for a decorated product as if ordered in a batch of
@@ -78,19 +69,7 @@ export async function createStoreItem(
         name: `${product.name} — ${color.name}`,
         productId: o.productId,
         colorId: o.colorId,
-        decorations: {
-          create: o.decorations.map((d, i) => ({
-            methodId: d.methodId,
-            areaId: d.areaId ?? null,
-            location: d.location,
-            colors: d.colors ?? null,
-            stitches: d.stitches ?? null,
-            widthIn: d.widthIn ?? null,
-            heightIn: d.heightIn ?? null,
-            inkColors: d.inkColors ?? [],
-            sortOrder: i,
-          })),
-        },
+        decorations: { create: o.decorations.map(decorationData) },
       },
     });
     let slug = slugify(o.name) || "item";

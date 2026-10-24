@@ -25,11 +25,15 @@ export async function addOrderFiles(db: BusinessDb, orderId: string, files: File
   return saved.length;
 }
 
-/** Remove a file from an order. The stored file is kept if a proof still shows it. */
+/** Remove a file from an order. The stored file is kept if a proof or a placed design still uses it. */
 export async function removeOrderFile(db: BusinessDb, orderFileId: string, staffId: string | null) {
-  const link = await db.orderFile.findUniqueOrThrow({ where: { id: orderFileId }, include: { file: { include: { _count: { select: { proofFiles: true } } } } } });
+  const link = await db.orderFile.findUniqueOrThrow({
+    where: { id: orderFileId },
+    include: { file: { include: { _count: { select: { proofFiles: true, artworkFor: true, artSourceFor: true } } } } },
+  });
   await db.orderFile.delete({ where: { id: link.id } });
-  if (link.file._count.proofFiles === 0) {
+  const { proofFiles, artworkFor, artSourceFor } = link.file._count;
+  if (proofFiles + artworkFor + artSourceFor === 0) {
     await db.storedFile.delete({ where: { id: link.fileId } });
     await fileStore.remove(link.file.storageKey);
   }

@@ -10,8 +10,11 @@ export type OrderOptions = {
   styleCode: string;
   colors: { id: string; name: string; hex: string | null; image: string | null; sizeIds: string[] }[];
   sizes: { id: string; code: string }[];
-  methods: { id: string; name: string; pricingModel: string; minQty: number; maxColors: number | null }[];
-  areas: { id: string; label: string; widthIn: number; heightIn: number }[];
+  methods: { id: string; name: string; pricingModel: string; minQty: number; maxColors: number | null; minDpi: number | null; perfectDpi: number | null }[];
+  /** Print areas, with their box on the view's photo (fractions of the photo). */
+  areas: { id: string; label: string; viewId: string; widthIn: number; heightIn: number; x: number; y: number; w: number; h: number }[];
+  /** Each view's photo per color id. */
+  views: { id: string; name: string; photos: Record<string, string> }[];
 };
 
 /** What the order line editor needs to configure one product. */
@@ -59,10 +62,23 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         pricingModel: m.pricingModel,
         minQty: Math.max(m.minQty, p.methodRules.find((r) => r.methodId === m.id)?.minQty ?? 0),
         maxColors: m.maxColors,
+        minDpi: m.minDpi,
+        perfectDpi: m.perfectDpi,
       })),
     areas: p.views.flatMap((v) =>
-      v.areas.map((a) => ({ id: a.id, label: `${v.name} / ${a.name}`, widthIn: a.widthIn.toNumber(), heightIn: a.heightIn.toNumber() })),
+      v.areas.map((a) => ({
+        id: a.id,
+        label: `${v.name} / ${a.name}`,
+        viewId: v.id,
+        widthIn: a.widthIn.toNumber(),
+        heightIn: a.heightIn.toNumber(),
+        x: a.x,
+        y: a.y,
+        w: a.w,
+        h: a.h,
+      })),
     ),
+    views: p.views.map((v) => ({ id: v.id, name: v.name, photos: Object.fromEntries(v.images.map((i) => [i.colorId, i.url])) })),
   };
   return NextResponse.json(body);
 }

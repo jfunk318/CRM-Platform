@@ -72,6 +72,31 @@ Every business table has a `businessId`, and:
   the web root; they're only served to signed-in staff of the business, or
   to the customer through a proof link on the business's own address.
 
+## Placing artwork (design studio)
+
+On a quote or order item, choose a decoration's print area and click
+**Place artwork**. The studio shows the product photo in the item's color
+with the print area outlined:
+
+- Upload a PNG, JPG, GIF, WebP or SVG (PDF/AI/EPS can still go in the order's
+  files). Drag to move it, drag the corner to resize, or type a width; it
+  stays inside the print area.
+- **Resolution check:** DPI at the placed size against the method's minimum
+  and ideal (Decoration methods), with a warning when it's too low.
+- **Clean-up:** remove a solid background (from the edges, or that color
+  everywhere), trim empty edges, swap any detected color, print in one
+  color, invert. Edits run in the browser (`src/lib/design/raster.ts`); the
+  original upload is kept, so edits can be changed later.
+- **Pricing:** the placed width and height fill in, and for screen printing
+  the detected ink colors.
+- **Mockups** (photo + artwork) show on the item, on the customer's quote or
+  order link, and when creating a proof you can tick "Include mockups" to
+  have them rendered into proof images (`src/lib/design/mockups.ts`, sharp).
+
+Where a print area sits on each product photo is set under the product's
+Views & Decoration Areas; adjust it there if mockups sit too high or low.
+Customers only see artwork through their own link (`/c/<token>/art/…`).
+
 ## Production, purchasing and shipping
 
 - **Production:** each order gets a job per decoration method, with steps to
@@ -197,6 +222,7 @@ toddler), since SanMar's own size index isn't reliable.
 | `src/lib/files/` | Upload checks, file storage, order files |
 | `src/lib/email/` | Email templates and sending (Resend or Postmark) |
 | `src/app/c/`, `src/app/proof/` | Customer pages: quote/order/invoice and proof review |
+| `src/lib/design/` | Design studio: artwork edits (pixels), placement and DPI math, mockups and mockup rendering |
 | `src/lib/catalog/import/` | Supplier catalog import (SanMar file reader, background import) |
 | `src/lib/store/` | Storefront engine: stores and inherited settings, items and prices, cart, checkout, accounts, quote requests, showcase |
 | `src/lib/payments/` | Stripe (hosted Checkout and signed webhooks) |

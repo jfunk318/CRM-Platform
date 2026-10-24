@@ -9,6 +9,7 @@ import { carrierName, trackingUrl } from "@/lib/shipping/labels";
 import { ActionForm } from "@/components/admin/action-form";
 import { CustomerShell } from "@/components/customer/shell";
 import { OrderItems } from "@/components/customer/order-items";
+import { designMockups } from "@/lib/design/mockups";
 import { PrintButton } from "@/components/customer/print-button";
 import { requestOrigin } from "@/lib/business";
 import { stripeKeys } from "@/lib/payments/stripe";
@@ -92,7 +93,7 @@ export default async function CustomerOrderPage({
 
       {order.customerNotes && <p className="card whitespace-pre-wrap text-sm">{order.customerNotes}</p>}
 
-      <OrderItems lines={order.lines} />
+      <OrderItems lines={order.lines} mockups={await designMockups(db, order.lines.map((l) => l.designId))} artBase={`/c/${token}/art/`} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="card text-sm">

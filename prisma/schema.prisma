@@ -794,6 +794,22 @@ model DesignDecoration {
   reuseScreens    Boolean          @default(false)
   notes           String?
   sortOrder       Int              @default(0)
+  // Artwork as placed: the edited image shown in mockups, the original
+  // upload it came from, and the edits applied (so they can be redone).
+  artworkFileId   String?
+  artwork         StoredFile?      @relation("DecorationArtwork", fields: [businessId, artworkFileId], references: [businessId, id], onDelete: NoAction)
+  sourceFileId    String?
+  source          StoredFile?      @relation("DecorationArtSource", fields: [businessId, sourceFileId], references: [businessId, id], onDelete: NoAction)
+  artEdits        Json             @default("{}")
+  // Artwork's pixel size, for print resolution (DPI) checks.
+  artWidthPx      Int?
+  artHeightPx     Int?
+  // Placement inside the print area's box, as fractions of the box: left and
+  // top edge of the artwork and its width (height follows its shape).
+  placeX          Float?
+  placeY          Float?
+  placeW          Float?
+  rotation        Float            @default(0) // degrees, clockwise
 }
 
 // ─── Quotes & orders ────────────────────────────────────────────────────────
@@ -1022,21 +1038,23 @@ model Counter {
 // A stored upload (artwork, mockup, customer file). The bytes live in file
 // storage under storageKey; this row is the business's record of it.
 model StoredFile {
-  id           String      @id @default(cuid())
+  id           String             @id @default(cuid())
   businessId   String
-  business     Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business     Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name         String // original filename
   contentType  String
   size         Int
   sha256       String
-  storageKey   String      @unique
+  storageKey   String             @unique
   uploadedById String?
-  uploadedBy   StaffUser?  @relation(fields: [businessId, uploadedById], references: [businessId, id], onDelete: NoAction)
+  uploadedBy   StaffUser?         @relation(fields: [businessId, uploadedById], references: [businessId, id], onDelete: NoAction)
   orderFiles   OrderFile[]
   proofFiles   ProofFile[]
   storeLogos   Store[]
   storeItems   StoreItem[]
-  createdAt    DateTime    @default(now())
+  artworkFor   DesignDecoration[] @relation("DecorationArtwork")
+  artSourceFor DesignDecoration[] @relation("DecorationArtSource")
+  createdAt    DateTime           @default(now())
 
   @@unique([businessId, id])
 }

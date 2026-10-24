@@ -221,6 +221,7 @@ export async function createProofAction(_: ActionResult, form: FormData): Promis
       uploads: formFiles(form, "files"),
       message: optionalText(form, "message"),
       staffId,
+      mockups: form.get("mockups") === "on",
     });
     if (form.get("sendNow") === "on") {
       const r = await sendProof(db, proof.id, { origin: await requestOrigin(), staffId });

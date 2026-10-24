@@ -137,7 +137,7 @@ const PROOF_LABELS: Record<ProofStatus, { label: string; cls: string }> = {
   CANCELLED: { label: "Cancelled", cls: "bg-gray-100 text-gray-500" },
 };
 
-export function ProofsSection({ order, origin, canEdit }: { order: OrderWithSections; origin: string; canEdit: boolean }) {
+export function ProofsSection({ order, origin, canEdit, hasArtwork }: { order: OrderWithSections; origin: string; canEdit: boolean; hasArtwork: boolean }) {
   return (
     <section className="card space-y-3" data-testid="proofs-section">
       <h2 className="font-semibold">Artwork proofs</h2>
@@ -187,13 +187,19 @@ export function ProofsSection({ order, origin, canEdit }: { order: OrderWithSect
           <summary className="cursor-pointer text-sm font-medium text-amber-700">+ New proof</summary>
           <ActionForm action={createProofAction} submitLabel="Create proof" resetOnSuccess className="mt-3 space-y-3">
             <input type="hidden" name="orderId" value={order.id} />
+            {hasArtwork && (
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" name="mockups" defaultChecked /> Include mockups of the items, made from their placed artwork
+              </label>
+            )}
             {order.files.length > 0 && (
               <fieldset>
                 <legend className="label">Use files from this order</legend>
                 <div className="flex flex-wrap gap-3 text-sm">
                   {order.files.map((f) => (
                     <label key={f.id} className="flex items-center gap-1.5">
-                      <input type="checkbox" name="orderFileIds" value={f.id} defaultChecked={f.kind === "MOCKUP"} /> {f.file.name}
+                      {/* Fresh mockups replace earlier ones, so those start unticked when artwork is placed. */}
+                      <input type="checkbox" name="orderFileIds" value={f.id} defaultChecked={f.kind === "MOCKUP" && !hasArtwork} /> {f.file.name}
                     </label>
                   ))}
                 </div>

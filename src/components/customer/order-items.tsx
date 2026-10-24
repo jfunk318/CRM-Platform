@@ -1,4 +1,6 @@
 import type { Prisma } from "@prisma/client";
+import { DesignMockups } from "@/components/design-mockups";
+import type { DesignMockup } from "@/lib/design/mockups";
 
 type Line = Prisma.OrderLineGetPayload<{
   include: {
@@ -9,8 +11,12 @@ type Line = Prisma.OrderLineGetPayload<{
 
 const money = (v: { toFixed(n: number): string }) => `$${v.toFixed(2)}`;
 
-/** Items as the customer sees them: product, sizes and prices, decorations, setup fees. */
-export function OrderItems({ lines }: { lines: Line[] }) {
+/**
+ * Items as the customer sees them: mockups of placed artwork, product,
+ * sizes and prices, decorations, setup fees. `artBase` is the customer's
+ * link for loading artwork.
+ */
+export function OrderItems({ lines, mockups, artBase }: { lines: Line[]; mockups?: Map<string, DesignMockup[]>; artBase?: string }) {
   return (
     <div className="space-y-3">
       {lines.map((line) => {
@@ -18,6 +24,7 @@ export function OrderItems({ lines }: { lines: Line[] }) {
         const qty = line.sizes.reduce((n, s) => n + s.qty, 0);
         return (
           <div key={line.id} className="card space-y-2 break-inside-avoid">
+            {mockups?.get(line.designId) && artBase && <DesignMockups mockups={mockups.get(line.designId)!} artBase={artBase} className="w-40 sm:w-48" />}
             <div className="flex flex-wrap justify-between gap-2">
               <div>
                 <div className="font-medium">{line.design.product.name}</div>

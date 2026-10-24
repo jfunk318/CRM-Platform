@@ -2,10 +2,17 @@
 
 import { useEffect, useState } from "react";
 import type { OrderOptions } from "@/app/admin/api/products/[id]/order-options/route";
+import { Mockup, type MockupLayer } from "@/components/mockup";
+import type { ArtworkValue } from "@/lib/design/artwork";
+import { photoRect } from "@/lib/design/placement";
+import { DesignStudio } from "./design-studio";
 import { ProductPicker, type PickedProduct } from "./product-picker";
 import { ProductThumb } from "./product-thumb";
 
 export type DecorationValue = {
+  artwork: ArtworkValue | null;
+  /** Where the placed artwork image can be loaded from. */
+  artworkUrl: string | null;
   methodId: string;
   areaId: string;
   location: string;
@@ -28,6 +35,8 @@ export type LineValue = {
 };
 
 const blankDecoration = (): DecorationValue => ({
+  artwork: null,
+  artworkUrl: null,
   methodId: "",
   areaId: "",
   location: "",
@@ -81,15 +90,42 @@ export function LineEditor({
     };
   }, [value.productId]);
 
+  const [studio, setStudio] = useState<number | null>(null);
+
   const color = options?.colors.find((c) => c.id === value.colorId);
   const setDecoration = (i: number, patch: Partial<DecorationValue>) =>
     setValue((v) => ({ ...v, decorations: v.decorations.map((d, j) => (j === i ? { ...d, ...patch } : d)) }));
   const totalQty = Object.values(value.quantities).reduce((n, q) => n + (Number(q) || 0), 0);
 
+  // Mockups: each view's photo in the chosen color with every placed artwork on it.
+  const areaOf = (d: DecorationValue) => options?.areas.find((a) => a.id === d.areaId);
+  const photoFor = (viewId: string) => {
+    const photos = options?.views.find((v) => v.id === viewId)?.photos ?? {};
+    return photos[value.colorId] ?? Object.values(photos)[0] ?? null;
+  };
+  const layersFor = (viewId: string): MockupLayer[] =>
+    value.decorations.flatMap((d) => {
+      const a = areaOf(d);
+      if (!a || a.viewId !== viewId || !d.artwork || !d.artworkUrl) return [];
+      const r = photoRect(a, d.artwork, d.artwork);
+      return [{ src: d.artworkUrl, left: r.left, top: r.top, width: r.width, rotation: d.artwork.rotation }];
+    });
+  const mockupViews = [...new Set(value.decorations.filter((d) => d.artwork).map((d) => areaOf(d)?.viewId).filter((v): v is string => !!v))];
+  const studioDecoration = studio === null ? null : value.decorations[studio];
+  const studioArea = studioDecoration ? areaOf(studioDecoration) : undefined;
+
   return (
     <div className="space-y-4">
       <div className="flex items-end gap-3">
-        <ProductThumb url={color?.image} label={options?.styleCode ?? product?.styleCode ?? ""} size={72} />
+        {mockupViews.length > 0 ? (
+          <div className="flex shrink-0 gap-1" data-testid="line-mockups">
+            {mockupViews.map((viewId) => (
+              <Mockup key={viewId} photoUrl={photoFor(viewId)} layers={layersFor(viewId)} label={options?.views.find((v) => v.id === viewId)?.name ?? ""} className="w-24 border border-gray-200" />
+            ))}
+          </div>
+        ) : (
+          <ProductThumb url={color?.image} label={options?.styleCode ?? product?.styleCode ?? ""} size={72} />
+        )}
         <div className="grid flex-1 gap-3 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="le-product">Product</label>
@@ -172,6 +208,7 @@ export function LineEditor({
                   <input type="hidden" name="d_art" value={d.needsArtwork ? "on" : ""} />
                   <input type="hidden" name="d_dig" value={d.needsDigitizing ? "on" : ""} />
                   <input type="hidden" name="d_reuse" value={d.reuseScreens ? "on" : ""} />
+                  <input type="hidden" name="d_artwork" value={d.artwork ? JSON.stringify(d.artwork) : ""} />
                   <div className="grid gap-2 sm:grid-cols-6 sm:items-end">
                     <div className="sm:col-span-2">
                       <label className="text-xs text-gray-500" htmlFor={`d-m-${i}`}>Method</label>
@@ -233,6 +270,19 @@ export function LineEditor({
                       <input className="input" id={`d-ink-${i}`} name="d_inks" value={d.inkColors} onChange={(e) => setDecoration(i, { inkColors: e.target.value })} placeholder="White, PMS 186" />
                     </div>
                   </div>
+                  <div className="flex flex-wrap items-center gap-3 rounded bg-gray-50 px-2 py-1.5" data-testid="decoration-artwork">
+                    {d.artwork && d.artworkUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={d.artworkUrl} alt="Placed artwork" className="h-10 w-10 rounded border border-gray-200 bg-[repeating-conic-gradient(#e5e7eb_0_25%,#fff_0_50%)] bg-[length:10px_10px] object-contain" />
+                    ) : (
+                      <span className="text-xs text-gray-500">No artwork placed</span>
+                    )}
+                    <button type="button" className="btn-secondary px-2 py-1 text-xs" disabled={!areaOf(d)} onClick={() => setStudio(i)}>
+                      {d.artwork ? "Edit artwork" : "🎨 Place artwork"}
+                    </button>
+                    {!areaOf(d) && <span className="text-xs text-gray-500">Choose a print area to place artwork.</span>}
+                    {d.artwork && d.widthIn && d.heightIn && <span className="text-xs text-gray-600">{d.widthIn}″ × {d.heightIn}″</span>}
+                  </div>
                   <div className="flex flex-wrap items-center gap-4 text-xs">
                     <Check label="Needs artwork" checked={d.needsArtwork} onChange={(c) => setDecoration(i, { needsArtwork: c })} />
                     {model === "PER_STITCH" && <Check label="Needs digitizing" checked={d.needsDigitizing} onChange={(c) => setDecoration(i, { needsDigitizing: c })} />}
@@ -258,6 +308,34 @@ export function LineEditor({
             <input className="input" id="le-notes" name="notes" value={value.notes} onChange={(e) => setValue((v) => ({ ...v, notes: e.target.value }))} />
           </div>
         </>
+      )}
+
+      {studio !== null && studioDecoration && studioArea && options && (
+        <DesignStudio
+          area={studioArea}
+          photoUrl={photoFor(studioArea.viewId)}
+          method={options.methods.find((m) => m.id === studioDecoration.methodId)}
+          productName={`${options.name}${color ? ` · ${color.name}` : ""}`}
+          initial={studioDecoration.artwork}
+          onClose={() => setStudio(null)}
+          onRemove={() => {
+            setDecoration(studio, { artwork: null, artworkUrl: null });
+            setStudio(null);
+          }}
+          onSave={(r) => {
+            const method = options.methods.find((m) => m.id === studioDecoration.methodId);
+            setDecoration(studio, {
+              artwork: r.artwork,
+              artworkUrl: r.artworkUrl,
+              widthIn: String(r.widthIn),
+              heightIn: String(r.heightIn),
+              needsArtwork: false,
+              // Screen printing is priced by ink colors; fill in what the artwork uses.
+              ...(method?.pricingModel === "PER_COLOR" ? { colors: String(r.inkColors) } : {}),
+            });
+            setStudio(null);
+          }}
+        />
       )}
     </div>
   );

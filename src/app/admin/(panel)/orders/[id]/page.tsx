@@ -8,6 +8,9 @@ import { ActionForm } from "@/components/admin/action-form";
 import { LineEditor, type LineValue } from "@/components/admin/line-editor";
 import { ProductThumb } from "@/components/admin/product-thumb";
 import { colorThumbnails } from "@/lib/catalog/thumbnails";
+import { artworkOf, staffFileUrl } from "@/lib/design/artwork";
+import { designMockups } from "@/lib/design/mockups";
+import { DesignMockups } from "@/components/design-mockups";
 import { SourceTag, StatusBadge } from "@/components/admin/order-table";
 import { requestOrigin } from "@/lib/business";
 import { orderBlankStatus } from "@/lib/purchasing/service";
@@ -64,7 +67,10 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   });
   if (!order) notFound();
   const origin = await requestOrigin();
-  const lineThumbs = await colorThumbnails(db.$businessId, [...new Set(order.lines.map((l) => l.design.colorId))]);
+  const [lineThumbs, mockups] = await Promise.all([
+    colorThumbnails(db.$businessId, [...new Set(order.lines.map((l) => l.design.colorId))]),
+    designMockups(db, order.lines.map((l) => l.designId)),
+  ]);
   const canArtwork = hasAnyRole(staff.roles, ["SALES", "ARTWORK", "ARTWORK_MANAGER"]);
   const suggestedDeposit = order.total.times(staff.business.defaultDepositPct).toFixed(2);
 
@@ -89,6 +95,8 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
     quantities: Object.fromEntries(line.sizes.map((s) => [s.sizeId, String(s.qty)])),
     notes: line.notes ?? "",
     decorations: line.design.decorations.map((d) => ({
+      artwork: artworkOf(d),
+      artworkUrl: d.artworkFileId ? staffFileUrl(d.artworkFileId) : null,
       methodId: d.methodId,
       areaId: d.areaId ?? "",
       location: d.location,
@@ -190,7 +198,11 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                 <div key={line.id} className="card space-y-3" data-testid="line">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="flex items-start gap-3">
-                      <ProductThumb url={lineThumbs.get(line.design.colorId)} label={line.design.product.styleCode} size={56} />
+                      {mockups.get(line.designId) ? (
+                        <DesignMockups mockups={mockups.get(line.designId)!} artBase="/admin/files/" className="w-36" />
+                      ) : (
+                        <ProductThumb url={lineThumbs.get(line.design.colorId)} label={line.design.product.styleCode} size={56} />
+                      )}
                       <div>
                         <div className="font-medium">
                           {line.design.product.name}{" "}
@@ -299,7 +311,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           </section>
 
           <FilesSection order={order} canEdit={canArtwork && !locked} />
-          {!isQuote && <ProofsSection order={order} origin={origin} canEdit={canArtwork} />}
+          {!isQuote && <ProofsSection order={order} origin={origin} canEdit={canArtwork} hasArtwork={mockups.size > 0} />}
           {isOrder && <ProductionSection order={order} canEdit={hasAnyRole(staff.roles, ["PRODUCTION"])} />}
           {blanks && <BlanksSection status={blanks} canEdit={hasAnyRole(staff.roles, ["PURCHASING"])} />}
           {isOrder && <ShippingSection order={order} methods={deliveryMethods} canEdit={hasAnyRole(staff.roles, ["SHIPPING"])} />}

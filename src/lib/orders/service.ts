@@ -24,6 +24,20 @@ export interface DecorationSpec {
   needsDigitizing?: boolean;
   reuseScreens?: boolean;
   notes?: string | null;
+  artwork?: ArtworkSpec | null;
+}
+
+/** Artwork placed on a decoration (see DesignDecoration in the schema). */
+export interface ArtworkSpec {
+  artworkFileId: string;
+  sourceFileId: string | null;
+  edits: Record<string, unknown>;
+  widthPx: number;
+  heightPx: number;
+  x: number;
+  y: number;
+  w: number;
+  rotation: number;
 }
 
 export interface LineSpec {
@@ -146,7 +160,8 @@ async function validateLine(db: BusinessDb, spec: LineSpec) {
   return { product, color, sizes };
 }
 
-const decorationData = (d: DecorationSpec, i: number) => ({
+/** A decoration's database row (without businessId and designId). */
+export const decorationData = (d: DecorationSpec, i: number) => ({
   methodId: d.methodId,
   areaId: d.areaId || null,
   location: d.location.trim(),
@@ -160,13 +175,43 @@ const decorationData = (d: DecorationSpec, i: number) => ({
   reuseScreens: d.reuseScreens ?? false,
   notes: d.notes ?? null,
   sortOrder: i,
+  artworkFileId: d.artwork?.artworkFileId ?? null,
+  sourceFileId: d.artwork?.sourceFileId ?? null,
+  artEdits: (d.artwork?.edits ?? {}) as Prisma.InputJsonValue,
+  artWidthPx: d.artwork?.widthPx ?? null,
+  artHeightPx: d.artwork?.heightPx ?? null,
+  placeX: d.artwork?.x ?? null,
+  placeY: d.artwork?.y ?? null,
+  placeW: d.artwork?.w ?? null,
+  rotation: d.artwork?.rotation ?? 0,
 });
+
+/**
+ * Artwork files must be this business's; the originals are also listed in
+ * the order's files so production can find them.
+ */
+async function checkArtwork(db: BusinessDb, spec: LineSpec) {
+  const ids = spec.decorations.flatMap((d) => (d.artwork ? [d.artwork.artworkFileId, d.artwork.sourceFileId] : [])).filter((x): x is string => !!x);
+  if (ids.length === 0) return;
+  const found = await db.storedFile.count({ where: { id: { in: [...new Set(ids)] } } });
+  if (found !== new Set(ids).size) throw new OrderError("That artwork file is missing; upload it again");
+}
+
+async function listArtworkOnOrder(tx: BusinessTx, businessId: string, orderId: string, spec: LineSpec) {
+  const sources = [...new Set(spec.decorations.map((d) => d.artwork?.sourceFileId ?? d.artwork?.artworkFileId).filter((x): x is string => !!x))];
+  for (const fileId of sources) {
+    const exists = await tx.orderFile.findFirst({ where: { orderId, fileId } });
+    if (!exists) await tx.orderFile.create({ data: { businessId, orderId, fileId, kind: "ARTWORK" } });
+  }
+}
 
 export async function addLine(db: BusinessDb, orderId: string, spec: LineSpec, staffId: string | null): Promise<string> {
   const businessId = db.$businessId;
   const { product, color, sizes } = await validateLine(db, spec);
+  await checkArtwork(db, spec);
   const lineId = await db.$transaction(async (tx) => {
     const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { _count: { select: { lines: true } } } });
+    await listArtworkOnOrder(tx, businessId, orderId, spec);
     const design = await tx.design.create({
       data: {
         businessId,
@@ -226,7 +271,9 @@ export async function updateLine(db: BusinessDb, lineId: string, spec: LineSpec,
     }
   }
   const keepFixed = line.fixedPrice && sameGarment && fixedPrices.size === sizes.length;
+  await checkArtwork(db, spec);
   await db.$transaction(async (tx) => {
+    await listArtworkOnOrder(tx, businessId, line.orderId, spec);
     // Designs used by other lines or by a store item are copied, never changed in place.
     const shared = line.design._count.orderLines > 1 || line.design._count.storeItems > 0;
     const designData = { name: `${product.name} — ${color.name}`, productId: product.id, colorId: color.id };

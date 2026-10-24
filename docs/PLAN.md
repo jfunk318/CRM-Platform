@@ -137,3 +137,12 @@ phases 1–3 need real product data.
   store items, price check) and a paged, searchable storefront catalog.
   Still to do: S&S Activewear's file format, and live API connections once
   SanMar/S&S credentials are available (phase 8).
+- **Design studio (done):** artwork placed on quote/order items and store
+  items: upload (PNG/JPG/GIF/WebP/SVG), drag and size within the print
+  area on the product photo, DPI check against each method, background
+  removal, trim, color swaps, one color, invert, detected ink colors and
+  placed size feeding pricing; mockups on staff pages and the customer link;
+  proofs rendered from mockups. Still to do: photo background removal with
+  an AI model (paid service or self-hosted), PDF/AI/EPS placement, text and
+  names/numbers (phase 6 personalization), mockups on store item cards, and
+  the customer-facing designer (phase 9) on the same engine.

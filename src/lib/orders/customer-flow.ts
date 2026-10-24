@@ -4,6 +4,7 @@ import type { BusinessDb, BusinessTx } from "@/lib/db";
 import { deliveryNote, isValidEmail, sendEmail } from "@/lib/email/mailer";
 import { proofEmail, quoteEmail, staffAlertEmail } from "@/lib/email/templates";
 import { saveUpload } from "@/lib/files/storage";
+import { designMockups, renderMockup } from "@/lib/design/mockups";
 import { createProductionJobs } from "@/lib/production/jobs";
 import { orderRef } from "./numbers";
 import { logEvent, moveToRole, newToken, OrderError } from "./service";
@@ -136,15 +137,32 @@ export async function customerRequestQuoteChanges(db: BusinessDb, token: string,
 export async function createProof(
   db: BusinessDb,
   orderId: string,
-  o: { orderFileIds: string[]; uploads: File[]; message: string | null; staffId: string | null },
+  o: { orderFileIds: string[]; uploads: File[]; message: string | null; staffId: string | null; mockups?: boolean },
 ) {
-  const order = await db.order.findUniqueOrThrow({ where: { id: orderId }, include: { files: true, _count: { select: { proofs: true } } } });
+  const order = await db.order.findUniqueOrThrow({
+    where: { id: orderId },
+    include: { files: true, _count: { select: { proofs: true } }, lines: { orderBy: { sortOrder: "asc" }, include: { design: { include: { product: true, color: true } } } } },
+  });
   if (order.type !== "ORDER") throw new OrderError("Proofs are sent on orders");
   const existing = order.files.filter((f) => o.orderFileIds.includes(f.id));
-  if (existing.length + o.uploads.length === 0) throw new OrderError("Choose or upload at least one proof file");
+
+  // Mockup images of every item with placed artwork, made now so the proof shows exactly what was approved.
+  const rendered: File[] = [];
+  if (o.mockups) {
+    const mockups = await designMockups(db, order.lines.map((l) => l.designId));
+    for (const line of order.lines) {
+      for (const m of mockups.get(line.designId) ?? []) {
+        const png = await renderMockup(db, m);
+        rendered.push(new File([new Uint8Array(png)], `${line.design.product.name} ${line.design.color.name} ${m.viewName} mockup.png`.replace(/[^\w .-]+/g, " ").replace(/\s+/g, " "), { type: "image/png" }));
+      }
+    }
+  }
+  if (existing.length + o.uploads.length + rendered.length === 0) {
+    throw new OrderError(o.mockups ? "No items have artwork placed yet; place artwork on an item, or choose or upload proof files" : "Choose or upload at least one proof file");
+  }
 
   const uploaded: StoredFile[] = [];
-  for (const file of o.uploads) uploaded.push(await saveUpload(db, file, o.staffId));
+  for (const file of [...rendered, ...o.uploads]) uploaded.push(await saveUpload(db, file, o.staffId));
   const businessId = db.$businessId;
   const proof = await db.$transaction(async (tx) => {
     for (const f of uploaded) await tx.orderFile.create({ data: { businessId, orderId, fileId: f.id, kind: "MOCKUP" } });
