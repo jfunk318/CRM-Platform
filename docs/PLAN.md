@@ -125,8 +125,9 @@ phases 1–3 need real product data.
   items, pages, codes, settings), store groups with inherited settings and
   markups, open/close dates, main site managed like a store with
   `[[stores]]` showcase blocks, global promo and gift codes limited to all or
-  chosen stores. Still to do: publish a quote/order to a new or existing
-  store, the store owner portal with requests and live request flags,
+  chosen stores, publishing a quote/order to a new or existing store
+  (update or overwrite), mockups as store item pictures. Still to do: the
+  store owner portal with requests and live request flags,
   name/number personalization, commissions, batching orders at store close,
   visit counts, drag-and-drop showcase editor.
 - **Supplier catalog file import (done):** SanMar's product data download

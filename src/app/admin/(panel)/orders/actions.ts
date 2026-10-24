@@ -23,6 +23,8 @@ import {
   updateDetails,
   updateLine,
 } from "@/lib/orders/service";
+import { publishToStore } from "@/lib/store/publish";
+import { createAffiliateStore, StoreError } from "@/lib/store/stores";
 
 const refresh = (orderId: string) => revalidatePath(`/admin/orders/${orderId}`);
 
@@ -147,6 +149,39 @@ export async function convertQuoteAction(_: ActionResult, form: FormData): Promi
   });
   if (result.error) return result;
   redirect(`/admin/orders/${orderId}`);
+}
+
+/** Publish the quote's/order's items to a new store (for its customer) or an existing one. */
+export async function publishToStoreAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const staff = await requireStaff(["STORE_MANAGER"]);
+  const { db } = staff;
+  let path = "";
+  const result = await run(async () => {
+    try {
+      const order = await db.order.findUniqueOrThrow({ where: { id: text(form, "orderId") } });
+      const target = text(form, "target", "Store");
+      const lineIds = form.getAll("lineIds").map(String);
+      if (lineIds.length === 0) throw new FormError("Tick at least one item to publish");
+      const batchRaw = optionalText(form, "batchQty");
+      const batchQty = batchRaw ? Number(batchRaw) : null;
+      if (batchQty !== null && !(Number.isInteger(batchQty) && batchQty >= 1)) throw new FormError("Batch quantity must be a whole number, 1 or more");
+      const store =
+        target === "new"
+          ? await createAffiliateStore(db, { name: text(form, "storeName", "Store name"), slug: optionalText(form, "storeSlug"), customerId: order.customerId, managerId: staff.id })
+          : await db.store.findUniqueOrThrow({ where: { id: target } });
+      const mode = form.get("mode") === "overwrite" && target !== "new" ? "overwrite" : "update";
+      await publishToStore(db, order.id, { storeId: store.id, mode, lineIds, batchQty, staffId: staff.id });
+      path = `/admin/stores/${store.id}/items`;
+      refresh(order.id);
+      revalidatePath("/admin/stores", "layout");
+      revalidatePath("/", "layout");
+    } catch (e) {
+      if (e instanceof StoreError) throw new FormError(e.message);
+      throw e;
+    }
+  });
+  if (result.error) return result;
+  redirect(path);
 }
 
 // ─── Customer link, files, proofs, payments, invoices ──────────────────────

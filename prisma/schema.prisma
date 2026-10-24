@@ -1009,6 +1009,7 @@ enum OrderEventType {
   PRODUCTION // production jobs created, steps done, scheduled
   PURCHASING // blanks ordered, received or taken from stock
   SHIPMENT // shipped, picked up or delivered
+  STORE // published to a store
 }
 
 model OrderEvent {
@@ -1579,32 +1580,37 @@ model StorePage {
 
 // A decorated product for sale in a store, priced per size.
 model StoreItem {
-  id          String           @id @default(cuid())
-  businessId  String
-  business    Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  storeId     String
-  store       Store            @relation(fields: [businessId, storeId], references: [businessId, id], onDelete: Cascade)
-  designId    String
-  design      Design           @relation(fields: [businessId, designId], references: [businessId, id], onDelete: NoAction)
-  name        String
-  slug        String
-  description String?
-  imageFileId String?
-  image       StoredFile?      @relation(fields: [businessId, imageFileId], references: [businessId, id], onDelete: NoAction)
-  published   Boolean          @default(true)
-  featured    Boolean          @default(false)
-  sortOrder   Int              @default(0)
+  id            String           @id @default(cuid())
+  businessId    String
+  business      Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  storeId       String
+  store         Store            @relation(fields: [businessId, storeId], references: [businessId, id], onDelete: Cascade)
+  designId      String
+  design        Design           @relation(fields: [businessId, designId], references: [businessId, id], onDelete: NoAction)
+  name          String
+  slug          String
+  description   String?
+  imageFileId   String?
+  image         StoredFile?      @relation(fields: [businessId, imageFileId], references: [businessId, id], onDelete: NoAction)
+  // The picture was made from the design's mockup (remade when the design changes).
+  imageIsMockup Boolean          @default(false)
+  // The quote/order line it was published from, to update it on a later publish.
+  sourceLineId  String?
+  published     Boolean          @default(true)
+  featured      Boolean          @default(false)
+  sortOrder     Int              @default(0)
   // Markup on top of the base price; empty = the store's default markup.
-  markupKind  MarkupKind?
-  markupValue Decimal?         @db.Decimal(10, 2)
-  prices      StoreItemPrice[]
-  cartItems   CartItem[]
-  orderLines  OrderLine[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  markupKind    MarkupKind?
+  markupValue   Decimal?         @db.Decimal(10, 2)
+  prices        StoreItemPrice[]
+  cartItems     CartItem[]
+  orderLines    OrderLine[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
   @@unique([businessId, id])
   @@unique([storeId, slug])
+  @@index([storeId, sourceLineId])
 }
 
 model StoreItemPrice {

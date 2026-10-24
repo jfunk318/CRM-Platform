@@ -4,7 +4,8 @@ import { effectiveMarkup, itemPrice } from "@/lib/store/settings";
 import { ActionForm } from "@/components/admin/action-form";
 import { FilePicker } from "@/components/file-picker";
 import { loadAdminStore } from "@/lib/store/admin";
-import { deleteItemAction, repriceItemAction, saveItemAction, saveItemPricesAction, uploadItemImageAction } from "../../../actions";
+import { deleteItemAction, repriceItemAction, saveItemAction, saveItemPricesAction, uploadItemImageAction, mockupPictureAction } from "../../../actions";
+import { orderRef } from "@/lib/orders/numbers";
 
 const money = (v: { toFixed(n: number): string }) => `$${v.toFixed(2)}`;
 
@@ -20,6 +21,8 @@ export default async function ItemPage({ params }: { params: Promise<{ id: strin
     },
   });
   if (!item) notFound();
+  const hasArtwork = item.design.decorations.some((d) => d.artworkFileId && d.areaId);
+  const source = item.sourceLineId ? await db.orderLine.findUnique({ where: { id: item.sourceLineId }, include: { order: true } }) : null;
   const inherited = effectiveMarkup({ markupKind: null, markupValue: null }, item.store);
   const storeMarkup = inherited.markupKind ? `${inherited.markupKind === "PERCENT" ? `${inherited.markupValue}%` : money(inherited.markupValue!)}` : "none";
   return (
@@ -35,6 +38,15 @@ export default async function ItemPage({ params }: { params: Promise<{ id: strin
             {item.design.product.styleCode} {item.design.product.name} · {item.design.color.name}
             <br />
             {item.design.decorations.map((d) => `${d.location}: ${d.method.name}${d.colors ? `, ${d.colors} color${d.colors === 1 ? "" : "s"}` : ""}`).join(" · ") || "Blank"}
+            {source && (
+              <>
+                <br />
+                Published from{" "}
+                <Link href={`/admin/orders/${source.orderId}`} className="text-amber-700 hover:underline">
+                  {source.order.type === "QUOTE" ? "quote" : "order"} {orderRef(source.order)}
+                </Link>
+              </>
+            )}
           </p>
           <ActionForm action={saveItemAction} className="space-y-3">
             <input type="hidden" name="id" value={item.id} />
@@ -118,6 +130,12 @@ export default async function ItemPage({ params }: { params: Promise<{ id: strin
               <img src={`/admin/files/${item.imageFileId}`} alt={item.name} className="max-h-56 rounded border" />
             ) : (
               <p className="text-sm text-gray-500">No picture; the product photo (if any) or a color swatch is shown.</p>
+            )}
+            {item.imageIsMockup && <p className="text-xs text-gray-500">Made from the design&apos;s mockup; it&apos;s remade when the design is republished.</p>}
+            {hasArtwork && !item.imageIsMockup && (
+              <ActionForm action={mockupPictureAction} submitLabel="Use the design's mockup" className="flex">
+                <input type="hidden" name="id" value={item.id} />
+              </ActionForm>
             )}
             <ActionForm action={uploadItemImageAction} submitLabel="Upload" resetOnSuccess className="max-w-md space-y-2">
               <input type="hidden" name="id" value={item.id} />

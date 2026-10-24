@@ -174,7 +174,15 @@ Customers only see artwork through their own link (`/c/<token>/art/…`).
   line like `[[stores]]` or `[[stores group="Schools" sort=sales limit=6
   columns=3]]` on any page.
 - **Items** are priced per size from your pricing as a batch (base), with
-  overrides and item, store or group markups.
+  overrides and item, store or group markups. An item whose design has
+  artwork placed gets its mockup as its picture (unless you upload one).
+- **Publish to a store** (on a quote or order, for store managers) puts its
+  items in a new store for the customer or an existing one. Each item
+  sells every size its color comes in, priced at the quantity ordered (or a
+  batch quantity you enter). Publishing again either adds the items and
+  updates the ones published from that quote/order before (names, uploaded
+  pictures and price overrides stay), or replaces everything in the store.
+  The order's activity records each publish (`src/lib/store/publish.ts`).
 - **Promo and gift codes** are one list for all stores (Affiliate stores →
   Promo codes / Gift codes); each works in every store or only chosen ones,
   and each store's Codes tab shows what it accepts and how they were used.

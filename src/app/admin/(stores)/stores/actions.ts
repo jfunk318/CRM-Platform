@@ -11,10 +11,10 @@ import { slugify } from "@/lib/catalog/products";
 import { encryptSecret } from "@/lib/crypto";
 import { formFiles, saveUpload, UploadError } from "@/lib/files/storage";
 import { isImage } from "@/lib/files/types";
-import { isValidSlug } from "@/lib/hosts";
 import { OrderError } from "@/lib/orders/service";
 import { normalizeCode } from "@/lib/store/cart";
-import { createStoreItem, repriceStoreItem } from "@/lib/store/items";
+import { createStoreItem, refreshMockupPicture, repriceStoreItem } from "@/lib/store/items";
+import { checkStoreSlug, createAffiliateStore, StoreError } from "@/lib/store/stores";
 import { ACCOUNT_MODE_LABELS } from "@/lib/store/settings";
 
 type Db = Awaited<ReturnType<typeof requireStaff>>["db"];
@@ -24,7 +24,7 @@ async function run(fn: () => Promise<string | void>): Promise<ActionResult> {
     try {
       return await fn();
     } catch (e) {
-      if (e instanceof OrderError || e instanceof UploadError) throw new FormError(e.message);
+      if (e instanceof OrderError || e instanceof UploadError || e instanceof StoreError) throw new FormError(e.message);
       throw e;
     }
   });
@@ -64,31 +64,18 @@ const dateOrNull = (raw: string | null, label: string) => {
   return d;
 };
 
-// Subdomains the platform itself needs.
-const RESERVED_SUBDOMAINS = new Set(["www", "admin", "api", "app", "mail", "shop", "store", "stores", "platform", "static", "media"]);
-
 // ─── Stores ─────────────────────────────────────────────────────────────
 
 export async function createStoreAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   const { db } = await requireStaff(["STORE_MANAGER"]);
   let id = "";
   const r = await run(async () => {
-    const name = text(form, "name", "Store name");
-    const slug = (optionalText(form, "slug") ?? slugify(name)).toLowerCase();
-    if (!isValidSlug(slug)) throw new FormError("The address can use lowercase letters, numbers and hyphens");
-    if (RESERVED_SUBDOMAINS.has(slug)) throw new FormError(`"${slug}" is reserved; choose another address`);
-    if (await db.store.findFirst({ where: { slug } })) throw new FormError(`${slug} is already taken`);
-    const store = await db.store.create({
-      data: {
-        businessId: db.$businessId,
-        kind: "AFFILIATE",
-        name,
-        slug,
-        groupId: optionalText(form, "groupId"),
-        managerId: optionalText(form, "managerId"),
-        customerId: optionalText(form, "customerId"),
-        pages: { create: { slug: "home", title: "Home", body: `# ${name}\n\nWelcome to the ${name} store. Pick your gear below.` } },
-      },
+    const store = await createAffiliateStore(db, {
+      name: text(form, "name", "Store name"),
+      slug: optionalText(form, "slug"),
+      groupId: optionalText(form, "groupId"),
+      managerId: optionalText(form, "managerId"),
+      customerId: optionalText(form, "customerId"),
     });
     id = store.id;
     refresh();
@@ -103,11 +90,7 @@ export async function saveStoreAction(_: ActionResult, form: FormData): Promise<
     const store = await storeOf(db, form);
     const affiliate = store.kind === "AFFILIATE";
     const slug = affiliate ? text(form, "slug", "Address").toLowerCase() : null;
-    if (slug !== null) {
-      if (!isValidSlug(slug)) throw new FormError("The address can use lowercase letters, numbers and hyphens");
-      if (RESERVED_SUBDOMAINS.has(slug)) throw new FormError(`"${slug}" is reserved; choose another address`);
-      if (await db.store.findFirst({ where: { slug, id: { not: store.id } } })) throw new FormError(`${slug} is already taken`);
-    }
+    if (slug !== null) await checkStoreSlug(db, slug, store.id);
     const accent = optionalText(form, "accentColor");
     if (accent && !/^#[0-9a-f]{6}$/i.test(accent)) throw new FormError("Accent color must look like #d97706");
     const ga4Id = optionalText(form, "ga4Id");
@@ -419,9 +402,18 @@ export async function uploadItemImageAction(_: ActionResult, form: FormData): Pr
     if (!file) throw new FormError("Choose an image");
     if (!isImage(file.name)) throw new FormError("Use a PNG, JPG, GIF or WebP image");
     const saved = await saveUpload(staff.db, file, staff.id);
-    await staff.db.storeItem.update({ where: { id: text(form, "id") }, data: { imageFileId: saved.id } });
+    await staff.db.storeItem.update({ where: { id: text(form, "id") }, data: { imageFileId: saved.id, imageIsMockup: false } });
     refresh();
     return "Picture updated";
+  });
+}
+
+export async function mockupPictureAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  return run(async () => {
+    if (!(await refreshMockupPicture(db, text(form, "id"), true))) throw new FormError("This item's design has no artwork placed");
+    refresh();
+    return "Picture made from the mockup";
   });
 }
 

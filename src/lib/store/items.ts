@@ -2,6 +2,8 @@ import "server-only";
 import { Prisma } from "@prisma/client";
 import type { BusinessDb } from "@/lib/db";
 import { slugify } from "@/lib/catalog/products";
+import { designMockups, renderMockup } from "@/lib/design/mockups";
+import { fileStore, saveUpload } from "@/lib/files/storage";
 import { decorationData, type DecorationSpec, OrderError } from "@/lib/orders/service";
 import { priceLineItem } from "@/lib/pricing";
 import { type DecorationRequest, LineRequestError, loadLineItemInput } from "@/lib/pricing/load";
@@ -51,43 +53,99 @@ export async function basePricesFor(
   }
 }
 
-/** Create a store item: a reusable design plus per-size prices. */
+/**
+ * Create a store item: a design plus per-size prices. A new design is made
+ * from `decorations`, or an existing one (a quote/order line's) is shared.
+ * If the design has artwork placed, its mockup becomes the item's picture.
+ */
 export async function createStoreItem(
   db: BusinessDb,
   storeId: string,
-  o: { name: string; description: string | null; productId: string; colorId: string; sizeIds: string[]; decorations: ItemDecoration[]; batchQty: number },
+  o: {
+    name: string;
+    description: string | null;
+    productId: string;
+    colorId: string;
+    sizeIds: string[];
+    decorations: ItemDecoration[];
+    batchQty: number;
+    designId?: string;
+    sourceLineId?: string;
+  },
 ): Promise<string> {
   if (o.sizeIds.length === 0) throw new OrderError("Choose at least one size to sell");
   const prices = await basePricesFor(db, o);
   const businessId = db.$businessId;
   const product = await db.product.findUniqueOrThrow({ where: { id: o.productId } });
   const color = await db.productColor.findUniqueOrThrow({ where: { id: o.colorId } });
-  return db.$transaction(async (tx) => {
-    const design = await tx.design.create({
-      data: {
-        businessId,
-        name: `${product.name} — ${color.name}`,
-        productId: o.productId,
-        colorId: o.colorId,
-        decorations: { create: o.decorations.map(decorationData) },
-      },
-    });
+  const id = await db.$transaction(async (tx) => {
+    const designId =
+      o.designId ??
+      (
+        await tx.design.create({
+          data: {
+            businessId,
+            name: `${product.name} — ${color.name}`,
+            productId: o.productId,
+            colorId: o.colorId,
+            decorations: { create: o.decorations.map(decorationData) },
+          },
+        })
+      ).id;
     let slug = slugify(o.name) || "item";
-    for (let n = 2; await tx.storeItem.findUnique({ where: { storeId_slug: { storeId, slug } } }); n++) slug = `${slugify(o.name)}-${n}`;
+    for (let n = 2; await tx.storeItem.findUnique({ where: { storeId_slug: { storeId, slug } } }); n++) slug = `${slugify(o.name) || "item"}-${n}`;
     const item = await tx.storeItem.create({
       data: {
         businessId,
         storeId,
-        designId: design.id,
+        designId,
         name: o.name,
         slug,
         description: o.description,
+        sourceLineId: o.sourceLineId ?? null,
         sortOrder: await tx.storeItem.count({ where: { storeId } }),
         prices: { create: [...prices].map(([sizeId, basePrice]) => ({ sizeId, basePrice })) },
       },
     });
     return item.id;
   });
+  await refreshMockupPicture(db, id);
+  return id;
+}
+
+/** A picture of the design's first mockup, saved as a file; null if no artwork is placed. */
+async function mockupPicture(db: BusinessDb, designId: string, name: string): Promise<string | null> {
+  const [m] = (await designMockups(db, [designId])).get(designId) ?? [];
+  if (!m) return null;
+  const png = await renderMockup(db, m);
+  const fileName = `${name} ${m.viewName} mockup.png`.replace(/[^\w .-]+/g, " ").replace(/\s+/g, " ");
+  return (await saveUpload(db, new File([new Uint8Array(png)], fileName, { type: "image/png" }), null)).id;
+}
+
+/**
+ * Make the item's picture from its design's mockup, unless staff uploaded
+ * their own picture (`force` replaces that too). The previous mockup picture
+ * is deleted.
+ */
+export async function refreshMockupPicture(db: BusinessDb, itemId: string, force = false): Promise<boolean> {
+  const item = await db.storeItem.findUniqueOrThrow({ where: { id: itemId } });
+  if (item.imageFileId && !item.imageIsMockup && !force) return false;
+  const fileId = await mockupPicture(db, item.designId, item.name);
+  if (!fileId) return false;
+  await db.storeItem.update({ where: { id: item.id }, data: { imageFileId: fileId, imageIsMockup: true } });
+  if (item.imageFileId && item.imageIsMockup) await removeIfUnused(db, item.imageFileId);
+  return true;
+}
+
+/** Delete a generated picture once no item, order or proof uses it. */
+async function removeIfUnused(db: BusinessDb, fileId: string) {
+  const file = await db.storedFile.findUnique({
+    where: { id: fileId },
+    include: { _count: { select: { storeItems: true, orderFiles: true, proofFiles: true, storeLogos: true, artworkFor: true, artSourceFor: true, artworkAssets: true } } },
+  });
+  if (!file || Object.values(file._count).some((n) => n > 0)) return;
+  await db.storedFile.delete({ where: { id: file.id } });
+  await fileStore.remove(file.storageKey);
 }
 
 /** Re-work an item's base prices at a new batch quantity; overrides stay. */

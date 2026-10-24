@@ -14,6 +14,8 @@ import { DesignMockups } from "@/components/design-mockups";
 import { SourceTag, StatusBadge } from "@/components/admin/order-table";
 import { requestOrigin } from "@/lib/business";
 import { orderBlankStatus } from "@/lib/purchasing/service";
+import { freeStoreSlug } from "@/lib/store/stores";
+import { PublishToStoreFields } from "@/components/admin/publish-to-store";
 import { CustomerLinkSection, EmailsSection, FilesSection, orderSectionsInclude, PaymentsSection, ProofsSection } from "./sections";
 import { BlanksSection, fulfillmentInclude, ProductionSection, ShippingSection } from "./fulfillment";
 import {
@@ -21,6 +23,7 @@ import {
   addNoteAction,
   assignAction,
   convertQuoteAction,
+  publishToStoreAction,
   removeLineAction,
   saveDetailsAction,
   setStatusAction,
@@ -95,6 +98,15 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
     companyId: order.companyId ?? order.customer.companyId,
     name: `${order.customer.firstName} ${order.customer.lastName}`.trim(),
   };
+  // Publishing the items to a store (store managers; not for orders placed in a store).
+  const canPublish = hasAnyRole(staff.roles, ["STORE_MANAGER"]) && order.lines.length > 0 && order.source !== "STOREFRONT";
+  const [publishStores, published] = canPublish
+    ? await Promise.all([
+        db.store.findMany({ where: { active: true }, orderBy: [{ kind: "asc" }, { name: "asc" }], select: { id: true, name: true, kind: true, _count: { select: { items: true } } } }),
+        db.storeItem.groupBy({ by: ["storeId"], where: { sourceLineId: { in: order.lines.map((l) => l.id) } }, _count: true }),
+      ])
+    : [[], []];
+  const storeName = order.customer.company?.name ?? `${order.customer.firstName} ${order.customer.lastName}`.trim();
   const lineValue = (line: (typeof order.lines)[number]): LineValue => ({
     productId: line.design.productId,
     colorId: line.design.colorId,
@@ -316,6 +328,34 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               </details>
             )}
           </section>
+
+          {canPublish && (
+            <details className="card" data-testid="publish-to-store">
+              <summary className="cursor-pointer font-semibold">Publish to a store</summary>
+              <p className="mt-1 text-sm text-gray-600">Sell these items in a team or group store, with their designs and mockups.</p>
+              <div className="mt-3">
+                <ActionForm action={publishToStoreAction} submitLabel="Publish">
+                  <input type="hidden" name="orderId" value={order.id} />
+                  <PublishToStoreFields
+                    lines={order.lines.map((l) => ({
+                      id: l.id,
+                      label: `${l.design.product.styleCode} ${l.design.product.name} · ${l.design.color.name}`,
+                      qty: l.sizes.reduce((n, s) => n + s.qty, 0),
+                    }))}
+                    stores={publishStores.map((s) => ({
+                      id: s.id,
+                      name: s.name,
+                      main: s.kind === "ROOT",
+                      items: s._count.items,
+                      fromThisOrder: published.find((p) => p.storeId === s.id)?._count ?? 0,
+                    }))}
+                    defaultName={storeName}
+                    defaultSlug={await freeStoreSlug(db, storeName)}
+                  />
+                </ActionForm>
+              </div>
+            </details>
+          )}
 
           <FilesSection order={order} canEdit={canArtwork && !locked} />
           {!isQuote && <ProofsSection order={order} origin={origin} canEdit={canArtwork} hasArtwork={mockups.size > 0} />}
