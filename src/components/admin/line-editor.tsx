@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { OrderOptions } from "@/app/admin/api/products/[id]/order-options/route";
 import { Mockup, type MockupLayer } from "@/components/mockup";
-import type { ArtworkValue } from "@/lib/design/artwork";
+import type { ArtOwnerIds, ArtworkValue } from "@/lib/design/artwork";
 import { photoRect } from "@/lib/design/placement";
 import { DesignStudio } from "./design-studio";
 import { ProductPicker, type PickedProduct } from "./product-picker";
@@ -59,7 +59,10 @@ export function LineEditor({
   product,
   initial,
   sizeMode = "quantity",
+  artOwner,
 }: {
+  /** Whose artwork library the design studio shows (the order's customer, the store's owner). */
+  artOwner?: ArtOwnerIds & { name: string };
   /** The product of `initial`, so its name shows before its options load. */
   product?: PickedProduct;
   initial?: LineValue;
@@ -316,6 +319,8 @@ export function LineEditor({
           photoUrl={photoFor(studioArea.viewId)}
           method={options.methods.find((m) => m.id === studioDecoration.methodId)}
           productName={`${options.name}${color ? ` · ${color.name}` : ""}`}
+          owner={artOwner ?? null}
+          ownerName={artOwner?.name}
           initial={studioDecoration.artwork}
           onClose={() => setStudio(null)}
           onRemove={() => {

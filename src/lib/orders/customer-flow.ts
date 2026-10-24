@@ -5,6 +5,7 @@ import { deliveryNote, isValidEmail, sendEmail } from "@/lib/email/mailer";
 import { proofEmail, quoteEmail, staffAlertEmail } from "@/lib/email/templates";
 import { saveUpload } from "@/lib/files/storage";
 import { designMockups, renderMockup } from "@/lib/design/mockups";
+import { addToLibrary, orderOwner } from "@/lib/design/library";
 import { createProductionJobs } from "@/lib/production/jobs";
 import { orderRef } from "./numbers";
 import { logEvent, moveToRole, newToken, OrderError } from "./service";
@@ -274,6 +275,7 @@ export async function customerRespondToProof(
     for (const f of uploaded) {
       await tx.orderFile.create({ data: { businessId, orderId: proof.orderId, fileId: f.id, kind: "CUSTOMER", note: `With proof ${proof.number} response` } });
     }
+    await addToLibrary(tx, await orderOwner(tx, proof.orderId), uploaded);
     const files = uploaded.length ? ` (${uploaded.length} file${uploaded.length === 1 ? "" : "s"} attached)` : "";
     await logEvent(
       tx,

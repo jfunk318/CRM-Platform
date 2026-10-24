@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { requireStaff } from "@/lib/auth/session";
 import { ActionForm } from "@/components/admin/action-form";
 import { OrderTable, orderTableInclude } from "@/components/admin/order-table";
+import { ArtworkLibrary } from "@/components/admin/artwork-library";
+import { libraryFor } from "@/lib/design/library";
 import { saveCompany } from "../../customers/actions";
 
 export default async function CompanyPage({ params }: { params: Promise<{ id: string }> }) {
@@ -19,6 +21,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
     db.pricingGroup.findMany({ orderBy: [{ isDefault: "desc" }, { name: "asc" }] }),
   ]);
   if (!company) notFound();
+  const artwork = await libraryFor(db, { customerId: null, companyId: company.id });
 
   return (
     <div className="space-y-8">
@@ -49,6 +52,8 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
         <h2 className="font-semibold">Quotes &amp; orders</h2>
         <OrderTable orders={company.orders} empty="None yet." />
       </section>
+
+      <ArtworkLibrary assets={artwork} owner={{ companyId: company.id }} sharedWith={company.name} />
 
       <section className="card">
         <h2 className="mb-3 font-semibold">Details</h2>

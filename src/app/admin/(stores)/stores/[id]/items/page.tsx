@@ -74,7 +74,10 @@ export default async function ItemsPage({ params }: { params: Promise<{ id: stri
             <label className="label" htmlFor="item-desc">Description (optional)</label>
             <textarea className="input min-h-16" id="item-desc" name="description" />
           </div>
-          <LineEditor sizeMode="select" />
+          <LineEditor
+            sizeMode="select"
+            artOwner={store.customer ? { customerId: store.customer.id, companyId: store.customer.companyId, name: `${store.customer.firstName} ${store.customer.lastName}`.trim() } : undefined}
+          />
           <p className="text-xs text-gray-500">
             Base prices per size come from your pricing (garment, decoration at the batch quantity, and setup fees spread over the batch). You can
             change them, override them or add a markup on the next screen.

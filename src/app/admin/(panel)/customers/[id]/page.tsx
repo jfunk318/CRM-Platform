@@ -5,6 +5,8 @@ import { ActionForm } from "@/components/admin/action-form";
 import { CompanyPicker } from "@/components/admin/company-picker";
 import { OrderTable, orderTableInclude } from "@/components/admin/order-table";
 import { RowsEditor } from "@/components/admin/rows-editor";
+import { ArtworkLibrary } from "@/components/admin/artwork-library";
+import { libraryFor } from "@/lib/design/library";
 import { saveAddresses, saveCustomer, startOrder } from "../actions";
 
 export default async function CustomerPage({ params }: { params: Promise<{ id: string }> }) {
@@ -23,6 +25,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
     db.pricingGroup.findMany({ orderBy: [{ isDefault: "desc" }, { name: "asc" }] }),
   ]);
   if (!customer) notFound();
+  const artwork = await libraryFor(db, { customerId: customer.id, companyId: customer.companyId });
   const quotes = customer.orders.filter((o) => o.type === "QUOTE");
   const orders = customer.orders.filter((o) => o.type === "ORDER");
   const inheritedGroup = customer.company?.pricingGroup?.name ?? groups.find((g) => g.isDefault)?.name ?? "default";
@@ -59,6 +62,8 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
         <h2 className="font-semibold">Orders</h2>
         <OrderTable orders={orders} empty="No orders yet." />
       </section>
+
+      <ArtworkLibrary assets={artwork} owner={{ customerId: customer.id }} sharedWith={customer.company?.name} />
 
       <section className="card">
         <h2 className="mb-3 font-semibold">Details</h2>

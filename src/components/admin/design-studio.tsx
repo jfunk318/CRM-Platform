@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Mockup } from "@/components/mockup";
-import { type ArtworkValue, PLACEABLE, PLACEABLE_ACCEPT, staffFileUrl } from "@/lib/design/artwork";
+import { type ArtOwnerIds, type ArtworkValue, type LibraryArt, PLACEABLE, PLACEABLE_ACCEPT, staffFileUrl } from "@/lib/design/artwork";
 import { downscale, loadArt, rasterPreview, rasterToPng } from "@/lib/design/canvas";
 import { type AreaBox, clampPlacement, dpiRating, effectiveDpi, fitPlacement, type Placement, photoRect, printSize } from "@/lib/design/placement";
 import { applyEdits, type ArtEdits, palette, type Raster, removeBackground, trim } from "@/lib/design/raster";
@@ -20,7 +20,17 @@ const RATING = {
 } as const;
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-type Loaded = { full: Raster; work: Raster; scale: number; file: File | null; sourceFileId: string | null; name: string };
+type Loaded = {
+  full: Raster;
+  work: Raster;
+  scale: number;
+  /** A new upload (saved as the original when the artwork is used). */
+  file: File | null;
+  sourceFileId: string | null;
+  /** Picked from the customer's library. */
+  libraryFileId: string | null;
+  name: string;
+};
 
 /**
  * Place artwork on a print area: upload, clean up (background, colors),
@@ -32,6 +42,8 @@ export function DesignStudio({
   photoUrl,
   method,
   productName,
+  owner,
+  ownerName,
   initial,
   onSave,
   onRemove,
@@ -41,6 +53,9 @@ export function DesignStudio({
   photoUrl: string | null;
   method?: StudioMethod;
   productName: string;
+  /** Whose artwork library to show and file new uploads under. */
+  owner: ArtOwnerIds | null;
+  ownerName?: string;
   initial: (ArtworkValue & { name?: string }) | null;
   onSave: (r: StudioResult) => void;
   onRemove: () => void;
@@ -52,8 +67,28 @@ export function DesignStudio({
   const [busy, setBusy] = useState<string | null>(initial ? "Opening the artwork…" : null);
   const [error, setError] = useState<string | null>(null);
   const [artChanged, setArtChanged] = useState(false);
+  const [library, setLibrary] = useState<LibraryArt[] | null>(null);
+  // The gallery shows first for new artwork; editing saved artwork goes straight to the tools.
+  const [picking, setPicking] = useState(!initial);
+  const [filter, setFilter] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
   const stage = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!owner?.customerId && !owner?.companyId) {
+      setLibrary([]);
+      return;
+    }
+    let cancelled = false;
+    const qs = new URLSearchParams({ customerId: owner.customerId ?? "", companyId: owner.companyId ?? "" });
+    fetch(`/admin/api/artwork?${qs}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: LibraryArt[]) => !cancelled && setLibrary(list))
+      .catch(() => !cancelled && setLibrary([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [owner?.customerId, owner?.companyId]);
 
   // Reopen saved artwork from its original, so edits can be changed.
   useEffect(() => {
@@ -66,7 +101,15 @@ export function DesignStudio({
         const blob = await res.blob();
         const art = await loadArt(blob, blob.type.includes("svg"));
         if (cancelled) return;
-        setLoaded({ full: art.raster, work: downscale(art.raster, PREVIEW_PX), scale: art.scale, file: null, sourceFileId: initial.sourceFileId ?? initial.artworkFileId, name: initial.name ?? "artwork" });
+        setLoaded({
+          full: art.raster,
+          work: downscale(art.raster, PREVIEW_PX),
+          scale: art.scale,
+          file: null,
+          sourceFileId: initial.sourceFileId ?? initial.artworkFileId,
+          libraryFileId: null,
+          name: initial.name ?? "artwork",
+        });
       } catch {
         if (!cancelled) setError("The saved artwork couldn't be opened. Choose the file again.");
       } finally {
@@ -104,6 +147,30 @@ export function DesignStudio({
   const dpi = view && size ? effectiveDpi(view.art, size.widthIn) : 0;
   const rating = dpiRating(dpi, method ?? {});
 
+  /** Start placing art from a new upload or the library: fit it to the area with sensible clean-up. */
+  const start = async (src: Blob, o: { name: string; ext: string; file: File | null; libraryFileId: string | null }) => {
+    setError(null);
+    setBusy("Reading the artwork…");
+    try {
+      const vector = o.ext === "svg" || src.type.includes("svg");
+      const art = await loadArt(src, vector);
+      const work = downscale(art.raster, PREVIEW_PX);
+      setLoaded({ full: art.raster, work, scale: art.scale, file: o.file, sourceFileId: o.libraryFileId, libraryFileId: o.libraryFileId, name: o.name.replace(/\.[^.]+$/, "") });
+      // A white or solid background is usually wanted gone; start with it removed for non-transparent art.
+      const opaqueCorner = work.data[3] > 200;
+      const startEdits: ArtEdits = opaqueCorner && !vector ? { removeBg: { tolerance: 12 }, trim: true } : { trim: true };
+      setEdits(startEdits);
+      const first = applyEdits(work, startEdits);
+      setPlace(fitPlacement(area, { widthPx: first.width, heightPx: first.height }));
+      setArtChanged(true);
+      setPicking(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "That file couldn't be read");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const choose = async (file: File | undefined) => {
     if (!file) return;
     const ext = file.name.toLowerCase().split(".").pop() ?? "";
@@ -111,22 +178,17 @@ export function DesignStudio({
       setError("Choose a PNG, JPG, GIF, WebP or SVG to place it. PDF and Illustrator files can still be attached to the order under Files.");
       return;
     }
-    setError(null);
-    setBusy("Reading the artwork…");
+    await start(file, { name: file.name, ext, file, libraryFileId: null });
+  };
+
+  const pick = async (art: LibraryArt) => {
+    setBusy("Opening the artwork…");
     try {
-      const art = await loadArt(file, ext === "svg");
-      const work = downscale(art.raster, PREVIEW_PX);
-      setLoaded({ full: art.raster, work, scale: art.scale, file, sourceFileId: null, name: file.name.replace(/\.[^.]+$/, "") });
-      // A white or solid background is usually wanted gone; start with it removed for non-transparent art.
-      const opaqueCorner = work.data[3] > 200;
-      const startEdits: ArtEdits = opaqueCorner && ext !== "svg" ? { removeBg: { tolerance: 12 }, trim: true } : { trim: true };
-      setEdits(startEdits);
-      const first = applyEdits(work, startEdits);
-      setPlace(fitPlacement(area, { widthPx: first.width, heightPx: first.height }));
-      setArtChanged(true);
+      const res = await fetch(staffFileUrl(art.fileId));
+      if (!res.ok) throw new Error("That artwork couldn't be opened");
+      await start(await res.blob(), { name: art.name, ext: art.name.toLowerCase().split(".").pop() ?? "", file: null, libraryFileId: art.fileId });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "That file couldn't be read");
-    } finally {
+      setError(e instanceof Error ? e.message : "That artwork couldn't be opened");
       setBusy(null);
     }
   };
@@ -151,7 +213,13 @@ export function DesignStudio({
         heightPx = Math.round(final.height / loaded.scale);
         const body = new FormData();
         body.append("artwork", new File([await rasterToPng(final)], `${loaded.name}-placed.png`, { type: "image/png" }));
-        if (loaded.file) body.append("source", loaded.file);
+        if (loaded.file) {
+          body.append("source", loaded.file);
+          // New uploads go into the customer's library.
+          body.append("customerId", owner?.customerId ?? "");
+          body.append("companyId", owner?.companyId ?? "");
+        }
+        if (loaded.libraryFileId) body.append("libraryFileId", loaded.libraryFileId);
         const res = await fetch("/admin/api/artwork", { method: "POST", body });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error ?? "The artwork couldn't be saved");
@@ -230,9 +298,9 @@ export function DesignStudio({
                   </div>
                 )}
                 {!loaded && !busy && (
-                  <button type="button" className="absolute inset-0 m-auto h-fit w-fit btn" onClick={() => fileInput.current?.click()}>
-                    📎 Choose artwork
-                  </button>
+                  <p className="absolute inset-x-6 top-1/2 -translate-y-1/2 rounded bg-white/85 px-3 py-2 text-center text-sm text-gray-700">
+                    Pick artwork on the right, or upload new.
+                  </p>
                 )}
               </Mockup>
             </div>
@@ -241,19 +309,67 @@ export function DesignStudio({
 
           <div className="space-y-5 text-sm">
             <input ref={fileInput} type="file" accept={PLACEABLE_ACCEPT} className="sr-only" aria-label="Artwork file" onChange={(e) => choose(e.target.files?.[0])} />
-            <div className="flex flex-wrap gap-2">
-              <button type="button" className="btn-secondary" onClick={() => fileInput.current?.click()}>
-                📎 {loaded ? "Replace artwork" : "Choose artwork"}
-              </button>
-              {initial && (
-                <button type="button" className="btn-danger" onClick={onRemove}>Remove artwork</button>
-              )}
-            </div>
-            <p className="-mt-3 text-xs text-gray-500">PNG, JPG, GIF, WebP or SVG.</p>
+            {picking ? (
+              <section className="space-y-2" data-testid="art-library">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="font-medium">{ownerName ? `${ownerName}'s artwork` : "Saved artwork"}</h3>
+                  {loaded && (
+                    <button type="button" className="text-xs text-amber-700 hover:underline" onClick={() => setPicking(false)}>Back to editing</button>
+                  )}
+                </div>
+                {library && library.length > 12 && (
+                  <input className="input" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Find by file name" aria-label="Find artwork" />
+                )}
+                {library === null ? (
+                  <p className="text-xs text-gray-500">Loading saved artwork…</p>
+                ) : library.length === 0 ? (
+                  <p className="rounded bg-gray-50 px-2 py-2 text-xs text-gray-600">
+                    {owner?.customerId || owner?.companyId ? "No saved artwork for this customer yet. Upload a file and it's kept here for next time." : "Upload a file to place it."}
+                  </p>
+                ) : (
+                  <div className="grid max-h-80 grid-cols-3 gap-2 overflow-y-auto pr-1">
+                    {library
+                      .filter((a) => !filter || a.name.toLowerCase().includes(filter.toLowerCase()))
+                      .map((a) => (
+                        <button
+                          key={a.fileId}
+                          type="button"
+                          className={`rounded border p-1 text-left hover:border-amber-500 ${loaded && (loaded.libraryFileId ?? loaded.sourceFileId) === a.fileId ? "border-amber-500 ring-1 ring-amber-500" : "border-gray-200"}`}
+                          title={`${a.name} · ${a.owner}`}
+                          onClick={() => pick(a)}
+                          disabled={!!busy}
+                          data-testid="library-art"
+                        >
+                          <span className="block aspect-square overflow-hidden rounded bg-[repeating-conic-gradient(#e5e7eb_0_25%,#fff_0_50%)] bg-[length:12px_12px]">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={staffFileUrl(a.fileId)} alt="" loading="lazy" className="h-full w-full object-contain" />
+                          </span>
+                          <span className="mt-1 block truncate text-[11px] text-gray-700">{a.name}</span>
+                        </button>
+                      ))}
+                  </div>
+                )}
+                <button type="button" className="btn-secondary" onClick={() => fileInput.current?.click()} disabled={!!busy}>
+                  📎 Upload new artwork
+                </button>
+                <p className="text-xs text-gray-500">
+                  PNG, JPG, GIF, WebP or SVG.{owner?.customerId || owner?.companyId ? " New uploads are saved to this customer's artwork." : ""}
+                </p>
+              </section>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className="btn-secondary" onClick={() => setPicking(true)}>
+                  🖼 Choose different artwork
+                </button>
+                {initial && (
+                  <button type="button" className="btn-danger" onClick={onRemove}>Remove artwork</button>
+                )}
+              </div>
+            )}
             {busy && <p className="text-amber-800" role="status">{busy}</p>}
             {error && <p className="rounded bg-red-50 px-2 py-1 text-red-800" role="alert">{error}</p>}
 
-            {view && placed && size && (
+            {!picking && view && placed && size && (
               <>
                 <section className="space-y-2">
                   <h3 className="font-medium">Size &amp; position</h3>

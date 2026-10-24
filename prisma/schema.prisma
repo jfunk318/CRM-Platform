@@ -106,6 +106,7 @@ model Business {
   orderEvents            OrderEvent[]
   counters               Counter[]
   storedFiles            StoredFile[]
+  artworkAssets          ArtworkAsset[]
   orderFiles             OrderFile[]
   proofs                 Proof[]
   proofFiles             ProofFile[]
@@ -671,22 +672,23 @@ model TaxRate {
 // ─── Customers ──────────────────────────────────────────────────────────────
 
 model Company {
-  id             String        @id @default(cuid())
+  id             String         @id @default(cuid())
   businessId     String
-  business       Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business       Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name           String
   phone          String?
   website        String?
   notes          String?
-  taxExempt      Boolean       @default(false)
+  taxExempt      Boolean        @default(false)
   pricingGroupId String?
-  pricingGroup   PricingGroup? @relation(fields: [businessId, pricingGroupId], references: [businessId, id], onDelete: NoAction)
+  pricingGroup   PricingGroup?  @relation(fields: [businessId, pricingGroupId], references: [businessId, id], onDelete: NoAction)
   customers      Customer[]
   orders         Order[]
+  artwork        ArtworkAsset[]
   externalSource String?
   externalId     String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   @@unique([businessId, id])
   @@unique([businessId, externalSource, externalId])
@@ -719,6 +721,7 @@ model Customer {
   tokens          CustomerToken[]
   carts           Cart[]
   stores          Store[]           @relation("StoreCustomer")
+  artwork         ArtworkAsset[]
   externalSource  String?
   externalId      String?
   createdAt       DateTime          @default(now())
@@ -1038,25 +1041,48 @@ model Counter {
 // A stored upload (artwork, mockup, customer file). The bytes live in file
 // storage under storageKey; this row is the business's record of it.
 model StoredFile {
-  id           String             @id @default(cuid())
-  businessId   String
-  business     Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  name         String // original filename
-  contentType  String
-  size         Int
-  sha256       String
-  storageKey   String             @unique
-  uploadedById String?
-  uploadedBy   StaffUser?         @relation(fields: [businessId, uploadedById], references: [businessId, id], onDelete: NoAction)
-  orderFiles   OrderFile[]
-  proofFiles   ProofFile[]
-  storeLogos   Store[]
-  storeItems   StoreItem[]
-  artworkFor   DesignDecoration[] @relation("DecorationArtwork")
-  artSourceFor DesignDecoration[] @relation("DecorationArtSource")
-  createdAt    DateTime           @default(now())
+  id            String             @id @default(cuid())
+  businessId    String
+  business      Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name          String // original filename
+  contentType   String
+  size          Int
+  sha256        String
+  storageKey    String             @unique
+  uploadedById  String?
+  uploadedBy    StaffUser?         @relation(fields: [businessId, uploadedById], references: [businessId, id], onDelete: NoAction)
+  orderFiles    OrderFile[]
+  proofFiles    ProofFile[]
+  storeLogos    Store[]
+  storeItems    StoreItem[]
+  artworkFor    DesignDecoration[] @relation("DecorationArtwork")
+  artSourceFor  DesignDecoration[] @relation("DecorationArtSource")
+  artworkAssets ArtworkAsset[]
+  createdAt     DateTime           @default(now())
 
   @@unique([businessId, id])
+}
+
+// A customer's artwork, kept for reuse in the design studio: images they or
+// staff have uploaded that can be placed on products. Visible to everyone at
+// the customer's company too.
+model ArtworkAsset {
+  id         String     @id @default(cuid())
+  businessId String
+  business   Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  fileId     String
+  file       StoredFile @relation(fields: [businessId, fileId], references: [businessId, id], onDelete: Cascade)
+  customerId String?
+  customer   Customer?  @relation(fields: [businessId, customerId], references: [businessId, id], onDelete: Cascade)
+  companyId  String?
+  company    Company?   @relation(fields: [businessId, companyId], references: [businessId, id], onDelete: Cascade)
+  name       String
+  lastUsedAt DateTime?
+  createdAt  DateTime   @default(now())
+
+  @@unique([businessId, fileId])
+  @@index([businessId, customerId])
+  @@index([businessId, companyId])
 }
 
 enum OrderFileKind {

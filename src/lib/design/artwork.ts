@@ -4,6 +4,12 @@ import type { ArtEdits } from "./raster";
 export const PLACEABLE = ["png", "jpg", "jpeg", "gif", "webp", "svg"];
 export const PLACEABLE_ACCEPT = "image/png,image/jpeg,image/gif,image/webp,image/svg+xml,.svg";
 
+/** An image in a customer's artwork library, as the studio's gallery lists it. */
+export type LibraryArt = { fileId: string; name: string; owner: string; addedAt: string };
+
+/** Whose artwork library the studio shows and files new uploads under. */
+export type ArtOwnerIds = { customerId: string | null; companyId: string | null };
+
 /** Artwork on a decoration as the item editor holds it; `d_artwork` carries it without the URLs. */
 export type ArtworkValue = {
   artworkFileId: string;

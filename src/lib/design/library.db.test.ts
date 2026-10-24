@@ -1,0 +1,79 @@
+// Customers' artwork libraries: what gets filed, who sees it, and removal.
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { prisma } from "@/lib/db";
+import { addOrderFiles, removeOrderFile } from "@/lib/files/order-files";
+import { createOrder } from "@/lib/orders/service";
+import { makeTestBusiness } from "@/test/fixtures";
+import { libraryFor, removeFromLibrary, touchArtwork, uploadToLibrary } from "./library";
+
+let t: Awaited<ReturnType<typeof makeTestBusiness>>;
+const file = (name: string) => new File([new Uint8Array([137, 80, 78, 71, 1, 2, 3, name.length])], name, { type: "application/octet-stream" });
+let companyId = "", alexId = "", samId = "", loneId = "";
+
+beforeAll(async () => {
+  t = await makeTestBusiness(`lib-${Date.now()}`);
+  const b = t.business.id;
+  companyId = (await t.db.company.create({ data: { businessId: b, name: "Lincoln Hockey" } })).id;
+  alexId = (await t.db.customer.create({ data: { businessId: b, firstName: "Alex", companyId } })).id;
+  samId = (await t.db.customer.create({ data: { businessId: b, firstName: "Sam", companyId } })).id;
+  loneId = (await t.db.customer.create({ data: { businessId: b, firstName: "Lone" } })).id;
+});
+afterAll(async () => {
+  await t.cleanup();
+  await prisma.$disconnect();
+});
+
+const names = async (owner: { customerId: string | null; companyId: string | null }) => (await libraryFor(t.db, owner)).map((a) => a.name);
+
+describe("artwork library", () => {
+  let orderId = "";
+
+  it("files images uploaded to an order under its customer and company, but not other files", async () => {
+    orderId = await createOrder(t.db, { type: "ORDER", customerId: alexId, staffId: t.staff.id });
+    await addOrderFiles(t.db, orderId, [file("crest.png"), file("brief.pdf"), file("wordmark.svg")], "ARTWORK", t.staff.id);
+    await addOrderFiles(t.db, orderId, [file("packing.png")], "OTHER", t.staff.id);
+    expect((await names({ customerId: alexId, companyId })).sort()).toEqual(["crest.png", "wordmark.svg"]);
+    const crest = await t.db.artworkAsset.findFirstOrThrow({ where: { name: "crest.png" } });
+    expect(crest).toMatchObject({ customerId: alexId, companyId });
+  });
+
+  it("is shared with the customer's company, and no one else", async () => {
+    await uploadToLibrary(t.db, { customerId: null, companyId }, [file("team-logo.png")], t.staff.id);
+    await uploadToLibrary(t.db, { customerId: loneId, companyId: null }, [file("solo.png")], t.staff.id);
+    expect((await names({ customerId: samId, companyId })).sort()).toEqual(["crest.png", "team-logo.png", "wordmark.svg"]);
+    expect(await names({ customerId: loneId, companyId: null })).toEqual(["solo.png"]);
+    expect(await names({ customerId: null, companyId: null })).toEqual([]);
+  });
+
+  it("lists the most recently used first", async () => {
+    const wordmark = await t.db.artworkAsset.findFirstOrThrow({ where: { name: "wordmark.svg" } });
+    await touchArtwork(t.db, wordmark.fileId);
+    expect((await names({ customerId: alexId, companyId }))[0]).toBe("wordmark.svg");
+  });
+
+  it("keeps each image once, however many times it's uploaded", async () => {
+    await uploadToLibrary(t.db, { customerId: samId, companyId }, [file("team-logo.png")], t.staff.id); // same bytes as the company's
+    await uploadToLibrary(t.db, { customerId: loneId, companyId: null }, [file("team-logo.png")], t.staff.id); // different customer: kept
+    expect((await names({ customerId: samId, companyId })).filter((n) => n === "team-logo.png")).toHaveLength(1);
+    expect(await names({ customerId: loneId, companyId: null })).toContain("team-logo.png");
+  });
+
+  it("only accepts images when uploaded straight to the library", async () => {
+    await expect(uploadToLibrary(t.db, { customerId: alexId, companyId }, [file("notes.docx")], t.staff.id)).rejects.toThrow(/PNG, JPG/);
+  });
+
+  it("keeps library artwork when it's removed from an order, and the order's file when it's removed from the library", async () => {
+    const crestLink = await t.db.orderFile.findFirstOrThrow({ where: { orderId, file: { name: "crest.png" } } });
+    await removeOrderFile(t.db, crestLink.id, t.staff.id);
+    expect(await names({ customerId: alexId, companyId })).toContain("crest.png");
+
+    const wordmark = await t.db.artworkAsset.findFirstOrThrow({ where: { name: "wordmark.svg" } });
+    await removeFromLibrary(t.db, wordmark.id);
+    expect(await t.db.storedFile.count({ where: { id: wordmark.fileId } })).toBe(1); // still on the order
+
+    // Not used anywhere else: the file goes too.
+    const crest = await t.db.artworkAsset.findFirstOrThrow({ where: { name: "crest.png" } });
+    await removeFromLibrary(t.db, crest.id);
+    expect(await t.db.storedFile.count({ where: { id: crest.fileId } })).toBe(0);
+  });
+});

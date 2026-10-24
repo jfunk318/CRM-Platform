@@ -89,6 +89,12 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   ).length;
   const locked = isQuote && Boolean(order.convertedTo);
   const editable = canEdit && !locked;
+  // The design studio shows (and saves new uploads to) this customer's artwork library.
+  const artOwner = {
+    customerId: order.customerId,
+    companyId: order.companyId ?? order.customer.companyId,
+    name: `${order.customer.firstName} ${order.customer.lastName}`.trim(),
+  };
   const lineValue = (line: (typeof order.lines)[number]): LineValue => ({
     productId: line.design.productId,
     colorId: line.design.colorId,
@@ -283,7 +289,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                           <ActionForm action={updateLineAction} submitLabel="Save item">
                             <input type="hidden" name="orderId" value={order.id} />
                             <input type="hidden" name="lineId" value={line.id} />
-                            <LineEditor product={line.design.product} initial={lineValue(line)} />
+                            <LineEditor product={line.design.product} initial={lineValue(line)} artOwner={artOwner} />
                           </ActionForm>
                         </div>
                       </details>
@@ -303,7 +309,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                   {/* Keyed on the line count so the editor starts fresh after each add. */}
                   <ActionForm key={order.lines.length} action={addLineAction} submitLabel="Add item">
                     <input type="hidden" name="orderId" value={order.id} />
-                    <LineEditor />
+                    <LineEditor artOwner={artOwner} />
                   </ActionForm>
                 </div>
               </details>

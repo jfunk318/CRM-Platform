@@ -76,11 +76,17 @@ Every business table has a `businessId`, and:
 
 On a quote or order item, choose a decoration's print area and click
 **Place artwork**. The studio shows the product photo in the item's color
-with the print area outlined:
+with the print area outlined, next to the customer's artwork:
 
-- Upload a PNG, JPG, GIF, WebP or SVG (PDF/AI/EPS can still go in the order's
-  files). Drag to move it, drag the corner to resize, or type a width; it
-  stays inside the print area.
+- **Artwork library:** each customer has saved artwork (Customers → a
+  customer → Artwork), shared with everyone at their company. Images uploaded
+  to their orders, sent with their quote requests or proof responses, or
+  uploaded in the studio are added automatically (each image once, by
+  content). The studio opens on this gallery, most recently used first; pick
+  one, or **Upload new artwork** (PNG, JPG, GIF, WebP or SVG; PDF/AI/EPS can
+  still go in the order's files). Store items use the store owner's library.
+- Drag to move it, drag the corner to resize, or type a width; it stays
+  inside the print area.
 - **Resolution check:** DPI at the placed size against the method's minimum
   and ideal (Decoration methods), with a warning when it's too low.
 - **Clean-up:** remove a solid background (from the edges, or that color

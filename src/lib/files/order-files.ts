@@ -2,6 +2,7 @@ import "server-only";
 import type { OrderFileKind, StoredFile } from "@prisma/client";
 import type { BusinessDb } from "@/lib/db";
 import { logEvent, OrderError } from "@/lib/orders/service";
+import { addToLibrary, orderOwner } from "@/lib/design/library";
 import { fileStore, saveUpload } from "./storage";
 
 export const FILE_KIND_LABELS: Record<OrderFileKind, string> = {
@@ -20,20 +21,25 @@ export async function addOrderFiles(db: BusinessDb, orderId: string, files: File
   const businessId = db.$businessId;
   await db.$transaction(async (tx) => {
     for (const f of saved) await tx.orderFile.create({ data: { businessId, orderId, fileId: f.id, kind } });
+    // Artwork is also kept in the customer's library for reuse.
+    if (kind === "ARTWORK" || kind === "CUSTOMER") await addToLibrary(tx, await orderOwner(tx, orderId), saved);
     await logEvent(tx, businessId, orderId, "FILE", `Added ${saved.map((f) => f.name).join(", ")}`, staffId);
   });
   return saved.length;
 }
 
-/** Remove a file from an order. The stored file is kept if a proof or a placed design still uses it. */
+/**
+ * Remove a file from an order. The stored file is kept if a proof or a
+ * placed design uses it, or it's in the customer's artwork library.
+ */
 export async function removeOrderFile(db: BusinessDb, orderFileId: string, staffId: string | null) {
   const link = await db.orderFile.findUniqueOrThrow({
     where: { id: orderFileId },
-    include: { file: { include: { _count: { select: { proofFiles: true, artworkFor: true, artSourceFor: true } } } } },
+    include: { file: { include: { _count: { select: { proofFiles: true, artworkFor: true, artSourceFor: true, artworkAssets: true } } } } },
   });
   await db.orderFile.delete({ where: { id: link.id } });
-  const { proofFiles, artworkFor, artSourceFor } = link.file._count;
-  if (proofFiles + artworkFor + artSourceFor === 0) {
+  const { proofFiles, artworkFor, artSourceFor, artworkAssets } = link.file._count;
+  if (proofFiles + artworkFor + artSourceFor + artworkAssets === 0) {
     await db.storedFile.delete({ where: { id: link.fileId } });
     await fileStore.remove(link.file.storageKey);
   }
