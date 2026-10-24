@@ -62,6 +62,17 @@ describe("colors", () => {
     const noisy = draw(["AAAAAAAAAB", "AAAAAAAAAC"], { A: "#CC0000", B: "#C80404", C: "#00FF00" });
     expect(palette(noisy, { minShare: 0.1 }).map((p) => p.hex)).toEqual(["#CC0000"]);
   });
+  it("consolidates many colors to at most 8 (or fewer when asked), and can flatten the art to them", () => {
+    // 12 distinct colors in equal stripes: reds, greens and blues in 4 shades each.
+    const hues = ["#FF0000", "#E00000", "#C00000", "#A00000", "#00FF00", "#00E000", "#00C000", "#00A000", "#0000FF", "#0000E0", "#0000C0", "#0000A0"];
+    const stripes = draw([hues.map((_, i) => String.fromCharCode(65 + i)).join("")], Object.fromEntries(hues.map((h, i) => [String.fromCharCode(65 + i), h])));
+    const eight = palette(stripes, { mergeDistance: 0 });
+    expect(eight).toHaveLength(8);
+    expect(eight.reduce((s, p) => s + p.share, 0)).toBeCloseTo(1);
+    expect(palette(stripes, { maxColors: 3, mergeDistance: 0 }).map((p) => hexToRgb(p.hex).indexOf(Math.max(...hexToRgb(p.hex)))).sort()).toEqual([0, 1, 2]); // one red, one green, one blue
+    const flat = applyEdits(stripes, { reduce: 3 });
+    expect(new Set(Array.from({ length: 12 }, (_, x) => pixel(flat, x, 0))).size).toBe(3);
+  });
   it("swaps one color and leaves the rest", () => {
     const out = replaceColors(two, ["#CC0000", "#0000CC"], { "#0000CC": "#FFFFFF" });
     expect([pixel(out, 0, 0), pixel(out, 5, 0)]).toEqual(["#CC0000", "#FFFFFF"]);

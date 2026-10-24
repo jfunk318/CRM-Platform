@@ -29,17 +29,19 @@ export async function addOrderFiles(db: BusinessDb, orderId: string, files: File
 }
 
 /**
- * Remove a file from an order. The stored file is kept if a proof or a
- * placed design uses it, or it's in the customer's artwork library.
+ * Remove a file from an order. It also leaves the customer's artwork library
+ * (unless another order still lists it). The stored file is kept if a proof
+ * or a placed design still uses it.
  */
 export async function removeOrderFile(db: BusinessDb, orderFileId: string, staffId: string | null) {
-  const link = await db.orderFile.findUniqueOrThrow({
-    where: { id: orderFileId },
-    include: { file: { include: { _count: { select: { proofFiles: true, artworkFor: true, artSourceFor: true, artworkAssets: true } } } } },
-  });
+  const link = await db.orderFile.findUniqueOrThrow({ where: { id: orderFileId }, include: { file: true } });
   await db.orderFile.delete({ where: { id: link.id } });
-  const { proofFiles, artworkFor, artSourceFor, artworkAssets } = link.file._count;
-  if (proofFiles + artworkFor + artSourceFor + artworkAssets === 0) {
+  const elsewhere = await db.orderFile.count({ where: { fileId: link.fileId } });
+  if (elsewhere === 0) await db.artworkAsset.deleteMany({ where: { fileId: link.fileId } });
+  const { proofFiles, artworkFor, artSourceFor, artworkAssets } = (
+    await db.storedFile.findUniqueOrThrow({ where: { id: link.fileId }, include: { _count: { select: { proofFiles: true, artworkFor: true, artSourceFor: true, artworkAssets: true } } } })
+  )._count;
+  if (elsewhere + proofFiles + artworkFor + artSourceFor + artworkAssets === 0) {
     await db.storedFile.delete({ where: { id: link.fileId } });
     await fileStore.remove(link.file.storageKey);
   }

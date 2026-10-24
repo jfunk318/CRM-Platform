@@ -196,6 +196,11 @@ export async function runCatalogImport(businessId: string, importId: string) {
           include: { colors: true, sizes: true, views: { include: { images: true, areas: true } }, variants: true, categories: { include: { category: true } } },
         });
         const colorIds = new Map(product.colors.map((c) => [c.name.toLowerCase(), c.id]));
+        // Fill in swatches the name table didn't know when the color was added.
+        for (const c of product.colors) {
+          const hex = c.hex ? null : colorHex(c.name);
+          if (hex) await tx.productColor.update({ where: { id: c.id }, data: { hex } });
+        }
         for (const name of [...new Set(rows.map((r) => r.color))]) {
           if (colorIds.has(name.toLowerCase())) continue;
           const c = await tx.productColor.create({ data: { businessId, productId, name, hex: colorHex(name), shade: colorShade(name), sortOrder: colorIds.size } });

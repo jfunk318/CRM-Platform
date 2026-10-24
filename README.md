@@ -86,12 +86,21 @@ with the print area outlined, next to the customer's artwork:
   one, or **Upload new artwork** (PNG, JPG, GIF, WebP or SVG; PDF/AI/EPS can
   still go in the order's files). Store items use the store owner's library.
 - Drag to move it, drag the corner to resize, or type a width; it stays
-  inside the print area.
+  inside the print area. Thumbnails of every product view sit under the
+  photo (with the item's other artwork on them): click one to move the
+  artwork to that view; chips switch between print areas on the same view.
+- **Garment colors:** swatches under the photo preview the artwork on any
+  of the product's colors; "Use … for this item" changes the item's color.
+  Swatch colors come from the color name (`colorHex` in the SanMar
+  importer); unknown names show striped and re-importing fills them in.
+- Removing a file from an order's Files also takes it out of the customer's
+  artwork library (unless another order still lists it).
 - **Resolution check:** DPI at the placed size against the method's minimum
   and ideal (Decoration methods), with a warning when it's too low.
 - **Clean-up:** remove a solid background (from the edges, or that color
   everywhere), trim empty edges, swap any detected color, print in one
-  color, invert. Edits run in the browser (`src/lib/design/raster.ts`); the
+  color, invert. Colors are consolidated to at most 8 (closest shades
+  merge); "Limit to N colors" flattens the art to N solid inks. Edits run in the browser (`src/lib/design/raster.ts`); the
   original upload is kept, so edits can be changed later.
 - **Pricing:** the placed width and height fill in, and for screen printing
   the detected ink colors.

@@ -62,18 +62,20 @@ describe("artwork library", () => {
     await expect(uploadToLibrary(t.db, { customerId: alexId, companyId }, [file("notes.docx")], t.staff.id)).rejects.toThrow(/PNG, JPG/);
   });
 
-  it("keeps library artwork when it's removed from an order, and the order's file when it's removed from the library", async () => {
+  it("drops artwork from the library when it's removed from the order's files", async () => {
     const crestLink = await t.db.orderFile.findFirstOrThrow({ where: { orderId, file: { name: "crest.png" } } });
     await removeOrderFile(t.db, crestLink.id, t.staff.id);
-    expect(await names({ customerId: alexId, companyId })).toContain("crest.png");
+    expect(await names({ customerId: alexId, companyId })).not.toContain("crest.png");
+    expect(await t.db.storedFile.count({ where: { id: crestLink.fileId } })).toBe(0); // nothing else used it
+  });
 
+  it("keeps the order's file when artwork is removed from the library", async () => {
     const wordmark = await t.db.artworkAsset.findFirstOrThrow({ where: { name: "wordmark.svg" } });
     await removeFromLibrary(t.db, wordmark.id);
     expect(await t.db.storedFile.count({ where: { id: wordmark.fileId } })).toBe(1); // still on the order
-
-    // Not used anywhere else: the file goes too.
-    const crest = await t.db.artworkAsset.findFirstOrThrow({ where: { name: "crest.png" } });
-    await removeFromLibrary(t.db, crest.id);
-    expect(await t.db.storedFile.count({ where: { id: crest.fileId } })).toBe(0);
+    // Library-only artwork goes completely.
+    const solo = await t.db.artworkAsset.findFirstOrThrow({ where: { name: "solo.png" } });
+    await removeFromLibrary(t.db, solo.id);
+    expect(await t.db.storedFile.count({ where: { id: solo.fileId } })).toBe(0);
   });
 });

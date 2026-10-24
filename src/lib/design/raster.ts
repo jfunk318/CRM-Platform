@@ -11,6 +11,8 @@ export type ArtEdits = {
   removeBg?: { tolerance: number; everywhere?: boolean };
   /** Crop to the visible art. */
   trim?: boolean;
+  /** Flatten the art to this many colors (screen-print separations). */
+  reduce?: number;
   /** Swap colors: detected color hex → new hex. */
   replace?: Record<string, string>;
   /** Print everything in one ink color. */
@@ -139,12 +141,17 @@ export function trim(img: Raster): Raster {
 
 export type PaletteColor = { hex: string; share: number };
 
+/** Most colors a palette lists: more than this is never printed as separate inks. */
+export const MAX_PALETTE = 8;
+
 /**
- * The distinct colors in the art (ignoring transparent pixels, and specks
- * and anti-aliasing under `minShare` of the art), most used first. For
- * screen printing, the count is the number of ink colors.
+ * The main colors in the art (ignoring transparent pixels), most used first,
+ * consolidated to at most `maxColors`: near-identical shades merge, specks
+ * and anti-aliasing under `minShare` fold into the nearest color, and then
+ * the closest colors merge until few enough are left. For screen printing,
+ * the count is the number of ink colors.
  */
-export function palette(img: Raster, { maxColors = 16, minShare = 0.01, mergeDistance = 48 } = {}): PaletteColor[] {
+export function palette(img: Raster, { maxColors = MAX_PALETTE, minShare = 0.01, mergeDistance = 48 } = {}): PaletteColor[] {
   const buckets = new Map<number, { n: number; sum: Rgb }>();
   let total = 0;
   // Large images are sampled; the palette doesn't need every pixel.
@@ -169,10 +176,48 @@ export function palette(img: Raster, { maxColors = 16, minShare = 0.01, mergeDis
     if (near) near.n += e.n;
     else merged.push({ n: e.n, rgb });
   }
-  return merged
-    .filter((m) => m.n / total >= minShare)
-    .slice(0, maxColors)
-    .map((m) => ({ hex: rgbToHex(m.rgb), share: m.n / total }));
+  const mix = (a: { n: number; rgb: Rgb }, b: { n: number; rgb: Rgb }) => {
+    const n = a.n + b.n;
+    a.rgb = [0, 1, 2].map((k) => (a.rgb[k] * a.n + b.rgb[k] * b.n) / n) as Rgb;
+    a.n = n;
+  };
+  // Specks fold into the nearest main color (so shares still add up).
+  const main = merged.filter((m) => m.n / total >= minShare).slice(0, 64);
+  if (main.length === 0) main.push(merged[0]);
+  for (const m of merged) {
+    if (main.includes(m)) continue;
+    main.reduce((best, c) => (dist2(c.rgb, m.rgb) < dist2(best.rgb, m.rgb) ? c : best)).n += m.n;
+  }
+  // Merge the two closest colors until few enough are left.
+  while (main.length > Math.max(1, maxColors)) {
+    let bi = 0, bj = 1, bd = Infinity;
+    for (let i = 0; i < main.length; i++) {
+      for (let j = i + 1; j < main.length; j++) {
+        const d = dist2(main[i].rgb, main[j].rgb);
+        if (d < bd) [bi, bj, bd] = [i, j, d];
+      }
+    }
+    mix(main[bi], main[bj]);
+    main.splice(bj, 1);
+  }
+  return main.sort((a, b) => b.n - a.n).map((m) => ({ hex: rgbToHex(m.rgb), share: m.n / total }));
+}
+
+/** Snap every visible pixel to its nearest color in `colors` (flat, print-ready color). */
+export function quantize(img: Raster, colors: string[]): Raster {
+  const out = copy(img);
+  const pal = colors.map(hexToRgb);
+  if (pal.length === 0) return out;
+  for (let i = 0; i < img.width * img.height; i++) {
+    if (img.data[i * 4 + 3] === 0) continue;
+    const c = at(img, i);
+    let best = pal[0];
+    for (const p of pal) if (dist2(c, p) < dist2(c, best)) best = p;
+    out.data[i * 4] = best[0];
+    out.data[i * 4 + 1] = best[1];
+    out.data[i * 4 + 2] = best[2];
+  }
+  return out;
 }
 
 /**
@@ -231,6 +276,7 @@ export function applyEdits(source: Raster, edits: ArtEdits): Raster {
   let img = source;
   if (edits.removeBg) img = removeBackground(img, edits.removeBg);
   if (edits.trim) img = trim(img);
+  if (edits.reduce) img = quantize(img, palette(img, { maxColors: edits.reduce }).map((p) => p.hex));
   if (edits.replace && Object.keys(edits.replace).length) {
     // Swaps were chosen from a palette (perhaps of a smaller preview), so
     // match each to the nearest color found here rather than exactly.

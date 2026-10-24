@@ -315,10 +315,15 @@ export function LineEditor({
 
       {studio !== null && studioDecoration && studioArea && options && (
         <DesignStudio
-          area={studioArea}
-          photoUrl={photoFor(studioArea.viewId)}
+          areas={options.areas}
+          views={options.views}
+          colors={options.colors}
+          colorId={value.colorId}
+          areaId={studioArea.id}
+          // The item's other placed artwork, shown on the views for context.
+          others={value.decorations.flatMap((d, j) => (j !== studio && d.artwork && d.artworkUrl && areaOf(d) ? [{ areaId: d.areaId, src: d.artworkUrl, art: d.artwork }] : []))}
           method={options.methods.find((m) => m.id === studioDecoration.methodId)}
-          productName={`${options.name}${color ? ` · ${color.name}` : ""}`}
+          productName={options.name}
           owner={artOwner ?? null}
           ownerName={artOwner?.name}
           initial={studioDecoration.artwork}
@@ -335,9 +340,12 @@ export function LineEditor({
               widthIn: String(r.widthIn),
               heightIn: String(r.heightIn),
               needsArtwork: false,
+              // The artwork may have moved to another view's print area.
+              ...(r.areaId !== studioDecoration.areaId ? { areaId: r.areaId, location: r.areaLabel } : {}),
               // Screen printing is priced by ink colors; fill in what the artwork uses.
               ...(method?.pricingModel === "PER_COLOR" ? { colors: String(r.inkColors) } : {}),
             });
+            if (r.colorId !== value.colorId) setValue((v) => ({ ...v, colorId: r.colorId }));
             setStudio(null);
           }}
         />
