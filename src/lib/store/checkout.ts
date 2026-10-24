@@ -10,6 +10,7 @@ import { repriceOrder } from "@/lib/orders/pricing";
 import { logEvent, newToken, OrderError } from "@/lib/orders/service";
 import { createCheckoutSession, PaymentError, retrieveCheckoutSession, type StripeKeys, stripeKeys } from "@/lib/payments/stripe";
 import { createProductionJobs } from "@/lib/production/jobs";
+import { commissionFor } from "./commissions";
 import { cartTotals, type CartWithItems, findCartById, giftProblem, normalizeCode, promoProblem } from "./cart";
 import type { RequestStore } from "./resolve";
 
@@ -199,6 +200,7 @@ async function buildOrder(db: BusinessDb, business: Business, cartId: string, pa
         placedAt: new Date(),
         // Batching stores hold orders until they close.
         heldForBatch: cart.store.batchOrders,
+        commission: commissionFor(cart.store, { merchandise: totals.merchandise, discount: totals.discount, pieces: totals.count }).toFixed(2),
         customerId: customer.id,
         companyId: customer.companyId,
         statusId: status.id,

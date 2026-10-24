@@ -1,7 +1,7 @@
 "use server";
 
 import { randomBytes } from "node:crypto";
-import type { AccountMode, MarkupKind, PersonalizationMode, PromoKind } from "@prisma/client";
+import type { AccountMode, CommissionKind, MarkupKind, PersonalizationMode, PromoKind } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireStaff } from "@/lib/auth/session";
@@ -334,6 +334,43 @@ export async function batchNowAction(_: ActionResult, form: FormData): Promise<A
   });
   if (r.error) return r;
   redirect(`/admin/orders/${orderId}`);
+}
+
+// ─── Commission ─────────────────────────────────────────────────────────
+
+export async function saveCommissionAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  return run(async () => {
+    const store = await storeOf(db, form);
+    const kind = optionalText(form, "commissionKind") as CommissionKind | null;
+    if (kind && kind !== "PERCENT" && kind !== "PER_PIECE") throw new FormError("Choose a commission type");
+    const value = kind ? decimal(String(form.get("commissionValue") ?? ""), "Commission") : null;
+    if (value && (value.lte(0) || (kind === "PERCENT" && value.gt(100)))) throw new FormError(kind === "PERCENT" ? "Commission must be between 0 and 100%" : "Commission must be more than $0");
+    await db.store.update({ where: { id: store.id }, data: { commissionKind: kind, commissionValue: value } });
+    refresh();
+    return "Saved; new orders use it";
+  });
+}
+
+export async function recordPayoutAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const staff = await requireStaff(["STORE_MANAGER"]);
+  return run(async () => {
+    const store = await storeOf(staff.db, form);
+    const amount = decimal(String(form.get("amount") ?? ""), "Amount");
+    if (amount.lte(0)) throw new FormError("Amount must be more than $0");
+    const paidOn = dateOrNull(text(form, "paidOn", "Paid on"), "Paid on")!;
+    await staff.db.commissionPayout.create({ data: { businessId: staff.db.$businessId, storeId: store.id, amount, paidOn, note: optionalText(form, "note"), createdById: staff.id } });
+    refresh();
+    return "Payout recorded";
+  });
+}
+
+export async function removePayoutAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  return run(async () => {
+    await db.commissionPayout.delete({ where: { id: text(form, "id") } });
+    refresh();
+  });
 }
 
 // ─── Items ──────────────────────────────────────────────────────────────

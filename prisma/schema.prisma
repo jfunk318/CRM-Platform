@@ -133,6 +133,7 @@ model Business {
   storeItems             StoreItem[]
   storeItemPrices        StoreItemPrice[]
   storeBatches           StoreBatch[]
+  commissionPayouts      CommissionPayout[]
   carts                  Cart[]
   cartItems              CartItem[]
   promoCodes             PromoCode[]
@@ -180,31 +181,32 @@ enum StaffRole {
 }
 
 model StaffUser {
-  id             String              @id @default(cuid())
-  businessId     String
-  business       Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  email          String
-  name           String
-  passwordHash   String?
-  roles          StaffRole[]
-  active         Boolean             @default(true)
-  sessions       StaffSession[]
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
-  assignedOrders Order[]             @relation("OrderAssignee")
-  createdOrders  Order[]             @relation("OrderCreator")
-  orderEvents    OrderEvent[]
-  uploadedFiles  StoredFile[]
-  proofsCreated  Proof[]
-  payments       Payment[]
-  assignedJobs   ProductionJob[]     @relation("JobAssignee")
-  managedStores  Store[]             @relation("StoreManager")
-  catalogImports CatalogImport[]
-  jobStepsDone   ProductionJobStep[]
-  purchaseOrders PurchaseOrder[]
-  stockMovements StockMovement[]
-  shipments      Shipment[]
-  storeBatches   StoreBatch[]
+  id                String              @id @default(cuid())
+  businessId        String
+  business          Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  email             String
+  name              String
+  passwordHash      String?
+  roles             StaffRole[]
+  active            Boolean             @default(true)
+  sessions          StaffSession[]
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  assignedOrders    Order[]             @relation("OrderAssignee")
+  createdOrders     Order[]             @relation("OrderCreator")
+  orderEvents       OrderEvent[]
+  uploadedFiles     StoredFile[]
+  proofsCreated     Proof[]
+  payments          Payment[]
+  assignedJobs      ProductionJob[]     @relation("JobAssignee")
+  managedStores     Store[]             @relation("StoreManager")
+  catalogImports    CatalogImport[]
+  jobStepsDone      ProductionJobStep[]
+  purchaseOrders    PurchaseOrder[]
+  stockMovements    StockMovement[]
+  shipments         Shipment[]
+  storeBatches      StoreBatch[]
+  commissionPayouts CommissionPayout[]
 
   @@unique([businessId, id])
   @@unique([businessId, email])
@@ -919,6 +921,8 @@ model Order {
   storeId          String?
   store            Store?            @relation(fields: [businessId, storeId], references: [businessId, id], onDelete: NoAction)
   placedAt         DateTime? // when a shopper placed it online
+  // The store owner's commission on this order, worked out when it was placed.
+  commission       Decimal           @default(0) @db.Decimal(10, 2)
   // Store orders waiting for the store's batch (made at close), and the batch they went into.
   heldForBatch     Boolean           @default(false)
   batchId          String?
@@ -1523,6 +1527,11 @@ enum PersonalizationMode {
   REQUIRED
 }
 
+enum CommissionKind {
+  PERCENT // of sales after discounts, before tax and shipping
+  PER_PIECE // an amount for every piece sold
+}
+
 enum MarkupKind {
   AMOUNT
   PERCENT
@@ -1557,6 +1566,10 @@ model Store {
   // Hold orders until the store closes, then produce them as one batch order.
   batchOrders           Boolean               @default(false)
   batches               StoreBatch[]
+  // What the store's owner earns on its sales; empty = no commission.
+  commissionKind        CommissionKind?
+  commissionValue       Decimal?              @db.Decimal(10, 2)
+  commissionPayouts     CommissionPayout[]
   // Listed in store showcases (owners can opt out later).
   showcase              Boolean               @default(true)
   promoCodes            PromoCodeStore[]
@@ -1602,6 +1615,23 @@ model StoreBatch {
   @@unique([businessId, id])
   @@unique([businessId, orderId])
   @@unique([storeId, number])
+}
+
+// Commission paid to a store's owner.
+model CommissionPayout {
+  id          String     @id @default(cuid())
+  businessId  String
+  business    Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  storeId     String
+  store       Store      @relation(fields: [businessId, storeId], references: [businessId, id], onDelete: Cascade)
+  amount      Decimal    @db.Decimal(10, 2)
+  paidOn      DateTime   @db.Date
+  note        String? // "Check #1043"
+  createdById String?
+  createdBy   StaffUser? @relation(fields: [businessId, createdById], references: [businessId, id], onDelete: NoAction)
+  createdAt   DateTime   @default(now())
+
+  @@index([storeId])
 }
 
 model StoreDeliveryMethod {

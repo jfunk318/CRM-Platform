@@ -192,6 +192,11 @@ Customers only see artwork through their own link (`/c/<token>/art/…`).
   production jobs and buys the blanks; the shoppers' orders move to In
   production and link to it. A held order can be produced on its own with
   "Produce now instead" (`src/lib/store/batches.ts`).
+- **Commission** (store → Commission): a percentage of sales (after
+  discounts, before tax and shipping) or an amount per piece. Each order
+  keeps the commission worked out when it was placed; it's earned once the
+  order is paid in full, and cancelled orders don't count. Record payouts
+  there to see what's owed (`src/lib/store/commissions.ts`).
 - **Publish to a store** (on a quote or order, for store managers) puts its
   items in a new store for the customer or an existing one. Each item
   sells every size its color comes in, priced at the quantity ordered (or a

@@ -13,6 +13,7 @@ export default async function StoreDashboardLayout({ children, params }: { child
     { href: `/admin/stores/${id}/items`, label: "Items" },
     { href: `/admin/stores/${id}/pages`, label: "Pages" },
     { href: `/admin/stores/${id}/codes`, label: "Codes" },
+    ...(main ? [] : [{ href: `/admin/stores/${id}/commission`, label: "Commission" }]),
     { href: `/admin/stores/${id}/settings`, label: "Settings" },
   ];
   return (
