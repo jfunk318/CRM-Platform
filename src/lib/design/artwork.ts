@@ -49,5 +49,12 @@ export function artworkOf(d: {
   };
 }
 
+/** How artwork was brought up to print resolution, for staff ("traced to vector", "enlarged from 120 DPI"). */
+export function enhanceLabel(edits: unknown): string | null {
+  const e = (edits as ArtEdits | null | undefined)?.enhance;
+  if (!e) return null;
+  return e.method === "vector" ? "traced to vector" : `enlarged from ${e.fromDpi} DPI`;
+}
+
 /** Staff link to a stored file (artwork shown in the back office). */
 export const staffFileUrl = (fileId: string) => `/admin/files/${fileId}`;

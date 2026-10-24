@@ -3,6 +3,7 @@ import { requireStaff } from "@/lib/auth/session";
 import { isImage } from "@/lib/files/types";
 import { orderRef } from "@/lib/orders/numbers";
 import { jobLinesInclude, methodWork } from "@/lib/production/jobs";
+import { enhanceLabel } from "@/lib/design/artwork";
 
 export const metadata = { title: "Work order" };
 
@@ -100,6 +101,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
                         {d.stitches ? ` · ${d.stitches.toLocaleString()} stitches` : ""}
                         {d.widthIn && d.heightIn ? ` · ${d.widthIn.toString()}″ × ${d.heightIn.toString()}″` : ""}
                         {d.reuseScreens ? " · reuse screens" : ""}
+                        {enhanceLabel(d.artEdits) ? ` · artwork ${enhanceLabel(d.artEdits)}` : ""}
                         {d.notes ? ` · ${d.notes}` : ""}
                       </li>
                     ))}

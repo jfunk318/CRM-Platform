@@ -8,7 +8,7 @@ import { ActionForm } from "@/components/admin/action-form";
 import { LineEditor, type LineValue } from "@/components/admin/line-editor";
 import { ProductThumb } from "@/components/admin/product-thumb";
 import { colorThumbnails } from "@/lib/catalog/thumbnails";
-import { artworkOf, staffFileUrl } from "@/lib/design/artwork";
+import { artworkOf, enhanceLabel, staffFileUrl } from "@/lib/design/artwork";
 import { designMockups } from "@/lib/design/mockups";
 import { DesignMockups } from "@/components/design-mockups";
 import { SourceTag, StatusBadge } from "@/components/admin/order-table";
@@ -265,6 +265,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                           {d.needsArtwork ? " · needs artwork" : ""}
                           {d.needsDigitizing ? " · needs digitizing" : ""}
                           {d.reuseScreens ? " · reuse screens" : ""}
+                          {enhanceLabel(d.artEdits) ? ` · artwork ${enhanceLabel(d.artEdits)}` : ""}
                         </li>
                       ))}
                     </ul>

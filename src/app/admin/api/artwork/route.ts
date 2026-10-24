@@ -53,15 +53,19 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const [artwork] = formFiles(form, "artwork");
   const [source] = formFiles(form, "source");
+  // A traced vector version (from "Enhance for print"), kept for production.
+  const [vector] = formFiles(form, "vector");
   if (!artwork || extensionOf(artwork.name) !== "png") return NextResponse.json({ error: "The edited artwork must be a PNG" }, { status: 400 });
   if (source && !PLACEABLE.includes(extensionOf(source.name))) return NextResponse.json({ error: "Upload a PNG, JPG, GIF, WebP or SVG" }, { status: 400 });
+  if (vector && extensionOf(vector.name) !== "svg") return NextResponse.json({ error: "The vector artwork must be an SVG" }, { status: 400 });
   try {
     const art = await saveUpload(db, artwork, staff.id);
     const src = source ? await saveUpload(db, source, staff.id) : null;
+    const vec = vector ? await saveUpload(db, vector, staff.id) : null;
     if (src) await addToLibrary(db, await ownerFrom(db, (k) => String(form.get(k) ?? "")), [src]);
     const fromLibrary = String(form.get("libraryFileId") ?? "");
     if (src || fromLibrary) await touchArtwork(db, src?.id ?? fromLibrary);
-    return NextResponse.json({ artworkFileId: art.id, sourceFileId: src?.id ?? null });
+    return NextResponse.json({ artworkFileId: art.id, sourceFileId: src?.id ?? null, vectorFileId: vec?.id ?? null });
   } catch (e) {
     if (e instanceof UploadError) return NextResponse.json({ error: e.message }, { status: 400 });
     throw e;

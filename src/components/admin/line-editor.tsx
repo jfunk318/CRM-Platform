@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { OrderOptions } from "@/app/admin/api/products/[id]/order-options/route";
 import { Mockup, type MockupLayer } from "@/components/mockup";
-import type { ArtOwnerIds } from "@/lib/design/artwork";
+import { type ArtOwnerIds, enhanceLabel } from "@/lib/design/artwork";
 import { photoRect } from "@/lib/design/placement";
 import { type DecorationValue, DesignStudio } from "./design-studio";
 import { ProductPicker, type PickedProduct } from "./product-picker";
@@ -178,6 +178,7 @@ export function LineEditor({
                 d.needsArtwork ? "needs artwork" : null,
                 d.needsDigitizing ? "needs digitizing" : null,
                 d.reuseScreens ? "reuse screens" : null,
+                enhanceLabel(d.artwork?.edits),
               ].filter(Boolean);
               return (
                 <div key={i} className="flex items-center gap-3 rounded-md border border-gray-200 p-2" data-testid="decoration">

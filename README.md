@@ -103,6 +103,18 @@ the customer's artwork:
   artwork library (unless another order still lists it).
 - **Resolution check:** DPI at the placed size against the method's minimum
   and ideal (Decoration methods), with a warning when it's too low.
+- **Enhance for print:** below 300 DPI, "✨ Enhance for print" compares a
+  close-up before and after and offers two fixes, recommending one:
+  - *Trace to vector* (flat-color art such as logos and text): the art is
+    traced with its own colors (imagetracerjs), then drawn at 300 DPI for the
+    placed width. The SVG is attached to the order as a Production file
+    ("Traced to vector for print").
+  - *Enlarge smoothly* (photos and gradients): a high-quality resize to
+    300 DPI. It's labelled "enlarged from N DPI" everywhere, since it can't
+    add detail.
+
+  The item row, the order page and the work order say which was used
+  (`src/lib/design/enhance.ts`). AI upscaling of photos isn't built yet.
 - **Clean-up:** remove a solid background (from the edges, or that color
   everywhere), trim empty edges, swap any detected color, print in one
   color, invert. Colors are consolidated to at most 8 (closest shades

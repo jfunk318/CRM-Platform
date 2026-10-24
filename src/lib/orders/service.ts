@@ -186,12 +186,18 @@ export const decorationData = (d: DecorationSpec, i: number) => ({
   rotation: d.artwork?.rotation ?? 0,
 });
 
+/** The traced vector file recorded when artwork was enhanced for print. */
+const vectorFileOf = (a: ArtworkSpec | null | undefined) => {
+  const id = (a?.edits as { enhance?: { vectorFileId?: unknown } } | undefined)?.enhance?.vectorFileId;
+  return typeof id === "string" ? id : null;
+};
+
 /**
- * Artwork files must be this business's; the originals are also listed in
- * the order's files so production can find them.
+ * Artwork files must be this business's; the originals (and traced vectors)
+ * are also listed in the order's files so production can find them.
  */
 async function checkArtwork(db: BusinessDb, spec: LineSpec) {
-  const ids = spec.decorations.flatMap((d) => (d.artwork ? [d.artwork.artworkFileId, d.artwork.sourceFileId] : [])).filter((x): x is string => !!x);
+  const ids = spec.decorations.flatMap((d) => (d.artwork ? [d.artwork.artworkFileId, d.artwork.sourceFileId, vectorFileOf(d.artwork)] : [])).filter((x): x is string => !!x);
   if (ids.length === 0) return;
   const found = await db.storedFile.count({ where: { id: { in: [...new Set(ids)] } } });
   if (found !== new Set(ids).size) throw new OrderError("That artwork file is missing; upload it again");
@@ -202,6 +208,10 @@ async function listArtworkOnOrder(tx: BusinessTx, businessId: string, orderId: s
   for (const fileId of sources) {
     const exists = await tx.orderFile.findFirst({ where: { orderId, fileId } });
     if (!exists) await tx.orderFile.create({ data: { businessId, orderId, fileId, kind: "ARTWORK" } });
+  }
+  for (const fileId of new Set(spec.decorations.map((d) => vectorFileOf(d.artwork)).filter((x): x is string => !!x))) {
+    const exists = await tx.orderFile.findFirst({ where: { orderId, fileId } });
+    if (!exists) await tx.orderFile.create({ data: { businessId, orderId, fileId, kind: "PRODUCTION", note: "Traced to vector for print" } });
   }
 }
 

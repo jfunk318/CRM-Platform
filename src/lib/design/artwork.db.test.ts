@@ -56,6 +56,19 @@ describe("placed artwork", () => {
     expect(await t.db.orderFile.count({ where: { orderId } })).toBe(1);
   });
 
+  it("lists a traced vector (from Enhance for print) as a production file on the order", async () => {
+    const svg = new File(['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2 1"><path d="M0 0h2v1H0z"/></svg>'], "logo-vector.svg", { type: "image/svg+xml" });
+    const vector = await saveUpload(t.db, svg, t.staff.id);
+    const enhanced = { ...art, widthPx: 3000, heightPx: 1500, edits: { trim: true, enhance: { method: "vector", fromDpi: 40, vectorFileId: vector.id } } };
+    await updateLine(t.db, lineId, withArt(enhanced), t.staff.id);
+    const link = await t.db.orderFile.findFirstOrThrow({ where: { orderId, fileId: vector.id } });
+    expect(link).toMatchObject({ kind: "PRODUCTION", note: "Traced to vector for print" });
+    // Another business's vector file isn't accepted.
+    const foreign = await saveUpload(other.db, svg, other.staff.id);
+    await expect(updateLine(t.db, lineId, withArt({ ...enhanced, edits: { enhance: { method: "vector", fromDpi: 40, vectorFileId: foreign.id } } }), t.staff.id)).rejects.toThrow(OrderError);
+    await updateLine(t.db, lineId, withArt({ ...art, x: 0 }), t.staff.id); // back to the plain artwork for the tests below
+  });
+
   it("refuses another business's files", async () => {
     const foreign = await saveUpload(other.db, await redPng(), other.staff.id);
     await expect(addLine(t.db, orderId, withArt({ ...art, artworkFileId: foreign.id }), t.staff.id)).rejects.toThrow(OrderError);

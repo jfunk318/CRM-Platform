@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Mockup, type MockupLayer } from "@/components/mockup";
 import { type ArtOwnerIds, type ArtworkValue, type LibraryArt, PLACEABLE, PLACEABLE_ACCEPT, staffFileUrl } from "@/lib/design/artwork";
-import { downscale, loadArt, rasterPreview, rasterToPng } from "@/lib/design/canvas";
+import { cropPreview, downscale, loadArt, rasterPreview, rasterToPng, resizeToPng, svgToPng } from "@/lib/design/canvas";
+import { PRINT_DPI, sizedSvg, suitsVector, targetWidthPx, traceToSvg } from "@/lib/design/enhance";
 import { type AreaBox, clampPlacement, dpiRating, effectiveDpi, fitPlacement, type Placement, photoRect, printSize } from "@/lib/design/placement";
 import { applyEdits, type ArtEdits, MAX_PALETTE, palette, type Raster, removeBackground, trim } from "@/lib/design/raster";
 
@@ -144,6 +145,9 @@ export function DesignStudio({
   const [filter, setFilter] = useState("");
   const [previewColorId, setPreviewColorId] = useState(colorId);
   const [itemColorId, setItemColorId] = useState(colorId);
+  // Enhance for print: the comparison panel, and the traced vector for the current edits.
+  const [enhancing, setEnhancing] = useState<null | { flat: boolean; method: "vector" | "resize"; before: string; vector: string | null; resized: string }>(null);
+  const [traced, setTraced] = useState<{ key: string; svg: string; width: number; height: number } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const stage = useRef<HTMLDivElement>(null);
 
@@ -241,9 +245,40 @@ export function DesignStudio({
   // Keep the art inside the area when its shape changes (e.g. after trimming) or the area does.
   const placed = view && place && area ? clampPlacement(area, place, view.art) : null;
   const size = view && placed && area ? printSize(area, placed, view.art) : null;
-  const dpi = view && size ? effectiveDpi(view.art, size.widthIn) : 0;
-  const rating = dpiRating(dpi, method ?? {});
+  // The art's own resolution at this size; enhancing brings the print file to 300 DPI.
+  const rawDpi = view && size ? effectiveDpi(view.art, size.widthIn) : 0;
+  const enhance = edits.enhance;
+  const dpi = enhance ? Math.max(rawDpi, PRINT_DPI) : rawDpi;
+  const rating = enhance?.method === "resize" ? "ok" : dpiRating(dpi, method ?? {});
   const inkCount = colorsTyped || !view ? details.colors : String(view.inks);
+  // Which edits a traced vector was made from (it's redone if they change).
+  const editsKey = JSON.stringify({ ...edits, enhance: undefined });
+  const tracedNow = traced?.key === editsKey ? traced : null;
+  const tracedSrc = useMemo(() => (tracedNow ? `data:image/svg+xml;utf8,${encodeURIComponent(tracedNow.svg)}` : null), [tracedNow]);
+
+  /** Compare a close-up of the art as it is with vector and enlarged versions. */
+  const openEnhance = async () => {
+    if (!loaded) return;
+    setBusy("Preparing a close-up…");
+    await new Promise((r) => setTimeout(r, 30)); // let the message show before the heavy work
+    try {
+      const final = applyEdits(loaded.full, { ...edits, enhance: undefined });
+      const flat = suitsVector(final);
+      const src = downscale(final, 2000);
+      const svg = traceToSvg(src);
+      setTraced({ key: editsKey, svg, width: src.width, height: src.height });
+      // A close-up of the middle of the art.
+      const region = { x: 0.35, y: 0.35, w: 0.3, h: 0.3 };
+      const crop = cropPreview(final, region);
+      const vb = `${region.x * src.width} ${region.y * src.height} ${region.w * src.width} ${region.h * src.height}`;
+      const zoomed = svg.replace(/viewBox="[^"]*"/, `viewBox="${vb}"`);
+      setEnhancing({ flat, method: flat ? "vector" : "resize", before: crop, vector: `data:image/svg+xml;utf8,${encodeURIComponent(zoomed)}`, resized: crop });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "The artwork couldn't be enhanced");
+    } finally {
+      setBusy(null);
+    }
+  };
 
   /** Start placing art from a new upload or the library: fit it to the area with sensible clean-up. */
   const begin = async (src: Blob, o: { name: string; ext: string; file: File | null; libraryFileId: string | null }) => {
@@ -321,13 +356,37 @@ export function DesignStudio({
         let artworkFileId = initial?.artworkFileId ?? "";
         let sourceFileId = loaded.sourceFileId;
         let { widthPx, heightPx } = view.art;
-        if (artChanged || !initial) {
+        let savedEdits: ArtEdits = edits;
+        // An enhanced print file is made for the placed size, so it's redone if the art was made bigger.
+        const target = targetWidthPx(size.widthIn);
+        const tooSmall = !!enhance && (initial?.widthPx ?? 0) < target - 2;
+        if (artChanged || !initial || tooSmall) {
           const final = applyEdits(loaded.full, edits);
           if (!final.width || !final.height) throw new Error("Nothing is left of the artwork; ease off the background removal");
           widthPx = Math.round(final.width / loaded.scale);
           heightPx = Math.round(final.height / loaded.scale);
+          let png: Blob;
+          let vectorSvg: string | null = null;
+          if (enhance) {
+            setBusy(enhance.method === "vector" ? "Tracing and drawing at 300 DPI…" : "Enlarging to 300 DPI…");
+            widthPx = target;
+            heightPx = Math.max(1, Math.round((target * final.height) / final.width));
+            if (enhance.method === "vector") {
+              const t = tracedNow ?? (() => {
+                const src = downscale(final, 2000);
+                return { svg: traceToSvg(src), width: src.width, height: src.height };
+              })();
+              vectorSvg = sizedSvg(t.svg, t.width, t.height);
+              png = await svgToPng(sizedSvg(t.svg, widthPx, heightPx), widthPx, heightPx);
+            } else {
+              png = await resizeToPng(final, widthPx, heightPx);
+            }
+          } else {
+            png = await rasterToPng(final);
+          }
           const body = new FormData();
-          body.append("artwork", new File([await rasterToPng(final)], `${loaded.name}-placed.png`, { type: "image/png" }));
+          body.append("artwork", new File([png], `${loaded.name}-placed.png`, { type: "image/png" }));
+          if (vectorSvg) body.append("vector", new File([vectorSvg], `${loaded.name}-vector.svg`, { type: "image/svg+xml" }));
           if (loaded.file) {
             body.append("source", loaded.file);
             // New uploads go into the customer's library.
@@ -340,8 +399,10 @@ export function DesignStudio({
           if (!res.ok) throw new Error(json.error ?? "The artwork couldn't be saved");
           artworkFileId = json.artworkFileId;
           sourceFileId = json.sourceFileId ?? sourceFileId;
+          // Record how it was brought up to print resolution (and where the vector file is).
+          if (enhance) savedEdits = { ...edits, enhance: { method: enhance.method, fromDpi: Math.round(rawDpi), ...(json.vectorFileId ? { vectorFileId: json.vectorFileId } : {}) } };
         }
-        artwork = { artworkFileId, sourceFileId, edits, widthPx, heightPx, ...placed };
+        artwork = { artworkFileId, sourceFileId, edits: savedEdits, widthPx, heightPx, ...placed };
         artworkUrl = staffFileUrl(artworkFileId);
         widthIn = String(round2(size.widthIn));
         heightIn = String(round2(size.heightIn));
@@ -389,7 +450,9 @@ export function DesignStudio({
   };
 
   const rect = view && placed && area ? photoRect(area, placed, view.art) : null;
-  const currentLayer = view && rect ? [{ src: view.preview, left: rect.left, top: rect.top, width: rect.width, rotation: placed!.rotation }] : [];
+  // With vector enhancement on, the mockup shows the traced artwork.
+  const artSrc = enhance?.method === "vector" && tracedSrc ? tracedSrc : view?.preview;
+  const currentLayer = view && rect && artSrc ? [{ src: artSrc, left: rect.left, top: rect.top, width: rect.width, rotation: placed!.rotation }] : [];
   const setDetail = (patch: Partial<typeof details>) => setDetails((d) => ({ ...d, ...patch }));
 
   return createPortal(
@@ -684,10 +747,72 @@ export function DesignStudio({
                     <input type="range" min={-45} max={45} value={placed.rotation > 180 ? placed.rotation - 360 : placed.rotation} onChange={(e) => setPlace({ ...placed, rotation: Number(e.target.value) })} className="flex-1" aria-label="Rotation" />
                     <span className="w-8 text-right">{Math.round(placed.rotation > 180 ? placed.rotation - 360 : placed.rotation)}°</span>
                   </label>
-                  <p className={`rounded px-2 py-1 text-xs ${RATING[rating].cls}`} data-testid="dpi">
-                    {Math.round(dpi)} DPI at this size: {RATING[rating].text}
-                    {rating === "low" && ` (needs ${method?.minDpi ?? 150}+). Use a larger file or print it smaller.`}
-                  </p>
+                  {enhance ? (
+                    <p className={`rounded px-2 py-1 text-xs ${RATING[rating].cls}`} data-testid="dpi">
+                      {PRINT_DPI} DPI at this size:{" "}
+                      {enhance.method === "vector" ? "traced to vector, sharp at any size" : `enlarged from ${Math.round(rawDpi)} DPI (smoother, but no new detail)`}.{" "}
+                      <button type="button" className="text-amber-700 hover:underline" onClick={() => edit({ enhance: undefined })}>Undo</button>
+                    </p>
+                  ) : (
+                    <p className={`rounded px-2 py-1 text-xs ${RATING[rating].cls}`} data-testid="dpi">
+                      {Math.round(dpi)} DPI at this size: {RATING[rating].text}
+                      {rating === "low" && ` (needs ${method?.minDpi ?? 150}+).`}
+                    </p>
+                  )}
+                  {!enhance && !enhancing && rawDpi < PRINT_DPI && (
+                    <button type="button" className="btn-secondary px-2 py-1 text-xs" onClick={openEnhance} disabled={!!busy}>
+                      ✨ Enhance for print ({PRINT_DPI} DPI)
+                    </button>
+                  )}
+                  {enhancing && (
+                    <div className="space-y-2 rounded border border-amber-300 bg-amber-50/40 p-2 text-xs" data-testid="enhance-panel">
+                      <p className="text-gray-700">
+                        {enhancing.flat
+                          ? "This looks like flat-color art. Tracing it to vector gives sharp edges at any size."
+                          : "This looks like a photo or detailed art. Tracing would posterize it; enlarging smooths it but can't add detail."}
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 text-center">
+                        <figure>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={enhancing.before} alt="Close-up as it is" className="aspect-square w-full rounded border bg-white object-contain [image-rendering:pixelated]" />
+                          <figcaption className="text-[11px] text-gray-500">Now (close-up)</figcaption>
+                        </figure>
+                        <figure>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={enhancing.method === "vector" && enhancing.vector ? enhancing.vector : enhancing.resized}
+                            alt="Close-up enhanced"
+                            className="aspect-square w-full rounded border bg-white object-contain"
+                            data-testid="enhance-after"
+                          />
+                          <figcaption className="text-[11px] text-gray-500">{enhancing.method === "vector" ? "Traced to vector" : "Enlarged"}</figcaption>
+                        </figure>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="flex items-center gap-1.5">
+                          <input type="radio" name="enhance-method" checked={enhancing.method === "vector"} onChange={() => setEnhancing({ ...enhancing, method: "vector" })} />
+                          Trace to vector{enhancing.flat ? " (recommended)" : ""}
+                        </label>
+                        <label className="flex items-center gap-1.5">
+                          <input type="radio" name="enhance-method" checked={enhancing.method === "resize"} onChange={() => setEnhancing({ ...enhancing, method: "resize" })} />
+                          Enlarge smoothly{enhancing.flat ? "" : " (recommended)"}
+                        </label>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          className="btn px-2 py-1 text-xs"
+                          onClick={() => {
+                            edit({ enhance: { method: enhancing.method, fromDpi: Math.round(rawDpi) } });
+                            setEnhancing(null);
+                          }}
+                        >
+                          Use {enhancing.method === "vector" ? "vector" : "enlarged"} artwork
+                        </button>
+                        <button type="button" className="btn-secondary px-2 py-1 text-xs" onClick={() => setEnhancing(null)}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
                 </section>
 
                 <section className="space-y-2">

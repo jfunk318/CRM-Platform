@@ -142,7 +142,9 @@ phases 1–3 need real product data.
   area on the product photo, DPI check against each method, background
   removal, trim, color swaps, one color, invert, detected ink colors and
   placed size feeding pricing; mockups on staff pages and the customer link;
-  proofs rendered from mockups. Still to do: photo background removal with
-  an AI model (paid service or self-hosted), PDF/AI/EPS placement, text and
+  proofs rendered from mockups; "Enhance for print" brings low-resolution
+  art to 300 DPI by tracing flat art to vector or a labelled smooth
+  enlargement. Still to do: AI upscaling of photos and photo background
+  removal with an AI model (paid service or self-hosted), PDF/AI/EPS placement, text and
   names/numbers (phase 6 personalization), mockups on store item cards, and
   the customer-facing designer (phase 9) on the same engine.

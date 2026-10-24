@@ -78,6 +78,48 @@ export function rasterToPng(r: Raster): Promise<Blob> {
   return new Promise((resolve, reject) => toCanvas(r).toBlob((b) => (b ? resolve(b) : reject(new Error("Couldn't save the image"))), "image/png"));
 }
 
+function pngOf(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Couldn't save the image"))), "image/png"));
+}
+
+/** Draw an SVG (with a viewBox) at exactly width × height pixels, as a PNG. */
+export async function svgToPng(svg: string, width: number, height: number): Promise<Blob> {
+  const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+  try {
+    const img = await loadImage(url);
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+    return pngOf(canvas);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/** Enlarge (or shrink) pixels smoothly to width × height, as a PNG. */
+export function resizeToPng(r: Raster, width: number, height: number): Promise<Blob> {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d")!;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(toCanvas(r), 0, 0, width, height);
+  return pngOf(canvas);
+}
+
+/** A region of the art (fractions of its size) as a data URL, for close-up comparisons. */
+export function cropPreview(r: Raster, region: { x: number; y: number; w: number; h: number }): string {
+  const sx = Math.round(region.x * r.width), sy = Math.round(region.y * r.height);
+  const sw = Math.max(1, Math.round(region.w * r.width)), sh = Math.max(1, Math.round(region.h * r.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = sw;
+  canvas.height = sh;
+  canvas.getContext("2d")!.drawImage(toCanvas(r), sx, sy, sw, sh, 0, 0, sw, sh);
+  return canvas.toDataURL("image/png");
+}
+
 /** A quick preview image (smaller than the real art) as a data URL. */
 export function rasterPreview(r: Raster, maxPx = 900): string {
   const full = toCanvas(r);

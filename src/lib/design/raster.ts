@@ -18,6 +18,8 @@ export type ArtEdits = {
   /** Print everything in one ink color. */
   oneColor?: string;
   invert?: boolean;
+  /** Brought up to print resolution when saved (see enhance.ts); not a pixel edit. */
+  enhance?: { method: "vector" | "resize"; fromDpi: number; vectorFileId?: string };
 };
 
 const OPAQUE = 128;
