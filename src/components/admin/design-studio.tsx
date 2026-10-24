@@ -10,22 +10,45 @@ import { applyEdits, type ArtEdits, MAX_PALETTE, palette, type Raster, removeBac
 
 export type StudioArea = AreaBox & { id: string; label: string; viewId: string };
 export type StudioView = { id: string; name: string; photos: Record<string, string> };
-export type StudioColor = { id: string; name: string; hex: string | null };
+export type StudioColor = { id: string; name: string; hex: string | null; image?: string | null };
 /** Another decoration's placed artwork on the same item, shown for context. */
 export type StudioOther = { areaId: string; src: string; art: ArtworkValue };
-export type StudioMethod = { name: string; pricingModel: string; minDpi: number | null; perfectDpi: number | null; maxColors: number | null };
-export type StudioResult = {
-  artwork: ArtworkValue;
-  artworkUrl: string;
-  inkColors: number;
-  widthIn: number;
-  heightIn: number;
-  /** The print area it ended up on (it can be moved to another view). */
+export type StudioMethod = { id: string; name: string; pricingModel: string; minQty: number; minDpi: number | null; perfectDpi: number | null; maxColors: number | null };
+
+/** One decoration on a quote/order item, as the item editor and the designer hold it. */
+export type DecorationValue = {
+  artwork: ArtworkValue | null;
+  /** Where the placed artwork image can be loaded from. */
+  artworkUrl: string | null;
+  methodId: string;
+  /** A print area, or "" for a location typed in by hand. */
   areaId: string;
-  areaLabel: string;
-  /** The garment color for the item (changed if "Use this color" was picked). */
-  colorId: string;
+  location: string;
+  colors: string;
+  stitches: string;
+  widthIn: string;
+  heightIn: string;
+  inkColors: string;
+  needsArtwork: boolean;
+  needsDigitizing: boolean;
+  reuseScreens: boolean;
 };
+
+export const blankDecoration = (): DecorationValue => ({
+  artwork: null,
+  artworkUrl: null,
+  methodId: "",
+  areaId: "",
+  location: "",
+  colors: "",
+  stitches: "",
+  widthIn: "",
+  heightIn: "",
+  inkColors: "",
+  needsArtwork: true,
+  needsDigitizing: false,
+  reuseScreens: false,
+});
 
 const PREVIEW_PX = 900;
 const RATING = {
@@ -34,6 +57,7 @@ const RATING = {
   low: { text: "Too low for a sharp print", cls: "bg-red-50 text-red-800" },
 } as const;
 const round2 = (n: number) => Math.round(n * 100) / 100;
+const OTHER = "__other";
 
 type Loaded = {
   full: Raster;
@@ -48,45 +72,66 @@ type Loaded = {
 };
 
 /**
- * Place artwork on a print area: upload, clean up (background, colors),
- * then drag and size it on the product photo with live print size and
- * resolution. Saving uploads the edited PNG (and a new original).
+ * Add or edit a decoration: method, location (a print area on any view, or
+ * one typed in), details, and the artwork: pick from the customer's library
+ * or upload, clean it up, then drag and size it on the product photo with
+ * live print size and resolution, on any garment color.
  */
 export function DesignStudio({
+  decoration,
+  methods,
   areas,
   views,
   colors,
   colorId,
-  areaId: startAreaId,
   others,
-  method,
   productName,
   owner,
   ownerName,
-  initial,
   onSave,
   onRemove,
   onClose,
 }: {
+  /** The decoration being edited, or null to add one. */
+  decoration: DecorationValue | null;
+  methods: StudioMethod[];
   /** Every print area on the product (with the view it's on). */
   areas: StudioArea[];
   views: StudioView[];
   colors: StudioColor[];
   /** The item's garment color. */
   colorId: string;
-  /** The print area being decorated. */
-  areaId: string;
   others: StudioOther[];
-  method?: StudioMethod;
   productName: string;
   /** Whose artwork library to show and file new uploads under. */
   owner: ArtOwnerIds | null;
   ownerName?: string;
-  initial: (ArtworkValue & { name?: string }) | null;
-  onSave: (r: StudioResult) => void;
-  onRemove: () => void;
+  /** The finished decoration and the item's (possibly changed) garment color. */
+  onSave: (d: DecorationValue, colorId: string) => void;
+  /** Remove the decoration (editing only). */
+  onRemove?: () => void;
   onClose: () => void;
 }) {
+  // What the designer opened with; artwork in it is reloaded from its original.
+  const [start] = useState<DecorationValue>(() => decoration ?? { ...blankDecoration(), methodId: methods[0]?.id ?? "", areaId: areas[0]?.id ?? "", location: areas[0]?.label ?? "" });
+  const initial = start.artwork;
+
+  const [methodId, setMethodId] = useState(start.methodId || methods[0]?.id || "");
+  const [areaId, setAreaId] = useState<string>(start.areaId || (decoration ? OTHER : (areas[0]?.id ?? OTHER)));
+  const [otherName, setOtherName] = useState(start.areaId ? "" : start.location);
+  const [details, setDetails] = useState({
+    colors: start.colors,
+    stitches: start.stitches,
+    inkColors: start.inkColors,
+    widthIn: start.widthIn,
+    heightIn: start.heightIn,
+    needsArtwork: start.needsArtwork,
+    needsDigitizing: start.needsDigitizing,
+    reuseScreens: start.reuseScreens,
+  });
+  // Ink colors follow the artwork until typed over.
+  const [colorsTyped, setColorsTyped] = useState(false);
+
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [edits, setEdits] = useState<ArtEdits>(initial?.edits ?? {});
   const [place, setPlace] = useState<Placement | null>(initial ? { x: initial.x, y: initial.y, w: initial.w, rotation: initial.rotation } : null);
@@ -97,21 +142,24 @@ export function DesignStudio({
   // The gallery shows first for new artwork; editing saved artwork goes straight to the tools.
   const [picking, setPicking] = useState(!initial);
   const [filter, setFilter] = useState("");
-  const [areaId, setAreaId] = useState(startAreaId);
   const [previewColorId, setPreviewColorId] = useState(colorId);
   const [itemColorId, setItemColorId] = useState(colorId);
   const fileInput = useRef<HTMLInputElement>(null);
   const stage = useRef<HTMLDivElement>(null);
 
-  const area = areas.find((a) => a.id === areaId) ?? areas[0];
-  const areasOnView = areas.filter((a) => a.viewId === area.viewId);
+  const method = methods.find((m) => m.id === methodId);
+  const perColor = method?.pricingModel === "PER_COLOR";
+  const perStitch = method?.pricingModel === "PER_STITCH";
+  const area = areaId === OTHER ? undefined : areas.find((a) => a.id === areaId);
+  const stageViewId = area?.viewId ?? views.find((v) => Object.keys(v.photos).length)?.id ?? null;
+  const areasOnView = area ? areas.filter((a) => a.viewId === area.viewId) : [];
   const viewName = (id: string) => views.find((v) => v.id === id)?.name ?? "";
-  // The view's photo in the color being previewed (falling back to the item's color).
-  const photoOf = (viewId: string) => {
+  // A view's photo in the color being previewed (falling back to the item's color).
+  const photoOf = (viewId: string | null) => {
     const photos = views.find((v) => v.id === viewId)?.photos ?? {};
-    return photos[previewColorId] ?? photos[colorId] ?? Object.values(photos)[0] ?? null;
+    return photos[previewColorId] ?? photos[colorId] ?? Object.values(photos)[0] ?? colors.find((c) => c.id === previewColorId)?.image ?? null;
   };
-  const otherLayers = (viewId: string): MockupLayer[] =>
+  const otherLayers = (viewId: string | null): MockupLayer[] =>
     others.flatMap((o) => {
       const a = areas.find((x) => x.id === o.areaId);
       if (!a || a.viewId !== viewId) return [];
@@ -155,7 +203,7 @@ export function DesignStudio({
           file: null,
           sourceFileId: initial.sourceFileId ?? initial.artworkFileId,
           libraryFileId: null,
-          name: initial.name ?? "artwork",
+          name: "artwork",
         });
       } catch {
         if (!cancelled) setError("The saved artwork couldn't be opened. Choose the file again.");
@@ -182,22 +230,24 @@ export function DesignStudio({
     if (edits.trim) base = trim(base);
     // At most 8 colors (or the chosen limit): more never print as separate inks.
     const limit = edits.reduce ?? MAX_PALETTE;
-    const colors = palette(base, { maxColors: limit });
+    const palColors = palette(base, { maxColors: limit });
     const result = applyEdits(loaded.work, edits);
     const inks = edits.oneColor ? 1 : palette(result, { maxColors: limit }).length;
     // The finished art's size in original pixels, for the resolution check.
     const k = loaded.full.width / loaded.work.width / loaded.scale;
-    return { colors, inks, preview: rasterPreview(result, PREVIEW_PX), art: { widthPx: Math.round(result.width * k), heightPx: Math.round(result.height * k) } };
+    return { colors: palColors, inks, preview: rasterPreview(result, PREVIEW_PX), art: { widthPx: Math.round(result.width * k), heightPx: Math.round(result.height * k) } };
   }, [loaded, edits]);
 
-  // Keep the art inside the area when its shape changes (e.g. after trimming).
-  const placed = view && place ? clampPlacement(area, place, view.art) : null;
-  const size = view && placed ? printSize(area, placed, view.art) : null;
+  // Keep the art inside the area when its shape changes (e.g. after trimming) or the area does.
+  const placed = view && place && area ? clampPlacement(area, place, view.art) : null;
+  const size = view && placed && area ? printSize(area, placed, view.art) : null;
   const dpi = view && size ? effectiveDpi(view.art, size.widthIn) : 0;
   const rating = dpiRating(dpi, method ?? {});
+  const inkCount = colorsTyped || !view ? details.colors : String(view.inks);
 
   /** Start placing art from a new upload or the library: fit it to the area with sensible clean-up. */
-  const start = async (src: Blob, o: { name: string; ext: string; file: File | null; libraryFileId: string | null }) => {
+  const begin = async (src: Blob, o: { name: string; ext: string; file: File | null; libraryFileId: string | null }) => {
+    if (!area) return;
     setError(null);
     setBusy("Reading the artwork…");
     try {
@@ -227,7 +277,7 @@ export function DesignStudio({
       setError("Choose a PNG, JPG, GIF, WebP or SVG to place it. PDF and Illustrator files can still be attached to the order under Files.");
       return;
     }
-    await start(file, { name: file.name, ext, file, libraryFileId: null });
+    await begin(file, { name: file.name, ext, file, libraryFileId: null });
   };
 
   const pick = async (art: LibraryArt) => {
@@ -235,11 +285,20 @@ export function DesignStudio({
     try {
       const res = await fetch(staffFileUrl(art.fileId));
       if (!res.ok) throw new Error("That artwork couldn't be opened");
-      await start(await res.blob(), { name: art.name, ext: art.name.toLowerCase().split(".").pop() ?? "", file: null, libraryFileId: art.fileId });
+      await begin(await res.blob(), { name: art.name, ext: art.name.toLowerCase().split(".").pop() ?? "", file: null, libraryFileId: art.fileId });
     } catch (e) {
       setError(e instanceof Error ? e.message : "That artwork couldn't be opened");
       setBusy(null);
     }
+  };
+
+  const removeArt = () => {
+    setLoaded(null);
+    setPlace(null);
+    setEdits({});
+    setArtChanged(true);
+    setPicking(true);
+    setDetails((d) => ({ ...d, needsArtwork: true }));
   };
 
   const edit = (patch: Partial<ArtEdits>) => {
@@ -248,60 +307,77 @@ export function DesignStudio({
   };
 
   const save = async () => {
-    if (!loaded || !placed || !view || !size) return;
-    setBusy("Saving…");
     setError(null);
+    if (!method) return setError("Choose a decoration method");
+    const location = area ? area.label : otherName.trim();
+    if (!location) return setError("Name the location, e.g. Left Sleeve");
+    setBusy("Saving…");
     try {
-      let artworkFileId = initial?.artworkFileId ?? "";
-      let sourceFileId = loaded.sourceFileId;
-      let { widthPx, heightPx } = view.art;
-      if (artChanged || !initial) {
-        const final = applyEdits(loaded.full, edits);
-        if (!final.width || !final.height || final.width * final.height === 0) throw new Error("Nothing is left of the artwork; ease off the background removal");
-        widthPx = Math.round(final.width / loaded.scale);
-        heightPx = Math.round(final.height / loaded.scale);
-        const body = new FormData();
-        body.append("artwork", new File([await rasterToPng(final)], `${loaded.name}-placed.png`, { type: "image/png" }));
-        if (loaded.file) {
-          body.append("source", loaded.file);
-          // New uploads go into the customer's library.
-          body.append("customerId", owner?.customerId ?? "");
-          body.append("companyId", owner?.companyId ?? "");
+      let artwork: ArtworkValue | null = null;
+      let artworkUrl: string | null = null;
+      let widthIn = details.widthIn;
+      let heightIn = details.heightIn;
+      if (loaded && placed && view && size) {
+        let artworkFileId = initial?.artworkFileId ?? "";
+        let sourceFileId = loaded.sourceFileId;
+        let { widthPx, heightPx } = view.art;
+        if (artChanged || !initial) {
+          const final = applyEdits(loaded.full, edits);
+          if (!final.width || !final.height) throw new Error("Nothing is left of the artwork; ease off the background removal");
+          widthPx = Math.round(final.width / loaded.scale);
+          heightPx = Math.round(final.height / loaded.scale);
+          const body = new FormData();
+          body.append("artwork", new File([await rasterToPng(final)], `${loaded.name}-placed.png`, { type: "image/png" }));
+          if (loaded.file) {
+            body.append("source", loaded.file);
+            // New uploads go into the customer's library.
+            body.append("customerId", owner?.customerId ?? "");
+            body.append("companyId", owner?.companyId ?? "");
+          }
+          if (loaded.libraryFileId) body.append("libraryFileId", loaded.libraryFileId);
+          const res = await fetch("/admin/api/artwork", { method: "POST", body });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error ?? "The artwork couldn't be saved");
+          artworkFileId = json.artworkFileId;
+          sourceFileId = json.sourceFileId ?? sourceFileId;
         }
-        if (loaded.libraryFileId) body.append("libraryFileId", loaded.libraryFileId);
-        const res = await fetch("/admin/api/artwork", { method: "POST", body });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error ?? "The artwork couldn't be saved");
-        artworkFileId = json.artworkFileId;
-        sourceFileId = json.sourceFileId ?? sourceFileId;
+        artwork = { artworkFileId, sourceFileId, edits, widthPx, heightPx, ...placed };
+        artworkUrl = staffFileUrl(artworkFileId);
+        widthIn = String(round2(size.widthIn));
+        heightIn = String(round2(size.heightIn));
       }
-      onSave({
-        artwork: { artworkFileId, sourceFileId, edits, widthPx, heightPx, ...placed },
-        artworkUrl: staffFileUrl(artworkFileId),
-        inkColors: view.inks,
-        widthIn: round2(size.widthIn),
-        heightIn: round2(size.heightIn),
-        areaId: area.id,
-        areaLabel: area.label,
-        colorId: itemColorId,
-      });
+      onSave(
+        {
+          ...details,
+          methodId,
+          areaId: area?.id ?? "",
+          location,
+          artwork,
+          artworkUrl,
+          widthIn,
+          heightIn,
+          colors: perColor ? inkCount : details.colors,
+          needsArtwork: artwork ? false : details.needsArtwork,
+        },
+        itemColorId,
+      );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "The artwork couldn't be saved");
+      setError(e instanceof Error ? e.message : "The decoration couldn't be saved");
       setBusy(null);
     }
   };
 
   // Drag to move; drag the corner to resize.
   const drag = (mode: "move" | "resize") => (e: React.PointerEvent) => {
-    if (!placed || !stage.current || !view) return;
+    if (!placed || !stage.current || !view || !area) return;
     e.preventDefault();
     e.stopPropagation();
     const box = stage.current.getBoundingClientRect();
-    const start = { x: e.clientX, y: e.clientY, place: placed };
+    const from = { x: e.clientX, y: e.clientY, place: placed };
     const move = (ev: PointerEvent) => {
-      const dx = (ev.clientX - start.x) / box.width / area.w;
-      const dy = (ev.clientY - start.y) / box.height / area.h;
-      const next = mode === "move" ? { ...start.place, x: start.place.x + dx, y: start.place.y + dy } : { ...start.place, w: start.place.w + dx };
+      const dx = (ev.clientX - from.x) / box.width / area.w;
+      const dy = (ev.clientY - from.y) / box.height / area.h;
+      const next = mode === "move" ? { ...from.place, x: from.place.x + dx, y: from.place.y + dy } : { ...from.place, w: from.place.w + dx };
       setPlace(clampPlacement(area, next, view.art));
     };
     const up = () => {
@@ -312,29 +388,30 @@ export function DesignStudio({
     window.addEventListener("pointerup", up);
   };
 
-  const rect = view && placed ? photoRect(area, placed, view.art) : null;
-  const perColor = method?.pricingModel === "PER_COLOR";
+  const rect = view && placed && area ? photoRect(area, placed, view.art) : null;
+  const currentLayer = view && rect ? [{ src: view.preview, left: rect.left, top: rect.top, width: rect.width, rotation: placed!.rotation }] : [];
+  const setDetail = (patch: Partial<typeof details>) => setDetails((d) => ({ ...d, ...patch }));
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-2 sm:p-6" role="dialog" aria-modal aria-label="Place artwork" data-testid="design-studio">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-2 sm:p-6" role="dialog" aria-modal aria-label="Decoration" data-testid="design-studio">
       <div className="w-full max-w-6xl rounded-lg bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
           <div>
-            <h2 className="font-semibold">Place artwork</h2>
-            <p className="text-xs text-gray-500">{productName}{itemColor ? ` · ${itemColor.name}` : ""} · {viewName(area.viewId)}: {area.label.split(" / ").pop()} (up to {area.widthIn}″ × {area.heightIn}″){method ? ` · ${method.name}` : ""}</p>
+            <h2 className="font-semibold">{decoration ? "Edit decoration" : "Add decoration"}</h2>
+            <p className="text-xs text-gray-500" data-testid="studio-summary">
+              {productName}
+              {itemColor ? ` · ${itemColor.name}` : ""}
+              {area ? ` · ${viewName(area.viewId)}: ${area.label.split(" / ").pop()} (up to ${area.widthIn}″ × ${area.heightIn}″)` : otherName ? ` · ${otherName}` : ""}
+              {method ? ` · ${method.name}` : ""}
+            </p>
           </div>
           <button type="button" className="text-gray-400 hover:text-gray-700" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
-        <div className="grid gap-5 p-4 md:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid gap-5 p-4 md:grid-cols-[minmax(0,1fr)_340px]">
           <div>
             <div ref={stage} className="relative mx-auto max-w-[560px]">
-              <Mockup
-                photoUrl={photoOf(area.viewId)}
-                label={productName}
-                outline={area}
-                layers={[...otherLayers(area.viewId), ...(view && rect ? [{ src: view.preview, left: rect.left, top: rect.top, width: rect.width, rotation: placed!.rotation }] : [])]}
-              >
+              <Mockup photoUrl={photoOf(stageViewId)} label={productName} outline={area ?? null} layers={[...otherLayers(stageViewId), ...currentLayer]}>
                 {rect && (
                   <div
                     className="absolute cursor-move border border-amber-600/70 hover:bg-amber-200/10"
@@ -351,12 +428,12 @@ export function DesignStudio({
                 )}
                 {!loaded && !busy && (
                   <p className="absolute inset-x-6 top-1/2 -translate-y-1/2 rounded bg-white/85 px-3 py-2 text-center text-sm text-gray-700">
-                    Pick artwork on the right, or upload new.
+                    {area ? "Pick artwork on the right, or upload new." : "Choose a print area to place artwork, or save the decoration without it."}
                   </p>
                 )}
               </Mockup>
             </div>
-            <p className="mt-2 text-center text-xs text-gray-500">Drag the artwork to move it; drag its corner to resize. The dashed box is the print area.</p>
+            {area && <p className="mt-2 text-center text-xs text-gray-500">Drag the artwork to move it; drag its corner to resize. The dashed box is the print area.</p>}
 
             {areasOnView.length > 1 && (
               <div className="mt-2 flex flex-wrap justify-center gap-1.5" role="group" aria-label="Print area">
@@ -364,7 +441,7 @@ export function DesignStudio({
                   <button
                     key={a.id}
                     type="button"
-                    className={`rounded-full border px-2.5 py-0.5 text-xs ${a.id === area.id ? "border-amber-500 bg-amber-50 text-amber-900" : "border-gray-200 hover:border-amber-400"}`}
+                    className={`rounded-full border px-2.5 py-0.5 text-xs ${a.id === area?.id ? "border-amber-500 bg-amber-50 text-amber-900" : "border-gray-200 hover:border-amber-400"}`}
                     onClick={() => setAreaId(a.id)}
                   >
                     {a.label.split(" / ").pop()} <span className="text-gray-400">{a.widthIn}″×{a.heightIn}″</span>
@@ -373,13 +450,12 @@ export function DesignStudio({
               </div>
             )}
 
-            {/* Every view of the product: click one to put this artwork on it. */}
+            {/* Every view of the product: click one to decorate it. */}
             {views.length > 1 && (
               <div className="mt-3 flex flex-wrap justify-center gap-2" role="group" aria-label="Product views" data-testid="studio-views">
                 {views.map((v) => {
-                  const target = v.id === area.viewId ? area : areas.find((a) => a.viewId === v.id);
-                  const here = v.id === area.viewId;
-                  const layers = [...otherLayers(v.id), ...(here && view && rect ? [{ src: view.preview, left: rect.left, top: rect.top, width: rect.width, rotation: placed!.rotation }] : [])];
+                  const target = v.id === area?.viewId ? area : areas.find((a) => a.viewId === v.id);
+                  const here = v.id === area?.viewId;
                   return (
                     <button
                       key={v.id}
@@ -387,10 +463,10 @@ export function DesignStudio({
                       className={`w-20 rounded border p-0.5 text-center text-[11px] ${here ? "border-amber-500 ring-1 ring-amber-500" : "border-gray-200 hover:border-amber-400"} disabled:cursor-not-allowed disabled:opacity-50`}
                       onClick={() => target && setAreaId(target.id)}
                       disabled={!target}
-                      title={target ? `Put the artwork on the ${v.name.toLowerCase()}` : `${v.name} has no print area (add one under the product's Views & Decoration Areas)`}
+                      title={target ? `Decorate the ${v.name.toLowerCase()}` : `${v.name} has no print area (add one under the product's Views & Decoration Areas)`}
                       aria-pressed={here}
                     >
-                      <Mockup photoUrl={photoOf(v.id)} label={v.name} layers={layers} />
+                      <Mockup photoUrl={photoOf(v.id)} label={v.name} layers={[...otherLayers(v.id), ...(here ? currentLayer : [])]} />
                       <span className="mt-0.5 block truncate">{v.name}</span>
                     </button>
                   );
@@ -436,9 +512,92 @@ export function DesignStudio({
           </div>
 
           <div className="space-y-5 text-sm">
+            <section className="space-y-2" data-testid="decoration-details">
+              <div className="grid gap-2">
+                <div>
+                  <label className="label" htmlFor="st-method">Method</label>
+                  <select className="input" id="st-method" value={methodId} onChange={(e) => setMethodId(e.target.value)}>
+                    {methods.length === 0 && <option value="">No methods set up</option>}
+                    {methods.map((m) => <option key={m.id} value={m.id}>{m.name}{m.minQty > 1 ? ` (min ${m.minQty})` : ""}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="label" htmlFor="st-area">Location</label>
+                  <select className="input" id="st-area" value={areaId} onChange={(e) => setAreaId(e.target.value)}>
+                    {areas.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
+                    <option value={OTHER}>Other location…</option>
+                  </select>
+                </div>
+              </div>
+              {!area && (
+                <input className="input" value={otherName} onChange={(e) => setOtherName(e.target.value)} placeholder="Location name, e.g. Left Sleeve" aria-label="Location name" />
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                {perColor && (
+                  <div>
+                    <label className="label" htmlFor="st-colors">Ink colors{method?.maxColors ? ` (max ${method.maxColors})` : ""}</label>
+                    <input
+                      className="input"
+                      id="st-colors"
+                      inputMode="numeric"
+                      value={inkCount}
+                      onChange={(e) => {
+                        setColorsTyped(true);
+                        setDetail({ colors: e.target.value });
+                      }}
+                    />
+                    {view && !colorsTyped && <p className="mt-0.5 text-[11px] text-gray-500">From the artwork</p>}
+                  </div>
+                )}
+                {perStitch && (
+                  <div>
+                    <label className="label" htmlFor="st-stitches">Stitches</label>
+                    <input className="input" id="st-stitches" inputMode="numeric" value={details.stitches} onChange={(e) => setDetail({ stitches: e.target.value })} />
+                  </div>
+                )}
+                <div className={perColor || perStitch ? "" : "col-span-2"}>
+                  <label className="label" htmlFor="st-inks">{perStitch ? "Thread colors" : "Ink colors (names)"}</label>
+                  <input className="input" id="st-inks" value={details.inkColors} onChange={(e) => setDetail({ inkColors: e.target.value })} placeholder="White, PMS 186" />
+                </div>
+              </div>
+              {!loaded && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="label" htmlFor="st-w">Width (in)</label>
+                    <input className="input" id="st-w" inputMode="decimal" value={details.widthIn} onChange={(e) => setDetail({ widthIn: e.target.value })} placeholder={area ? String(area.widthIn) : ""} />
+                  </div>
+                  <div>
+                    <label className="label" htmlFor="st-h">Height (in)</label>
+                    <input className="input" id="st-h" inputMode="decimal" value={details.heightIn} onChange={(e) => setDetail({ heightIn: e.target.value })} placeholder={area ? String(area.heightIn) : ""} />
+                  </div>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                {!loaded && (
+                  <label className="flex items-center gap-1.5">
+                    <input type="checkbox" checked={details.needsArtwork} onChange={(e) => setDetail({ needsArtwork: e.target.checked })} /> Needs artwork
+                  </label>
+                )}
+                {perStitch && (
+                  <label className="flex items-center gap-1.5">
+                    <input type="checkbox" checked={details.needsDigitizing} onChange={(e) => setDetail({ needsDigitizing: e.target.checked })} /> Needs digitizing
+                  </label>
+                )}
+                {perColor && (
+                  <label className="flex items-center gap-1.5">
+                    <input type="checkbox" checked={details.reuseScreens} onChange={(e) => setDetail({ reuseScreens: e.target.checked })} /> Reuse existing screens
+                  </label>
+                )}
+              </div>
+            </section>
+
             <input ref={fileInput} type="file" accept={PLACEABLE_ACCEPT} className="sr-only" aria-label="Artwork file" onChange={(e) => choose(e.target.files?.[0])} />
-            {picking ? (
-              <section className="space-y-2" data-testid="art-library">
+            {!area ? (
+              <p className="rounded bg-gray-50 px-2 py-2 text-xs text-gray-600">
+                Artwork is placed on a print area. For other locations, attach the artwork to the order under Files.
+              </p>
+            ) : picking ? (
+              <section className="space-y-2 border-t border-gray-200 pt-4" data-testid="art-library">
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="font-medium">{ownerName ? `${ownerName}'s artwork` : "Saved artwork"}</h3>
                   {loaded && (
@@ -455,7 +614,7 @@ export function DesignStudio({
                     {owner?.customerId || owner?.companyId ? "No saved artwork for this customer yet. Upload a file and it's kept here for next time." : "Upload a file to place it."}
                   </p>
                 ) : (
-                  <div className="grid max-h-80 grid-cols-3 gap-2 overflow-y-auto pr-1">
+                  <div className="grid max-h-72 grid-cols-3 gap-2 overflow-y-auto pr-1">
                     {library
                       .filter((a) => !filter || a.name.toLowerCase().includes(filter.toLowerCase()))
                       .map((a) => (
@@ -485,19 +644,19 @@ export function DesignStudio({
                 </p>
               </section>
             ) : (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 border-t border-gray-200 pt-4">
                 <button type="button" className="btn-secondary" onClick={() => setPicking(true)}>
                   🖼 Choose different artwork
                 </button>
-                {initial && (
-                  <button type="button" className="btn-danger" onClick={onRemove}>Remove artwork</button>
+                {loaded && (
+                  <button type="button" className="btn-secondary text-red-700" onClick={removeArt}>Remove artwork</button>
                 )}
               </div>
             )}
             {busy && <p className="text-amber-800" role="status">{busy}</p>}
             {error && <p className="rounded bg-red-50 px-2 py-1 text-red-800" role="alert">{error}</p>}
 
-            {!picking && view && placed && size && (
+            {!picking && view && placed && size && area && (
               <>
                 <section className="space-y-2">
                   <h3 className="font-medium">Size &amp; position</h3>
@@ -613,9 +772,14 @@ export function DesignStudio({
               </>
             )}
 
-            <div className="flex gap-2 border-t border-gray-200 pt-4">
-              <button type="button" className="btn" disabled={!view || !!busy} onClick={save}>Use this artwork</button>
+            <div className="flex flex-wrap gap-2 border-t border-gray-200 pt-4">
+              <button type="button" className="btn" disabled={!!busy || !method} onClick={save}>
+                {decoration ? "Save decoration" : "Add decoration"}
+              </button>
               <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+              {onRemove && (
+                <button type="button" className="btn-danger ml-auto" onClick={onRemove}>Remove decoration</button>
+              )}
             </div>
           </div>
         </div>

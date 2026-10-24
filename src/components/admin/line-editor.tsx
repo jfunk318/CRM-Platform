@@ -3,28 +3,13 @@
 import { useEffect, useState } from "react";
 import type { OrderOptions } from "@/app/admin/api/products/[id]/order-options/route";
 import { Mockup, type MockupLayer } from "@/components/mockup";
-import type { ArtOwnerIds, ArtworkValue } from "@/lib/design/artwork";
+import type { ArtOwnerIds } from "@/lib/design/artwork";
 import { photoRect } from "@/lib/design/placement";
-import { DesignStudio } from "./design-studio";
+import { type DecorationValue, DesignStudio } from "./design-studio";
 import { ProductPicker, type PickedProduct } from "./product-picker";
 import { ProductThumb } from "./product-thumb";
 
-export type DecorationValue = {
-  artwork: ArtworkValue | null;
-  /** Where the placed artwork image can be loaded from. */
-  artworkUrl: string | null;
-  methodId: string;
-  areaId: string;
-  location: string;
-  colors: string;
-  stitches: string;
-  widthIn: string;
-  heightIn: string;
-  inkColors: string;
-  needsArtwork: boolean;
-  needsDigitizing: boolean;
-  reuseScreens: boolean;
-};
+export type { DecorationValue } from "./design-studio";
 
 export type LineValue = {
   productId: string;
@@ -33,22 +18,6 @@ export type LineValue = {
   decorations: DecorationValue[];
   notes: string;
 };
-
-const blankDecoration = (): DecorationValue => ({
-  artwork: null,
-  artworkUrl: null,
-  methodId: "",
-  areaId: "",
-  location: "",
-  colors: "",
-  stitches: "",
-  widthIn: "",
-  heightIn: "",
-  inkColors: "",
-  needsArtwork: false,
-  needsDigitizing: false,
-  reuseScreens: false,
-});
 
 /**
  * Configure one quote/order line: product, color, size quantities and
@@ -93,11 +62,9 @@ export function LineEditor({
     };
   }, [value.productId]);
 
-  const [studio, setStudio] = useState<number | null>(null);
+  const [studio, setStudio] = useState<number | "new" | null>(null);
 
   const color = options?.colors.find((c) => c.id === value.colorId);
-  const setDecoration = (i: number, patch: Partial<DecorationValue>) =>
-    setValue((v) => ({ ...v, decorations: v.decorations.map((d, j) => (j === i ? { ...d, ...patch } : d)) }));
   const totalQty = Object.values(value.quantities).reduce((n, q) => n + (Number(q) || 0), 0);
 
   // Mockups: each view's photo in the chosen color with every placed artwork on it.
@@ -114,8 +81,6 @@ export function LineEditor({
       return [{ src: d.artworkUrl, left: r.left, top: r.top, width: r.width, rotation: d.artwork.rotation }];
     });
   const mockupViews = [...new Set(value.decorations.filter((d) => d.artwork).map((d) => areaOf(d)?.viewId).filter((v): v is string => !!v))];
-  const studioDecoration = studio === null ? null : value.decorations[studio];
-  const studioArea = studioDecoration ? areaOf(studioDecoration) : undefined;
 
   return (
     <div className="space-y-4">
@@ -204,106 +169,56 @@ export function LineEditor({
             {value.decorations.length === 0 && <p className="text-sm text-gray-500">None. The item is sold blank.</p>}
             {value.decorations.map((d, i) => {
               const method = options.methods.find((m) => m.id === d.methodId);
-              const model = method?.pricingModel;
+              const facts = [
+                method?.name ?? "No method",
+                method?.pricingModel === "PER_COLOR" && d.colors ? `${d.colors} color${d.colors === "1" ? "" : "s"}` : null,
+                method?.pricingModel === "PER_STITCH" && d.stitches ? `${Number(d.stitches).toLocaleString()} stitches` : null,
+                d.widthIn && d.heightIn ? `${d.widthIn}″ × ${d.heightIn}″` : null,
+                d.inkColors || null,
+                d.needsArtwork ? "needs artwork" : null,
+                d.needsDigitizing ? "needs digitizing" : null,
+                d.reuseScreens ? "reuse screens" : null,
+              ].filter(Boolean);
               return (
-                <div key={i} className="space-y-2 rounded-md border border-gray-200 p-2">
+                <div key={i} className="flex items-center gap-3 rounded-md border border-gray-200 p-2" data-testid="decoration">
+                  {/* Everything the designer set, for the form; names repeat per decoration, aligned by position. */}
+                  <input type="hidden" name="d_method" value={d.methodId} />
                   <input type="hidden" name="d_area" value={d.areaId} />
+                  <input type="hidden" name="d_location" value={d.location} />
+                  <input type="hidden" name="d_colors" value={method?.pricingModel === "PER_COLOR" ? d.colors : ""} />
+                  <input type="hidden" name="d_stitches" value={method?.pricingModel === "PER_STITCH" ? d.stitches : ""} />
+                  <input type="hidden" name="d_w" value={d.widthIn} />
+                  <input type="hidden" name="d_h" value={d.heightIn} />
+                  <input type="hidden" name="d_inks" value={d.inkColors} />
                   <input type="hidden" name="d_art" value={d.needsArtwork ? "on" : ""} />
                   <input type="hidden" name="d_dig" value={d.needsDigitizing ? "on" : ""} />
                   <input type="hidden" name="d_reuse" value={d.reuseScreens ? "on" : ""} />
                   <input type="hidden" name="d_artwork" value={d.artwork ? JSON.stringify(d.artwork) : ""} />
-                  <div className="grid gap-2 sm:grid-cols-6 sm:items-end">
-                    <div className="sm:col-span-2">
-                      <label className="text-xs text-gray-500" htmlFor={`d-m-${i}`}>Method</label>
-                      <select
-                        className="input"
-                        id={`d-m-${i}`}
-                        name="d_method"
-                        value={d.methodId}
-                        onChange={(e) => setDecoration(i, { methodId: e.target.value })}
-                        required
-                      >
-                        <option value="" disabled>Choose…</option>
-                        {options.methods.map((m) => (
-                          <option key={m.id} value={m.id}>{m.name}{m.minQty > 1 ? ` (min ${m.minQty})` : ""}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="text-xs text-gray-500" htmlFor={`d-l-${i}`}>Location</label>
-                      <select
-                        className="input"
-                        id={`d-l-${i}`}
-                        value={d.areaId || (d.location ? "__custom" : "")}
-                        onChange={(e) => {
-                          const area = options.areas.find((a) => a.id === e.target.value);
-                          setDecoration(
-                            i,
-                            area
-                              ? { areaId: area.id, location: area.label, widthIn: d.widthIn || String(area.widthIn), heightIn: d.heightIn || String(area.heightIn) }
-                              : { areaId: "", location: e.target.value === "__custom" ? d.location || " " : "" },
-                          );
-                        }}
-                      >
-                        <option value="">Choose…</option>
-                        {options.areas.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
-                        <option value="__custom">Other…</option>
-                      </select>
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="text-xs text-gray-500" htmlFor={`d-loc-${i}`}>Location name</label>
-                      <input
-                        className="input"
-                        id={`d-loc-${i}`}
-                        name="d_location"
-                        value={d.location.trimStart()}
-                        onChange={(e) => setDecoration(i, { location: e.target.value })}
-                        placeholder="e.g. Left Sleeve"
-                        required
-                      />
-                    </div>
+                  {d.artwork && d.artworkUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={d.artworkUrl} alt="" className="h-12 w-12 shrink-0 rounded border border-gray-200 bg-[repeating-conic-gradient(#e5e7eb_0_25%,#fff_0_50%)] bg-[length:10px_10px] object-contain" />
+                  ) : (
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded border border-dashed border-gray-300 text-[10px] text-gray-400">No art</span>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">{d.location || "No location"}</div>
+                    <div className="truncate text-xs text-gray-600">{facts.join(" · ")}</div>
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-6 sm:items-end">
-                    <Small label={`Ink colors${method?.maxColors ? ` (max ${method.maxColors})` : ""}`} name="d_colors" value={d.colors} onChange={(v) => setDecoration(i, { colors: v })} hidden={model !== "PER_COLOR"} />
-                    <Small label="Stitches" name="d_stitches" value={d.stitches} onChange={(v) => setDecoration(i, { stitches: v })} hidden={model !== "PER_STITCH"} />
-                    <Small label="Width (in)" name="d_w" value={d.widthIn} onChange={(v) => setDecoration(i, { widthIn: v })} />
-                    <Small label="Height (in)" name="d_h" value={d.heightIn} onChange={(v) => setDecoration(i, { heightIn: v })} />
-                    <div className="sm:col-span-2">
-                      <label className="text-xs text-gray-500" htmlFor={`d-ink-${i}`}>Ink / thread colors</label>
-                      <input className="input" id={`d-ink-${i}`} name="d_inks" value={d.inkColors} onChange={(e) => setDecoration(i, { inkColors: e.target.value })} placeholder="White, PMS 186" />
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3 rounded bg-gray-50 px-2 py-1.5" data-testid="decoration-artwork">
-                    {d.artwork && d.artworkUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={d.artworkUrl} alt="Placed artwork" className="h-10 w-10 rounded border border-gray-200 bg-[repeating-conic-gradient(#e5e7eb_0_25%,#fff_0_50%)] bg-[length:10px_10px] object-contain" />
-                    ) : (
-                      <span className="text-xs text-gray-500">No artwork placed</span>
-                    )}
-                    <button type="button" className="btn-secondary px-2 py-1 text-xs" disabled={!areaOf(d)} onClick={() => setStudio(i)}>
-                      {d.artwork ? "Edit artwork" : "🎨 Place artwork"}
-                    </button>
-                    {!areaOf(d) && <span className="text-xs text-gray-500">Choose a print area to place artwork.</span>}
-                    {d.artwork && d.widthIn && d.heightIn && <span className="text-xs text-gray-600">{d.widthIn}″ × {d.heightIn}″</span>}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-4 text-xs">
-                    <Check label="Needs artwork" checked={d.needsArtwork} onChange={(c) => setDecoration(i, { needsArtwork: c })} />
-                    {model === "PER_STITCH" && <Check label="Needs digitizing" checked={d.needsDigitizing} onChange={(c) => setDecoration(i, { needsDigitizing: c })} />}
-                    {model === "PER_COLOR" && <Check label="Reuse existing screens" checked={d.reuseScreens} onChange={(c) => setDecoration(i, { reuseScreens: c })} />}
-                    <button
-                      type="button"
-                      className="ml-auto text-red-600 hover:underline"
-                      onClick={() => setValue((v) => ({ ...v, decorations: v.decorations.filter((_, j) => j !== i) }))}
-                    >
-                      Remove decoration
-                    </button>
-                  </div>
+                  <button type="button" className="btn-secondary px-2 py-1 text-xs" onClick={() => setStudio(i)}>Edit</button>
+                  <button
+                    type="button"
+                    className="text-xs text-red-600 hover:underline"
+                    onClick={() => setValue((v) => ({ ...v, decorations: v.decorations.filter((_, j) => j !== i) }))}
+                  >
+                    Remove
+                  </button>
                 </div>
               );
             })}
-            <button type="button" className="btn-secondary" onClick={() => setValue((v) => ({ ...v, decorations: [...v.decorations, blankDecoration()] }))}>
+            <button type="button" className="btn-secondary" onClick={() => setStudio("new")} disabled={options.methods.length === 0}>
               + Add decoration
             </button>
+            {options.methods.length === 0 && <p className="text-xs text-gray-500">No decoration methods are offered for this product.</p>}
           </div>
 
           <div>
@@ -313,64 +228,40 @@ export function LineEditor({
         </>
       )}
 
-      {studio !== null && studioDecoration && studioArea && options && (
+      {studio !== null && options && (
         <DesignStudio
+          // A fresh designer for each decoration opened.
+          key={String(studio)}
+          decoration={studio === "new" ? null : value.decorations[studio]}
+          methods={options.methods}
           areas={options.areas}
           views={options.views}
           colors={options.colors}
           colorId={value.colorId}
-          areaId={studioArea.id}
           // The item's other placed artwork, shown on the views for context.
           others={value.decorations.flatMap((d, j) => (j !== studio && d.artwork && d.artworkUrl && areaOf(d) ? [{ areaId: d.areaId, src: d.artworkUrl, art: d.artwork }] : []))}
-          method={options.methods.find((m) => m.id === studioDecoration.methodId)}
           productName={options.name}
           owner={artOwner ?? null}
           ownerName={artOwner?.name}
-          initial={studioDecoration.artwork}
           onClose={() => setStudio(null)}
-          onRemove={() => {
-            setDecoration(studio, { artwork: null, artworkUrl: null });
-            setStudio(null);
-          }}
-          onSave={(r) => {
-            const method = options.methods.find((m) => m.id === studioDecoration.methodId);
-            setDecoration(studio, {
-              artwork: r.artwork,
-              artworkUrl: r.artworkUrl,
-              widthIn: String(r.widthIn),
-              heightIn: String(r.heightIn),
-              needsArtwork: false,
-              // The artwork may have moved to another view's print area.
-              ...(r.areaId !== studioDecoration.areaId ? { areaId: r.areaId, location: r.areaLabel } : {}),
-              // Screen printing is priced by ink colors; fill in what the artwork uses.
-              ...(method?.pricingModel === "PER_COLOR" ? { colors: String(r.inkColors) } : {}),
-            });
-            if (r.colorId !== value.colorId) setValue((v) => ({ ...v, colorId: r.colorId }));
+          onRemove={
+            studio === "new"
+              ? undefined
+              : () => {
+                  setValue((v) => ({ ...v, decorations: v.decorations.filter((_, j) => j !== studio) }));
+                  setStudio(null);
+                }
+          }
+          onSave={(d, colorId) => {
+            setValue((v) => ({
+              ...v,
+              colorId,
+              decorations: studio === "new" ? [...v.decorations, d] : v.decorations.map((x, j) => (j === studio ? d : x)),
+            }));
             setStudio(null);
           }}
         />
       )}
     </div>
-  );
-}
-
-function Small({ label, name, value, onChange, hidden }: { label: string; name: string; value: string; onChange: (v: string) => void; hidden?: boolean }) {
-  // Hidden fields still submit (empty) so repeated d_* names stay aligned.
-  if (hidden) return <input type="hidden" name={name} value="" />;
-  return (
-    <div>
-      <label className="text-xs text-gray-500">
-        {label}
-        <input className="input" name={name} inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)} />
-      </label>
-    </div>
-  );
-}
-
-function Check({ label, checked, onChange }: { label: string; checked: boolean; onChange: (c: boolean) => void }) {
-  return (
-    <label className="flex items-center gap-1.5">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} /> {label}
-    </label>
   );
 }

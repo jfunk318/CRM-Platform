@@ -74,9 +74,15 @@ Every business table has a `businessId`, and:
 
 ## Placing artwork (design studio)
 
-On a quote or order item, choose a decoration's print area and click
-**Place artwork**. The studio shows the product photo in the item's color
-with the print area outlined, next to the customer's artwork:
+On a quote or order item (or a store item), **+ Add decoration** opens the
+designer, where the whole decoration is set up: method, location (a print
+area, picked from the list, the view thumbnails or the area chips, or an
+"Other location" typed in), ink/thread colors, stitches, digitizing and
+screen options, and the artwork. A decoration can be saved without artwork
+(it's marked "needs artwork", with its size typed in). On the item each
+decoration is a one-line summary with Edit and Remove. The designer shows
+the product photo in the item's color with the print area outlined, next to
+the customer's artwork:
 
 - **Artwork library:** each customer has saved artwork (Customers → a
   customer → Artwork), shared with everyone at their company. Images uploaded
