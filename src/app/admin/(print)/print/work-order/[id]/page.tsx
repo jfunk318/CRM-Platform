@@ -4,6 +4,7 @@ import { isImage } from "@/lib/files/types";
 import { orderRef } from "@/lib/orders/numbers";
 import { jobLinesInclude, methodWork } from "@/lib/production/jobs";
 import { enhanceLabel } from "@/lib/design/artwork";
+import { Roster } from "@/components/roster";
 
 export const metadata = { title: "Work order" };
 
@@ -106,6 +107,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
                       </li>
                     ))}
                   </ul>
+                  <Roster names={line.names} />
                   {line.notes && <p className="text-gray-700">Note: {line.notes}</p>}
                 </div>
               ))}

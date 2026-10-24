@@ -1,7 +1,7 @@
 "use server";
 
 import { randomBytes } from "node:crypto";
-import type { AccountMode, MarkupKind, PromoKind } from "@prisma/client";
+import type { AccountMode, MarkupKind, PersonalizationMode, PromoKind } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireStaff } from "@/lib/auth/session";
@@ -405,6 +405,39 @@ export async function uploadItemImageAction(_: ActionResult, form: FormData): Pr
     await staff.db.storeItem.update({ where: { id: text(form, "id") }, data: { imageFileId: saved.id, imageIsMockup: false } });
     refresh();
     return "Picture updated";
+  });
+}
+
+const PERSONAL_MODES: PersonalizationMode[] = ["OFF", "OPTIONAL", "REQUIRED"];
+
+export async function savePersonalizationAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  return run(async () => {
+    const mode = (name: string) => {
+      const v = String(form.get(name) ?? "OFF") as PersonalizationMode;
+      if (!PERSONAL_MODES.includes(v)) throw new FormError("Choose whether names and numbers are offered");
+      return v;
+    };
+    const nameMaxLength = int(String(form.get("nameMaxLength") ?? ""), "Name length");
+    const numberMaxDigits = int(String(form.get("numberMaxDigits") ?? ""), "Number digits");
+    if (nameMaxLength < 1 || nameMaxLength > 40) throw new FormError("Names can be 1 to 40 letters");
+    if (numberMaxDigits < 1 || numberMaxDigits > 3) throw new FormError("Numbers can be 1 to 3 digits");
+    const namePrice = decimal(String(form.get("namePrice") ?? "") || "0", "Name price");
+    const numberPrice = decimal(String(form.get("numberPrice") ?? "") || "0", "Number price");
+    if (namePrice.isNegative() || numberPrice.isNegative()) throw new FormError("Prices can't be negative");
+    await db.storeItem.update({
+      where: { id: text(form, "id") },
+      data: {
+        nameMode: mode("nameMode"),
+        nameMaxLength,
+        namePrice,
+        numberMode: mode("numberMode"),
+        numberMaxDigits,
+        numberPrice,
+        personalizationLocation: optionalText(form, "personalizationLocation"),
+      },
+    });
+    refresh();
   });
 }
 

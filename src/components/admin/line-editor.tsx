@@ -11,12 +11,16 @@ import { ProductThumb } from "./product-thumb";
 
 export type { DecorationValue } from "./design-studio";
 
+const rosterCount = (text: string | undefined) => (text ?? "").split("\n").filter((l) => l.trim()).length;
+
 export type LineValue = {
   productId: string;
   colorId: string;
   quantities: Record<string, string>;
   decorations: DecorationValue[];
   notes: string;
+  /** Names and numbers, one piece per line ("L, Smith, 12"). */
+  roster?: string;
 };
 
 /**
@@ -221,6 +225,26 @@ export function LineEditor({
             </button>
             {options.methods.length === 0 && <p className="text-xs text-gray-500">No decoration methods are offered for this product.</p>}
           </div>
+
+          {sizeMode === "quantity" && (
+            <details className="rounded-md border border-gray-200 p-2" open={!!value.roster}>
+              <summary className="cursor-pointer text-sm font-medium">
+                Names &amp; numbers{" "}
+                <span className="font-normal text-gray-500">
+                  ({rosterCount(value.roster)} of {totalQty} piece{totalQty === 1 ? "" : "s"} named)
+                </span>
+              </summary>
+              <textarea
+                className="input mt-2 min-h-24 font-mono text-sm"
+                name="roster"
+                aria-label="Names and numbers"
+                placeholder={"One piece per line: size, name, number\nL, Smith, 12\nXL, Garcia, 7\nM, 23"}
+                value={value.roster ?? ""}
+                onChange={(e) => setValue((v) => ({ ...v, roster: e.target.value }))}
+              />
+              <p className="text-xs text-gray-500">Printed as typed. Pieces without a name or number can be left off.</p>
+            </details>
+          )}
 
           <div>
             <label className="label" htmlFor="le-notes">Item notes</label>

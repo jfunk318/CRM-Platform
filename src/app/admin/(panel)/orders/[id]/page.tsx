@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Prisma } from "@prisma/client";
 import { notFound } from "next/navigation";
 import { requireStaff } from "@/lib/auth/session";
 import { hasAnyRole } from "@/lib/auth/roles";
@@ -15,6 +16,8 @@ import { SourceTag, StatusBadge } from "@/components/admin/order-table";
 import { requestOrigin } from "@/lib/business";
 import { orderBlankStatus } from "@/lib/purchasing/service";
 import { freeStoreSlug } from "@/lib/store/stores";
+import { rosterText } from "@/lib/store/personalization";
+import { Roster } from "@/components/roster";
 import { PublishToStoreFields } from "@/components/admin/publish-to-store";
 import { CustomerLinkSection, EmailsSection, FilesSection, orderSectionsInclude, PaymentsSection, ProofsSection } from "./sections";
 import { BlanksSection, fulfillmentInclude, ProductionSection, ShippingSection } from "./fulfillment";
@@ -52,6 +55,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         orderBy: { sortOrder: "asc" },
         include: {
           sizes: { include: { size: true }, orderBy: { size: { sortOrder: "asc" } } },
+          names: { include: { size: true }, orderBy: { sortOrder: "asc" } },
           design: {
             include: {
               product: true,
@@ -112,6 +116,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
     colorId: line.design.colorId,
     quantities: Object.fromEntries(line.sizes.map((s) => [s.sizeId, String(s.qty)])),
     notes: line.notes ?? "",
+    roster: rosterText(line.names.map((n) => ({ sizeCode: n.size.code, name: n.name, number: n.number, qty: n.qty }))),
     decorations: line.design.decorations.map((d) => ({
       artwork: artworkOf(d),
       artworkUrl: d.artworkFileId ? staffFileUrl(d.artworkFileId) : null,
@@ -284,8 +289,10 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                   ) : (
                     <p className="text-sm text-gray-500">Blank (no decoration)</p>
                   )}
+                  <Roster names={line.names} />
                   <p className="text-xs text-gray-500">
                     {line.fixedPrice ? "Sold at the store's price (not repriced)" : <>Decoration {money(line.decorationUnit)} per piece</>}
+                    {nameCharges(line.names) && <> · names &amp; numbers {money(nameCharges(line.names)!)}</>}
                   </p>
                   {fees.length > 0 && (
                     <ul className="text-sm text-gray-700">
@@ -462,6 +469,12 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       </div>
     </div>
   );
+}
+
+/** What shoppers paid for names and numbers on a line, if anything. */
+function nameCharges(names: { charge: { times(n: number): Prisma.Decimal }; qty: number }[]) {
+  const total = names.reduce((t, n) => t.plus(n.charge.times(n.qty)), new Prisma.Decimal(0));
+  return total.isZero() ? null : total;
 }
 
 function Row({ label, value }: { label: string; value: string }) {

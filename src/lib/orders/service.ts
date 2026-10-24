@@ -5,6 +5,7 @@ import type { BusinessDb, BusinessTx } from "@/lib/db";
 import { nextOrderNumber, orderRef } from "./numbers";
 import { itemPrice } from "@/lib/store/settings";
 import { repriceOrder } from "./pricing";
+import { parseRoster, PersonalizationError } from "@/lib/store/personalization";
 
 export class OrderError extends Error {}
 
@@ -47,6 +48,8 @@ export interface LineSpec {
   quantities: Record<string, number>;
   decorations: DecorationSpec[];
   notes?: string | null;
+  /** Names and numbers as staff type them ("L, Smith, 12" per piece); undefined keeps the line's roster. */
+  roster?: string | null;
 }
 
 export async function logEvent(
@@ -160,6 +163,46 @@ async function validateLine(db: BusinessDb, spec: LineSpec) {
   return { product, color, sizes };
 }
 
+type RosterRow = { sizeId: string; name: string; number: string; qty: number; charge: Prisma.Decimal.Value; sortOrder: number };
+
+/**
+ * The line's names and numbers: what staff typed (or, if they didn't touch
+ * it, what the line had), with no more names per size than pieces ordered.
+ * Entries kept from before keep what the shopper paid for them.
+ */
+function rosterRows(
+  spec: LineSpec,
+  productSizes: { id: string; code: string }[],
+  sizes: [string, number][],
+  existing: { sizeId: string; name: string; number: string; qty: number; charge: Prisma.Decimal }[],
+): RosterRow[] {
+  let rows: RosterRow[];
+  if (spec.roster === undefined || spec.roster === null) {
+    rows = existing.map((e, i) => ({ ...e, sortOrder: i }));
+  } else {
+    let parsed;
+    try {
+      parsed = parseRoster(spec.roster, productSizes.filter((s) => sizes.some(([id]) => id === s.id)).map((s) => s.code));
+    } catch (e) {
+      if (e instanceof PersonalizationError) throw new OrderError(e.message);
+      throw e;
+    }
+    rows = parsed.map((e, i) => {
+      const sizeId = productSizes.find((s) => s.code === e.sizeCode)!.id;
+      const before = existing.find((x) => x.sizeId === sizeId && x.name === e.name && x.number === e.number);
+      return { sizeId, name: e.name, number: e.number, qty: e.qty, charge: before?.charge ?? 0, sortOrder: i };
+    });
+  }
+  for (const [sizeId, qty] of sizes) {
+    const named = rows.filter((r) => r.sizeId === sizeId).reduce((n, r) => n + r.qty, 0);
+    const code = productSizes.find((s) => s.id === sizeId)?.code;
+    if (named > qty) throw new OrderError(`The roster has ${named} ${code} but only ${qty} ${qty === 1 ? "is" : "are"} ordered`);
+  }
+  const orphan = rows.find((r) => !sizes.some(([id]) => id === r.sizeId));
+  if (orphan) throw new OrderError(`The roster has ${productSizes.find((s) => s.id === orphan.sizeId)?.code ?? "a size"} names but none are ordered`);
+  return rows;
+}
+
 /** A decoration's database row (without businessId and designId). */
 export const decorationData = (d: DecorationSpec, i: number) => ({
   methodId: d.methodId,
@@ -218,6 +261,7 @@ async function listArtworkOnOrder(tx: BusinessTx, businessId: string, orderId: s
 export async function addLine(db: BusinessDb, orderId: string, spec: LineSpec, staffId: string | null): Promise<string> {
   const businessId = db.$businessId;
   const { product, color, sizes } = await validateLine(db, spec);
+  const roster = rosterRows(spec, product.sizes, sizes, []);
   await checkArtwork(db, spec);
   const lineId = await db.$transaction(async (tx) => {
     const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { _count: { select: { lines: true } } } });
@@ -240,6 +284,7 @@ export async function addLine(db: BusinessDb, orderId: string, spec: LineSpec, s
         notes: spec.notes,
         sortOrder: order._count.lines,
         sizes: { create: sizes.map(([sizeId, qty]) => ({ sizeId, qty })) },
+        names: { create: roster },
       },
     });
     await logEvent(tx, businessId, orderId, "EDITED", `Added ${product.name} (${color.name})`, staffId);
@@ -263,6 +308,7 @@ export async function updateLine(db: BusinessDb, lineId: string, spec: LineSpec,
     include: {
       order: true,
       sizes: true,
+      names: { orderBy: { sortOrder: "asc" } },
       storeItem: { include: { prices: true, store: { include: { group: true } } } },
       design: { include: { _count: { select: { orderLines: true, storeItems: true } } } },
     },
@@ -281,6 +327,8 @@ export async function updateLine(db: BusinessDb, lineId: string, spec: LineSpec,
     }
   }
   const keepFixed = line.fixedPrice && sameGarment && fixedPrices.size === sizes.length;
+  // Another garment's sizes differ, so its roster starts from what was typed.
+  const roster = rosterRows(spec, product.sizes, sizes, sameGarment ? line.names : []);
   await checkArtwork(db, spec);
   await db.$transaction(async (tx) => {
     await listArtworkOnOrder(tx, businessId, line.orderId, spec);
@@ -301,6 +349,8 @@ export async function updateLine(db: BusinessDb, lineId: string, spec: LineSpec,
     await tx.orderLine.update({ where: { id: lineId }, data: { designId, notes: spec.notes, fixedPrice: keepFixed } });
     await tx.orderLineSize.deleteMany({ where: { lineId } });
     await tx.orderLineSize.createMany({ data: sizes.map(([sizeId, qty]) => ({ businessId, lineId, sizeId, qty, unitPrice: keepFixed ? fixedPrices.get(sizeId) : 0 })) });
+    await tx.orderLineName.deleteMany({ where: { lineId } });
+    await tx.orderLineName.createMany({ data: roster.map((r) => ({ ...r, businessId, lineId })) });
     await logEvent(
       tx,
       businessId,

@@ -10,6 +10,7 @@ const orderForPricing = {
     orderBy: { sortOrder: "asc" },
     include: {
       sizes: { include: { size: true } },
+      names: true,
       design: { include: { decorations: { orderBy: { sortOrder: "asc" } }, product: true } },
     },
   },
@@ -157,7 +158,8 @@ function fixedLinePrice(line: OrderForPricing["lines"][number]): LineItemPrice {
     unitPrice: s.unitPrice,
     total: s.unitPrice.times(s.qty),
   }));
-  const merchandiseTotal = sizes.reduce((t, s) => t.plus(s.total), zero);
+  // Names and numbers sold with the pieces add to the line's price.
+  const merchandiseTotal = sizes.reduce((t, s) => t.plus(s.total), zero).plus(line.names.reduce((t, n) => t.plus(n.charge.times(n.qty)), zero));
   return {
     totalQty: sizes.reduce((n, s) => n + s.qty, 0),
     sizes,

@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { DesignMockups } from "@/components/design-mockups";
+import { Roster } from "@/components/roster";
 import type { DesignMockup } from "@/lib/design/mockups";
 
 type Line = Prisma.OrderLineGetPayload<{
@@ -7,7 +8,7 @@ type Line = Prisma.OrderLineGetPayload<{
     sizes: { include: { size: true } };
     design: { include: { product: true; color: true; decorations: { include: { method: true } } } };
   };
-}>;
+}> & { names?: Prisma.OrderLineNameGetPayload<{ include: { size: true } }>[] };
 
 const money = (v: { toFixed(n: number): string }) => `$${v.toFixed(2)}`;
 
@@ -50,6 +51,7 @@ export function OrderItems({ lines, mockups, artBase }: { lines: Line[]; mockups
                 </tr>
               </tbody>
             </table>
+            {line.names && <Roster names={line.names} />}
             {line.design.decorations.length > 0 ? (
               <ul className="text-sm text-gray-700">
                 {line.design.decorations.map((d) => (

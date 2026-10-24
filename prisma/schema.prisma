@@ -103,6 +103,7 @@ model Business {
   orders                 Order[]
   orderLines             OrderLine[]
   orderLineSizes         OrderLineSize[]
+  lineNames              OrderLineName[]
   orderEvents            OrderEvent[]
   counters               Counter[]
   storedFiles            StoredFile[]
@@ -381,6 +382,7 @@ model ProductSize {
   sortOrder       Int              @default(0)
   variants        ProductVariant[]
   lineSizes       OrderLineSize[]
+  lineNames       OrderLineName[]
   storeItemPrices StoreItemPrice[]
 
   @@unique([businessId, id])
@@ -973,6 +975,7 @@ model OrderLine {
   storeItemId    String?
   storeItem      StoreItem?      @relation(fields: [businessId, storeItemId], references: [businessId, id], onDelete: NoAction)
   sizes          OrderLineSize[]
+  names          OrderLineName[] // names and numbers to print (a roster)
   shipmentItems  ShipmentItem[]
 
   @@unique([businessId, id])
@@ -991,6 +994,26 @@ model OrderLineSize {
   total      Decimal     @default(0) @db.Decimal(10, 2)
 
   @@unique([lineId, sizeId])
+}
+
+// A name and/or number printed on some of a line's pieces (team rosters).
+// `charge` is what each piece was sold with on top of its price (store
+// orders); it's 0 when staff enter a roster on an order.
+model OrderLineName {
+  id         String      @id @default(cuid())
+  businessId String
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  lineId     String
+  line       OrderLine   @relation(fields: [businessId, lineId], references: [businessId, id], onDelete: Cascade)
+  sizeId     String
+  size       ProductSize @relation(fields: [businessId, sizeId], references: [businessId, id], onDelete: NoAction)
+  name       String      @default("")
+  number     String      @default("")
+  qty        Int         @default(1)
+  charge     Decimal     @default(0) @db.Decimal(10, 2)
+  sortOrder  Int         @default(0)
+
+  @@index([lineId])
 }
 
 enum OrderEventType {
@@ -1484,6 +1507,12 @@ enum StoreKind {
   AFFILIATE // a customer's store on a subdomain (phase 6)
 }
 
+enum PersonalizationMode {
+  OFF
+  OPTIONAL
+  REQUIRED
+}
+
 enum MarkupKind {
   AMOUNT
   PERCENT
@@ -1580,33 +1609,42 @@ model StorePage {
 
 // A decorated product for sale in a store, priced per size.
 model StoreItem {
-  id            String           @id @default(cuid())
-  businessId    String
-  business      Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  storeId       String
-  store         Store            @relation(fields: [businessId, storeId], references: [businessId, id], onDelete: Cascade)
-  designId      String
-  design        Design           @relation(fields: [businessId, designId], references: [businessId, id], onDelete: NoAction)
-  name          String
-  slug          String
-  description   String?
-  imageFileId   String?
-  image         StoredFile?      @relation(fields: [businessId, imageFileId], references: [businessId, id], onDelete: NoAction)
+  id                      String              @id @default(cuid())
+  businessId              String
+  business                Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  storeId                 String
+  store                   Store               @relation(fields: [businessId, storeId], references: [businessId, id], onDelete: Cascade)
+  designId                String
+  design                  Design              @relation(fields: [businessId, designId], references: [businessId, id], onDelete: NoAction)
+  name                    String
+  slug                    String
+  description             String?
+  imageFileId             String?
+  image                   StoredFile?         @relation(fields: [businessId, imageFileId], references: [businessId, id], onDelete: NoAction)
   // The picture was made from the design's mockup (remade when the design changes).
-  imageIsMockup Boolean          @default(false)
+  imageIsMockup           Boolean             @default(false)
   // The quote/order line it was published from, to update it on a later publish.
-  sourceLineId  String?
-  published     Boolean          @default(true)
-  featured      Boolean          @default(false)
-  sortOrder     Int              @default(0)
+  sourceLineId            String?
+  published               Boolean             @default(true)
+  featured                Boolean             @default(false)
+  sortOrder               Int                 @default(0)
+  // Names and numbers shoppers can have printed, each with an optional charge.
+  nameMode                PersonalizationMode @default(OFF)
+  nameMaxLength           Int                 @default(12)
+  namePrice               Decimal             @default(0) @db.Decimal(10, 2)
+  numberMode              PersonalizationMode @default(OFF)
+  numberMaxDigits         Int                 @default(2)
+  numberPrice             Decimal             @default(0) @db.Decimal(10, 2)
+  // Where they're printed ("Back"), for shoppers and the work order.
+  personalizationLocation String?
   // Markup on top of the base price; empty = the store's default markup.
-  markupKind    MarkupKind?
-  markupValue   Decimal?         @db.Decimal(10, 2)
-  prices        StoreItemPrice[]
-  cartItems     CartItem[]
-  orderLines    OrderLine[]
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  markupKind              MarkupKind?
+  markupValue             Decimal?            @db.Decimal(10, 2)
+  prices                  StoreItemPrice[]
+  cartItems               CartItem[]
+  orderLines              OrderLine[]
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
 
   @@unique([businessId, id])
   @@unique([storeId, slug])
@@ -1684,8 +1722,11 @@ model CartItem {
   storeItem   StoreItem @relation(fields: [businessId, storeItemId], references: [businessId, id], onDelete: Cascade)
   sizeId      String
   qty         Int
+  // Personalization ("" = none); each name/number is its own cart line.
+  name        String    @default("")
+  number      String    @default("")
 
-  @@unique([cartId, storeItemId, sizeId])
+  @@unique([cartId, storeItemId, sizeId, name, number])
 }
 
 enum PromoKind {

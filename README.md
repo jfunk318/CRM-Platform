@@ -176,6 +176,13 @@ Customers only see artwork through their own link (`/c/<token>/art/…`).
 - **Items** are priced per size from your pricing as a batch (base), with
   overrides and item, store or group markups. An item whose design has
   artwork placed gets its mockup as its picture (unless you upload one).
+- **Names and numbers:** on a store item (Names & numbers), offer a name
+  and/or number, optional or required, with a length limit, a price added
+  per piece and where it's printed. Shoppers enter one per cart line; the
+  order keeps them as the item's roster (with what each added) and the work
+  order lists them by size. Staff can type a roster on any quote/order item
+  (Names & numbers: `L, Smith, 12` per piece); it can't name more pieces
+  than are ordered (`src/lib/store/personalization.ts`).
 - **Publish to a store** (on a quote or order, for store managers) puts its
   items in a new store for the customer or an existing one. Each item
   sells every size its color comes in, priced at the quantity ordered (or a

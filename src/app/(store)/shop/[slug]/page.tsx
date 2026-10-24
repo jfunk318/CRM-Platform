@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getRequestStore } from "@/lib/store/resolve";
 import { itemPrice } from "@/lib/store/settings";
+import { offersPersonalization } from "@/lib/store/personalization";
 import { ActionForm } from "@/components/admin/action-form";
 import { itemImage, money, priceRange, shopItemsInclude } from "@/components/store/items";
 import { addToCartAction } from "../../actions";
@@ -28,6 +29,7 @@ export default async function ItemPage({ params }: { params: Promise<{ slug: str
   const img = itemImage(item);
   const showPrices = rs.settings.showPrices;
   const product = item.design.product;
+  const personal = offersPersonalization(item);
   // Structured data for search engines.
   const jsonLd = {
     "@context": "https://schema.org",
@@ -63,6 +65,49 @@ export default async function ItemPage({ params }: { params: Promise<{ slug: str
             {item.design.decorations.map((d) => <li key={d.id}>{d.location}</li>)}
           </ul>
         )}
+        {personal ? (
+          // Personalized: one name/number at a time, so each gets its own cart line.
+          <ActionForm action={addToCartAction} submitLabel="Add to cart" resetOnSuccess className="space-y-4 rounded-lg border border-gray-200 p-4">
+            <input type="hidden" name="itemId" value={item.id} />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium" htmlFor="buy-size">Size</label>
+                <select className="input" id="buy-size" name="size" required defaultValue="">
+                  <option value="" disabled>Choose a size</option>
+                  {item.prices.map((p) => (
+                    <option key={p.id} value={p.sizeId}>
+                      {p.size.code}{showPrices ? ` · ${money(itemPrice(p, item, rs.store))}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium" htmlFor="buy-qty">Quantity</label>
+                <input className="input" id="buy-qty" name="qty" inputMode="numeric" defaultValue="1" required />
+              </div>
+              {item.nameMode !== "OFF" && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium" htmlFor="buy-name">
+                    Name{item.nameMode === "OPTIONAL" && <span className="font-normal text-gray-500"> (optional)</span>}
+                    {showPrices && !item.namePrice.isZero() && <span className="font-normal text-gray-500"> +{money(item.namePrice)}</span>}
+                  </label>
+                  <input className="input" id="buy-name" name="personalName" maxLength={item.nameMaxLength} required={item.nameMode === "REQUIRED"} autoComplete="off" />
+                  <p className="mt-1 text-xs text-gray-500">Up to {item.nameMaxLength} letters, printed as typed.</p>
+                </div>
+              )}
+              {item.numberMode !== "OFF" && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium" htmlFor="buy-number">
+                    Number{item.numberMode === "OPTIONAL" && <span className="font-normal text-gray-500"> (optional)</span>}
+                    {showPrices && !item.numberPrice.isZero() && <span className="font-normal text-gray-500"> +{money(item.numberPrice)}</span>}
+                  </label>
+                  <input className="input" id="buy-number" name="personalNumber" inputMode="numeric" maxLength={item.numberMaxDigits} pattern="[0-9]*" required={item.numberMode === "REQUIRED"} autoComplete="off" />
+                </div>
+              )}
+            </div>
+            {item.personalizationLocation && <p className="text-xs text-gray-500">Printed on the {item.personalizationLocation.toLowerCase()}.</p>}
+          </ActionForm>
+        ) : (
         <ActionForm action={addToCartAction} submitLabel="Add to cart" className="space-y-4 rounded-lg border border-gray-200 p-4">
           <input type="hidden" name="itemId" value={item.id} />
           <fieldset>
@@ -78,6 +123,7 @@ export default async function ItemPage({ params }: { params: Promise<{ slug: str
             </div>
           </fieldset>
         </ActionForm>
+        )}
         <Link href="/cart" className="inline-block text-sm text-[var(--accent)] hover:underline">View cart →</Link>
         {product.sizeChartImageUrl && /^https:\/\//.test(product.sizeChartImageUrl) && (
           <details className="text-sm">

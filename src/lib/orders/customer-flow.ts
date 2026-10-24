@@ -91,6 +91,7 @@ export async function orderByToken(db: BusinessTx, token: string) {
         orderBy: { sortOrder: "asc" },
         include: {
           sizes: { include: { size: true }, orderBy: { size: { sortOrder: "asc" } } },
+          names: { include: { size: true }, orderBy: { sortOrder: "asc" } },
           design: { include: { product: true, color: true, decorations: { orderBy: { sortOrder: "asc" }, include: { method: true } } } },
         },
       },

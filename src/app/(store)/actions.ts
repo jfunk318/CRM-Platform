@@ -45,6 +45,13 @@ function quantities(form: FormData): Record<string, number> {
     if (!Number.isInteger(n) || n < 0) throw new FormError("Quantities must be whole numbers");
     if (n > 0) out[k.slice(4)] = n;
   }
+  // Personalized items send one size and quantity.
+  const size = form.get("size");
+  if (size) {
+    const n = Number(String(form.get("qty") ?? "1").trim());
+    if (!Number.isInteger(n) || n < 1) throw new FormError("Quantity must be a whole number, 1 or more");
+    out[String(size)] = n;
+  }
   return out;
 }
 
@@ -68,7 +75,7 @@ export async function addToCartAction(_: ActionResult, form: FormData): Promise<
   const rs = await store();
   return run(async () => {
     const q = quantities(form);
-    await addToCart(rs, str(form, "itemId"), q);
+    await addToCart(rs, str(form, "itemId"), q, { name: form.get("personalName")?.toString(), number: form.get("personalNumber")?.toString() });
     revalidatePath("/", "layout");
     const n = Object.values(q).reduce((a, b) => a + b, 0);
     return `Added ${n} to your cart`;

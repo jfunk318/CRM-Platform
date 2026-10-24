@@ -6,6 +6,7 @@ import type { BusinessDb, BusinessTx } from "@/lib/db";
 import { OrderError } from "@/lib/orders/service";
 import { type LineItemPrice, priceOrder } from "@/lib/pricing";
 import { loadTaxRates } from "@/lib/pricing/load";
+import { checkPersonalization, offersPersonalization, PersonalizationError, personalizationLabel } from "./personalization";
 import { itemPrice, offeredMethods } from "./settings";
 import type { RequestStore } from "./resolve";
 
@@ -83,8 +84,8 @@ export async function ensureCart(rs: RequestStore): Promise<CartWithItems> {
 
 export const findCartById = (db: BusinessDb, id: string) => db.cart.findUnique({ where: { id }, include: cartInclude });
 
-/** Add pieces of an item; quantities per size. */
-export async function addToCart(rs: RequestStore, storeItemId: string, quantities: Record<string, number>) {
+/** Add pieces of an item; quantities per size, with the name/number to print if the item offers them. */
+export async function addToCart(rs: RequestStore, storeItemId: string, quantities: Record<string, number>, personal: { name?: string | null; number?: string | null } = {}) {
   const item = await rs.db.storeItem.findFirst({ where: { id: storeItemId, storeId: rs.store.id, published: true }, include: { prices: true } });
   if (!item) throw new OrderError("That item isn't available");
   const wanted = Object.entries(quantities).filter(([, q]) => q > 0);
@@ -93,12 +94,22 @@ export async function addToCart(rs: RequestStore, storeItemId: string, quantitie
     if (!item.prices.some((p) => p.sizeId === sizeId)) throw new OrderError("That size isn't available");
     if (!Number.isInteger(q) || q > 999) throw new OrderError("Quantities must be whole numbers under 1,000");
   }
+  let name = "";
+  let number = "";
+  if (offersPersonalization(item)) {
+    try {
+      ({ name, number } = checkPersonalization(item, personal));
+    } catch (e) {
+      if (e instanceof PersonalizationError) throw new OrderError(e.message);
+      throw e;
+    }
+  }
   const cart = await ensureCart(rs);
   if (cart.status !== "OPEN") await rs.db.cart.update({ where: { id: cart.id }, data: { status: "OPEN", checkoutSessionId: null, amountDue: null } });
   for (const [sizeId, qty] of wanted) {
     await rs.db.cartItem.upsert({
-      where: { cartId_storeItemId_sizeId: { cartId: cart.id, storeItemId, sizeId } },
-      create: { businessId: rs.business.id, cartId: cart.id, storeItemId, sizeId, qty },
+      where: { cartId_storeItemId_sizeId_name_number: { cartId: cart.id, storeItemId, sizeId, name, number } },
+      create: { businessId: rs.business.id, cartId: cart.id, storeItemId, sizeId, qty, name, number },
       update: { qty: { increment: qty } },
     });
   }
@@ -125,6 +136,12 @@ export type CartLine = {
   imageFileId: string | null;
   slug: string;
   qty: number;
+  /** Name and number to print ("" = none) and what they add to each piece. */
+  personalName: string;
+  personalNumber: string;
+  charge: Prisma.Decimal;
+  /** The item's price for the size, before `charge`. */
+  basePrice: Prisma.Decimal;
   unitPrice: Prisma.Decimal;
   total: Prisma.Decimal;
   available: boolean;
@@ -142,17 +159,24 @@ export async function cartTotals(db: BusinessDb | BusinessTx, rs: { business: Bu
   const sizes = await db.productSize.findMany({ where: { id: { in: cart.items.map((i) => i.sizeId) } } });
   const lines: CartLine[] = cart.items.map((i) => {
     const price = i.storeItem.prices.find((p) => p.sizeId === i.sizeId);
-    const unit = price ? itemPrice(price, i.storeItem, store) : ZERO;
+    const base = price ? itemPrice(price, i.storeItem, store) : ZERO;
+    // Priced from the item's current options (they may have changed since it was added).
+    const charge = (i.name && i.storeItem.nameMode !== "OFF" ? i.storeItem.namePrice : ZERO).plus(i.number && i.storeItem.numberMode !== "OFF" ? i.storeItem.numberPrice : ZERO);
+    const unit = base.plus(charge);
     const available = !!price && i.storeItem.published;
     return {
       id: i.id,
       storeItemId: i.storeItemId,
       sizeId: i.sizeId,
       name: i.storeItem.name,
-      detail: `${i.storeItem.design.color.name} · ${sizes.find((s) => s.id === i.sizeId)?.code ?? "?"}`,
+      detail: [i.storeItem.design.color.name, sizes.find((s) => s.id === i.sizeId)?.code ?? "?", personalizationLabel(i)].filter(Boolean).join(" · "),
       imageFileId: i.storeItem.imageFileId,
       slug: i.storeItem.slug,
       qty: i.qty,
+      personalName: i.name,
+      personalNumber: i.number,
+      charge,
+      basePrice: base,
       unitPrice: unit,
       total: available ? unit.times(i.qty) : ZERO,
       available,

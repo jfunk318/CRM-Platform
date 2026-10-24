@@ -4,7 +4,7 @@ import { effectiveMarkup, itemPrice } from "@/lib/store/settings";
 import { ActionForm } from "@/components/admin/action-form";
 import { FilePicker } from "@/components/file-picker";
 import { loadAdminStore } from "@/lib/store/admin";
-import { deleteItemAction, repriceItemAction, saveItemAction, saveItemPricesAction, uploadItemImageAction, mockupPictureAction } from "../../../actions";
+import { deleteItemAction, repriceItemAction, saveItemAction, saveItemPricesAction, uploadItemImageAction, mockupPictureAction, savePersonalizationAction } from "../../../actions";
 import { orderRef } from "@/lib/orders/numbers";
 
 const money = (v: { toFixed(n: number): string }) => `$${v.toFixed(2)}`;
@@ -88,6 +88,38 @@ export default async function ItemPage({ params }: { params: Promise<{ id: strin
           </ActionForm>
         </section>
 
+        <section className="card space-y-3" data-testid="item-personalization">
+          <h2 className="font-semibold">Names &amp; numbers</h2>
+          <p className="text-sm text-gray-600">Let shoppers have a name and/or number printed on each piece. They show on the order&apos;s roster and the work order.</p>
+          <ActionForm action={savePersonalizationAction} submitLabel="Save" className="space-y-3">
+            <input type="hidden" name="id" value={item.id} />
+            <div className="grid gap-3 sm:grid-cols-3">
+              <PersonalField label="Name" mode="nameMode" value={item.nameMode} />
+              <div>
+                <label className="label" htmlFor="nameMaxLength">Up to (letters)</label>
+                <input className="input" id="nameMaxLength" name="nameMaxLength" defaultValue={item.nameMaxLength} inputMode="numeric" />
+              </div>
+              <div>
+                <label className="label" htmlFor="namePrice">Adds ($ per piece)</label>
+                <input className="input" id="namePrice" name="namePrice" defaultValue={item.namePrice.toFixed(2)} inputMode="decimal" />
+              </div>
+              <PersonalField label="Number" mode="numberMode" value={item.numberMode} />
+              <div>
+                <label className="label" htmlFor="numberMaxDigits">Up to (digits)</label>
+                <input className="input" id="numberMaxDigits" name="numberMaxDigits" defaultValue={item.numberMaxDigits} inputMode="numeric" />
+              </div>
+              <div>
+                <label className="label" htmlFor="numberPrice">Adds ($ per piece)</label>
+                <input className="input" id="numberPrice" name="numberPrice" defaultValue={item.numberPrice.toFixed(2)} inputMode="decimal" />
+              </div>
+            </div>
+            <div className="max-w-xs">
+              <label className="label" htmlFor="personalizationLocation">Printed on</label>
+              <input className="input" id="personalizationLocation" name="personalizationLocation" defaultValue={item.personalizationLocation ?? ""} placeholder="Back" />
+            </div>
+          </ActionForm>
+        </section>
+
         <div className="space-y-6">
           <section className="card space-y-3" data-testid="item-prices">
             <h2 className="font-semibold">Prices</h2>
@@ -149,6 +181,19 @@ export default async function ItemPage({ params }: { params: Promise<{ id: strin
           </ActionForm>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PersonalField({ label, mode, value }: { label: string; mode: string; value: string }) {
+  return (
+    <div>
+      <label className="label" htmlFor={mode}>{label}</label>
+      <select className="input" id={mode} name={mode} defaultValue={value}>
+        <option value="OFF">Not offered</option>
+        <option value="OPTIONAL">Optional</option>
+        <option value="REQUIRED">Required</option>
+      </select>
     </div>
   );
 }

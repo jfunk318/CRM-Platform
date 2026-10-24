@@ -233,7 +233,19 @@ async function buildOrder(db: BusinessDb, business: Business, cartId: string, pa
           fixedPrice: true,
           notes: item.name,
           sortOrder: sortOrder++,
-          sizes: { create: ls.map((l) => ({ sizeId: l.sizeId, qty: l.qty, unitPrice: l.unitPrice.toFixed(2), total: l.total.toFixed(2) })) },
+          // One row per size at the item's price; names and numbers (and what they added) go on the roster.
+          sizes: {
+            create: [...new Set(ls.map((l) => l.sizeId))].map((sizeId) => {
+              const same = ls.filter((l) => l.sizeId === sizeId);
+              const qty = same.reduce((n, l) => n + l.qty, 0);
+              return { sizeId, qty, unitPrice: same[0].basePrice.toFixed(2), total: same[0].basePrice.times(qty).toFixed(2) };
+            }),
+          },
+          names: {
+            create: ls
+              .filter((l) => l.personalName || l.personalNumber)
+              .map((l, i) => ({ sizeId: l.sizeId, name: l.personalName, number: l.personalNumber, qty: l.qty, charge: l.charge.toFixed(2), sortOrder: i })),
+          },
         },
       });
     }

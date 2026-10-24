@@ -85,6 +85,8 @@ export function parseLine(form: FormData): LineSpec {
     quantities,
     decorations,
     notes: optionalText(form, "notes"),
+    // Only forms with a roster box change the roster.
+    roster: form.has("roster") ? String(form.get("roster")) : undefined,
   };
 }
 

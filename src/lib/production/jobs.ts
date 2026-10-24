@@ -10,6 +10,7 @@ export const jobLinesInclude = {
     orderBy: { sortOrder: "asc" },
     include: {
       sizes: { include: { size: true }, orderBy: { size: { sortOrder: "asc" } } },
+      names: { include: { size: true }, orderBy: { sortOrder: "asc" } },
       design: { include: { product: true, color: true, decorations: { orderBy: { sortOrder: "asc" } } } },
     },
   },
