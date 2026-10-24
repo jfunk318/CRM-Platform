@@ -72,7 +72,12 @@ async function loadVariants(db: BusinessDb | BusinessTx, productIds: string[], e
 /** Open orders (or the given ones, even if closed) and the blanks each still needs. */
 export async function blankNeeds(db: BusinessDb | BusinessTx, orderIds?: string[], { includeClosed = false } = {}) {
   const orders = await db.order.findMany({
-    where: { type: "ORDER", ...(includeClosed ? {} : { status: { isClosed: false } }), ...(orderIds ? { id: { in: orderIds } } : {}) },
+    where: {
+      type: "ORDER",
+      ...(includeClosed ? {} : { status: { isClosed: false } }),
+      // Store orders held for (or already in) a batch get their blanks through the batch order.
+      ...(orderIds ? { id: { in: orderIds } } : { heldForBatch: false, batchId: null }),
+    },
     include: needsOrderInclude,
     orderBy: [{ rush: "desc" }, { dueDate: { sort: "asc", nulls: "last" } }, { number: "asc" }],
   });

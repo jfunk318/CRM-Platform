@@ -14,6 +14,7 @@ import { isImage } from "@/lib/files/types";
 import { OrderError } from "@/lib/orders/service";
 import { normalizeCode } from "@/lib/store/cart";
 import { createStoreItem, refreshMockupPicture, repriceStoreItem } from "@/lib/store/items";
+import { batchStoreOrders } from "@/lib/store/batches";
 import { checkStoreSlug, createAffiliateStore, StoreError } from "@/lib/store/stores";
 import { ACCOUNT_MODE_LABELS } from "@/lib/store/settings";
 
@@ -102,6 +103,7 @@ export async function saveStoreAction(_: ActionResult, form: FormData): Promise<
     // Closes at the end of that day.
     const closesAt = closesRaw ? new Date(dateOrNull(closesRaw, "Closing date")!.getTime() + 86_399_000) : null;
     if (opensAt && closesAt && closesAt < opensAt) throw new FormError("The store can't close before it opens");
+    if (checkbox(form, "batchOrders") && !optionalText(form, "customerId")) throw new FormError("Batching makes one order for the store's customer; choose the customer");
     const methodIds = form.getAll("deliveryMethodIds").map(String);
     const custom = checkbox(form, "customDeliveryMethods");
     if (custom && methodIds.length === 0) throw new FormError("Choose at least one delivery method, or offer them all");
@@ -123,6 +125,7 @@ export async function saveStoreAction(_: ActionResult, form: FormData): Promise<
                 closesAt,
                 active: checkbox(form, "active"),
                 showcase: checkbox(form, "showcase"),
+                batchOrders: checkbox(form, "batchOrders"),
               }
             : {}),
           managerId: optionalText(form, "managerId"),
@@ -319,6 +322,18 @@ export async function deletePageAction(_: ActionResult, form: FormData): Promise
   });
   if (r.error) return r;
   redirect(`/admin/stores/${storeId}/pages`);
+}
+
+export async function batchNowAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const staff = await requireStaff(["STORE_MANAGER"]);
+  let orderId = "";
+  const r = await run(async () => {
+    const store = await storeOf(staff.db, form);
+    orderId = (await batchStoreOrders(staff.db, store.id, staff.id)).orderId;
+    refresh();
+  });
+  if (r.error) return r;
+  redirect(`/admin/orders/${orderId}`);
 }
 
 // ─── Items ──────────────────────────────────────────────────────────────

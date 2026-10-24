@@ -127,9 +127,10 @@ phases 1–3 need real product data.
   `[[stores]]` showcase blocks, global promo and gift codes limited to all or
   chosen stores, publishing a quote/order to a new or existing store
   (update or overwrite), mockups as store item pictures, name/number
-  personalization (store items and staff rosters). Still to do: the
-  store owner portal with requests and live request flags, commissions, batching orders at store close,
-  visit counts, drag-and-drop showcase editor.
+  personalization (store items and staff rosters), batching orders into one
+  production order at store close. Still to do: the store owner portal with
+  requests and live request flags, commissions, visit counts, drag-and-drop
+  showcase editor.
 - **Supplier catalog file import (done):** SanMar's product data download
   (SanMar_SDL_N) imports from Suppliers, choosing brands, categories,
   discontinued styles and which price is the cost; it runs in the background,

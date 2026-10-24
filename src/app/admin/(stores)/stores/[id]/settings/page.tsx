@@ -75,6 +75,13 @@ export default async function StoreSettingsPage({ params }: { params: Promise<{ 
                 <div className="space-y-1 text-sm sm:col-span-2">
                   <label className="flex items-center gap-2"><input type="checkbox" name="active" defaultChecked={store.active} /> Store is on (untick to close it now)</label>
                   <label className="flex items-center gap-2"><input type="checkbox" name="showcase" defaultChecked={store.showcase} /> Show in store showcases</label>
+                  <label className="flex items-start gap-2">
+                    <input type="checkbox" name="batchOrders" defaultChecked={store.batchOrders} className="mt-1" />
+                    <span>
+                      Batch orders: hold them until the store closes, then make one production order for the store&apos;s customer
+                      <span className="block text-xs text-gray-500">Same designs are combined, sizes added up and names kept on the roster. You can also batch from the store&apos;s Overview at any time.</span>
+                    </span>
+                  </label>
                 </div>
               </>
             )}

@@ -132,6 +132,7 @@ model Business {
   storePages             StorePage[]
   storeItems             StoreItem[]
   storeItemPrices        StoreItemPrice[]
+  storeBatches           StoreBatch[]
   carts                  Cart[]
   cartItems              CartItem[]
   promoCodes             PromoCode[]
@@ -203,6 +204,7 @@ model StaffUser {
   purchaseOrders PurchaseOrder[]
   stockMovements StockMovement[]
   shipments      Shipment[]
+  storeBatches   StoreBatch[]
 
   @@unique([businessId, id])
   @@unique([businessId, email])
@@ -917,6 +919,12 @@ model Order {
   storeId          String?
   store            Store?            @relation(fields: [businessId, storeId], references: [businessId, id], onDelete: NoAction)
   placedAt         DateTime? // when a shopper placed it online
+  // Store orders waiting for the store's batch (made at close), and the batch they went into.
+  heldForBatch     Boolean           @default(false)
+  batchId          String?
+  batch            StoreBatch?       @relation("BatchedOrders", fields: [businessId, batchId], references: [businessId, id], onDelete: NoAction)
+  // The batch this order produces (orders made from a store's batch).
+  producesBatch    StoreBatch?       @relation("BatchProductionOrder")
   // Promo code discount, taken off before tax.
   discount         Decimal           @default(0) @db.Decimal(10, 2)
   promoCodeId      String?
@@ -951,6 +959,7 @@ model Order {
   @@index([businessId, statusId])
   @@index([businessId, assignedToId])
   @@index([businessId, customerId])
+  @@index([storeId, heldForBatch])
 }
 
 model OrderLine {
@@ -1494,6 +1503,7 @@ enum OrderSource {
   STAFF
   STOREFRONT
   QUOTE_REQUEST
+  STORE_BATCH // a store's orders combined for production
 }
 
 enum AccountMode {
@@ -1544,6 +1554,9 @@ model Store {
   group                 StoreGroup?           @relation(fields: [businessId, groupId], references: [businessId, id], onDelete: NoAction)
   opensAt               DateTime?
   closesAt              DateTime?
+  // Hold orders until the store closes, then produce them as one batch order.
+  batchOrders           Boolean               @default(false)
+  batches               StoreBatch[]
   // Listed in store showcases (owners can opt out later).
   showcase              Boolean               @default(true)
   promoCodes            PromoCodeStore[]
@@ -1569,6 +1582,26 @@ model Store {
 
   @@unique([businessId, id])
   @@unique([businessId, slug])
+}
+
+// A store's orders combined into one production order (at close, or when staff batch them).
+model StoreBatch {
+  id          String     @id @default(cuid())
+  businessId  String
+  business    Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  storeId     String
+  store       Store      @relation(fields: [businessId, storeId], references: [businessId, id], onDelete: Cascade)
+  number      Int // 1, 2… per store
+  orderId     String
+  order       Order      @relation("BatchProductionOrder", fields: [businessId, orderId], references: [businessId, id], onDelete: Cascade)
+  orders      Order[]    @relation("BatchedOrders")
+  createdById String?
+  createdBy   StaffUser? @relation(fields: [businessId, createdById], references: [businessId, id], onDelete: NoAction)
+  createdAt   DateTime   @default(now())
+
+  @@unique([businessId, id])
+  @@unique([businessId, orderId])
+  @@unique([storeId, number])
 }
 
 model StoreDeliveryMethod {

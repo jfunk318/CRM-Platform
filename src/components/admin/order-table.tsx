@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Prisma } from "@prisma/client";
+import type { OrderSource, Prisma } from "@prisma/client";
 import { orderRef } from "@/lib/orders/numbers";
 
 export const orderTableInclude = {
@@ -22,11 +22,11 @@ export function StatusBadge({ status }: { status: { name: string; color: string 
 }
 
 /** "Online" for storefront orders, "Web request" for quote requests. */
-export function SourceTag({ source }: { source: "STAFF" | "STOREFRONT" | "QUOTE_REQUEST" }) {
+const SOURCE_TAGS = { STOREFRONT: "Online", QUOTE_REQUEST: "Web request", STORE_BATCH: "Store batch" } as const;
+
+export function SourceTag({ source }: { source: OrderSource }) {
   if (source === "STAFF") return null;
-  return (
-    <span className="ml-1.5 rounded bg-sky-50 px-1.5 py-0.5 text-[11px] font-medium text-sky-800">{source === "STOREFRONT" ? "Online" : "Web request"}</span>
-  );
+  return <span className="ml-1.5 rounded bg-sky-50 px-1.5 py-0.5 text-[11px] font-medium text-sky-800">{SOURCE_TAGS[source]}</span>;
 }
 
 const date = (d: Date | null) => (d ? d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }) : "");

@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { loadAdminStore } from "@/lib/store/admin";
 import { OrderTable, orderTableInclude } from "@/components/admin/order-table";
+import { ActionForm } from "@/components/admin/action-form";
+import { orderRef } from "@/lib/orders/numbers";
+import { heldOrdersWhere } from "@/lib/store/batches";
+import { batchNowAction } from "../actions";
 
 const money = (v: { toFixed(n: number): string }) => `$${v.toFixed(2)}`;
 const day = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
@@ -8,8 +12,13 @@ const day = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "n
 /** One store at a glance: sales, setup and its latest orders. */
 export default async function StoreOverview({ params }: { params: Promise<{ id: string }> }) {
   const { db, store, url } = await loadAdminStore((await params).id);
+  const [held, batches] = await Promise.all([
+    db.order.findMany({ where: heldOrdersWhere(store.id), select: { id: true, lines: { select: { sizes: { select: { qty: true } } } } } }),
+    db.storeBatch.findMany({ where: { storeId: store.id }, orderBy: { number: "desc" }, include: { order: { include: { status: true } }, _count: { select: { orders: true } } } }),
+  ]);
+  const heldPieces = held.reduce((n, o) => n + o.lines.reduce((m, l) => m + l.sizes.reduce((a, s) => a + s.qty, 0), 0), 0);
   const [sales, items, published, pages, orders] = await Promise.all([
-    db.order.aggregate({ where: { storeId: store.id, type: "ORDER" }, _sum: { total: true }, _count: true, _max: { placedAt: true } }),
+    db.order.aggregate({ where: { storeId: store.id, type: "ORDER", source: { not: "STORE_BATCH" } }, _sum: { total: true }, _count: true, _max: { placedAt: true } }),
     db.storeItem.count({ where: { storeId: store.id } }),
     db.storeItem.count({ where: { storeId: store.id, published: true } }),
     db.storePage.count({ where: { storeId: store.id } }),
@@ -57,6 +66,39 @@ export default async function StoreOverview({ params }: { params: Promise<{ id: 
           {store.kind === "ROOT" ? "Shows the other stores" : store.showcase ? "Included" : <span className="text-gray-500">Left out</span>}
         </div>
       </section>
+      {(store.batchOrders || held.length > 0 || batches.length > 0) && (
+        <section className="card space-y-3" data-testid="store-batches">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-semibold">Batches</h2>
+              <p className="text-sm text-gray-600">
+                {held.length > 0
+                  ? `${held.length} order${held.length === 1 ? "" : "s"} (${heldPieces} pieces) waiting for the batch${store.closesAt && store.batchOrders ? `; it's made when the store closes on ${day(store.closesAt)}` : ""}.`
+                  : "No orders waiting."}
+              </p>
+            </div>
+            {held.length > 0 && (
+              <ActionForm action={batchNowAction} submitLabel="Batch now" confirm={`Combine ${held.length} order${held.length === 1 ? "" : "s"} into one production order now?`} className="flex">
+                <input type="hidden" name="storeId" value={store.id} />
+              </ActionForm>
+            )}
+          </div>
+          {batches.length > 0 && (
+            <ul className="divide-y divide-gray-100 text-sm">
+              {batches.map((b) => (
+                <li key={b.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
+                  <span>
+                    Batch {b.number} · {day(b.createdAt)} · {b._count.orders} order{b._count.orders === 1 ? "" : "s"}
+                  </span>
+                  <Link href={`/admin/orders/${b.orderId}`} className="text-amber-700 hover:underline">
+                    Order {orderRef(b.order)} · {b.order.status.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
       <section className="space-y-2">
         <h2 className="font-semibold">Latest orders</h2>
         <OrderTable orders={orders} empty="No orders from this store yet." />

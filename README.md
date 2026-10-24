@@ -183,6 +183,15 @@ Customers only see artwork through their own link (`/c/<token>/art/…`).
   order lists them by size. Staff can type a roster on any quote/order item
   (Names & numbers: `L, Smith, 12` per piece); it can't name more pieces
   than are ordered (`src/lib/store/personalization.ts`).
+- **Batching** (store Settings → Batch orders): orders placed while the
+  store is open are held (no production jobs, no blanks to buy). When the
+  store closes, or when you press **Batch now** on its Overview, they're
+  combined into one production order for the store's customer: the same
+  designs merged, sizes added up, every name and number on its roster, no
+  prices (the shoppers paid on their own orders). That order gets the
+  production jobs and buys the blanks; the shoppers' orders move to In
+  production and link to it. A held order can be produced on its own with
+  "Produce now instead" (`src/lib/store/batches.ts`).
 - **Publish to a store** (on a quote or order, for store managers) puts its
   items in a new store for the customer or an existing one. Each item
   sells every size its color comes in, priced at the quantity ordered (or a
@@ -248,6 +257,10 @@ toddler), since SanMar's own size index isn't reliable.
 - Run behind a proxy that sets `X-Forwarded-Host` and `X-Forwarded-Proto`
   (customer links in emails are built from them).
 - Set `APP_SECRET` before saving any Stripe keys.
+- Set `CRON_SECRET` and have a scheduler call `POST /api/cron/store-batches`
+  hourly with `Authorization: Bearer $CRON_SECRET`; it batches stores that
+  have closed (e.g. `curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET"
+  https://PLATFORM_DOMAIN/api/cron/store-batches`).
 - `STORAGE_DIR` must be on persistent disk, and backed up, until file storage
   moves to S3/R2. Allow 55 MB request bodies at the proxy for uploads.
 

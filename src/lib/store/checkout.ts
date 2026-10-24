@@ -197,6 +197,8 @@ async function buildOrder(db: BusinessDb, business: Business, cartId: string, pa
         source: "STOREFRONT",
         storeId: cart.storeId,
         placedAt: new Date(),
+        // Batching stores hold orders until they close.
+        heldForBatch: cart.store.batchOrders,
         customerId: customer.id,
         companyId: customer.companyId,
         statusId: status.id,
@@ -268,9 +270,11 @@ async function buildOrder(db: BusinessDb, business: Business, cartId: string, pa
 
   await repriceOrder(db, order.id);
   const placed = await db.order.findUniqueOrThrow({ where: { id: order.id }, include: { customer: true, lines: { include: { sizes: { include: { size: true } } } } } });
-  await createProductionJobs(db, order.id, null).catch((e) => {
-    if (!(e instanceof OrderError)) throw e;
-  });
+  if (!placed.heldForBatch) {
+    await createProductionJobs(db, order.id, null).catch((e) => {
+      if (!(e instanceof OrderError)) throw e;
+    });
+  }
   await sendOrderEmails(db, business, cart.store, placed, totals.lines.map((l) => `${l.qty} × ${l.name} (${l.detail})`), totals.method?.name ?? null, origin);
   return placed;
 }

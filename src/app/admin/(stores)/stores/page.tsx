@@ -37,7 +37,7 @@ export default async function StoresDashboard({ searchParams }: { searchParams: 
     db.store.findMany({ where, include: { group: true, manager: { select: { name: true } }, customer: true, _count: { select: { items: { where: { published: true } } } } }, orderBy: { createdAt: "desc" } }),
     db.storeGroup.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
     db.staffUser.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    db.order.groupBy({ by: ["storeId"], where: { type: "ORDER", storeId: { not: null } }, _sum: { total: true }, _count: true }),
+    db.order.groupBy({ by: ["storeId"], where: { type: "ORDER", storeId: { not: null }, source: { not: "STORE_BATCH" } }, _sum: { total: true }, _count: true }),
     db.store.findFirst({ where: { kind: "ROOT" } }),
     db.customer.count(),
   ]);

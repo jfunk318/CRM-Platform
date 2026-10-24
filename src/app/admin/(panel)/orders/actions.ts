@@ -17,6 +17,7 @@ import {
   addNote,
   assign,
   convertQuote,
+  logEvent,
   OrderError,
   removeLine,
   setStatus,
@@ -24,6 +25,7 @@ import {
   updateLine,
 } from "@/lib/orders/service";
 import { publishToStore } from "@/lib/store/publish";
+import { createProductionJobs } from "@/lib/production/jobs";
 import { createAffiliateStore, StoreError } from "@/lib/store/stores";
 
 const refresh = (orderId: string) => revalidatePath(`/admin/orders/${orderId}`);
@@ -149,6 +151,21 @@ export async function convertQuoteAction(_: ActionResult, form: FormData): Promi
   });
   if (result.error) return result;
   redirect(`/admin/orders/${orderId}`);
+}
+
+/** Take a store order out of its store's batch and start its production now. */
+export async function releaseFromBatchAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const staff = await requireStaff(["PRODUCTION", "STORE_MANAGER"]);
+  const { db } = staff;
+  return run(async () => {
+    const order = await db.order.findUniqueOrThrow({ where: { id: text(form, "orderId") } });
+    if (!order.heldForBatch) throw new FormError("This order isn't waiting for a batch");
+    await db.order.update({ where: { id: order.id }, data: { heldForBatch: false } });
+    await logEvent(db, db.$businessId, order.id, "PRODUCTION", "Taken out of the store's batch to be produced now", staff.id);
+    await createProductionJobs(db, order.id, staff.id);
+    refresh(order.id);
+    return "Production jobs created";
+  });
 }
 
 /** Publish the quote's/order's items to a new store (for its customer) or an existing one. */

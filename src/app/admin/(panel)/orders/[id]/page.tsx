@@ -27,6 +27,7 @@ import {
   assignAction,
   convertQuoteAction,
   publishToStoreAction,
+  releaseFromBatchAction,
   removeLineAction,
   saveDetailsAction,
   setStatusAction,
@@ -70,6 +71,8 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       ...fulfillmentInclude,
       store: true,
       promoCode: true,
+      batch: { include: { order: true } },
+      producesBatch: { include: { orders: { orderBy: { number: "asc" }, select: { id: true, type: true, number: true } } } },
     },
   });
   if (!order) notFound();
@@ -103,7 +106,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
     name: `${order.customer.firstName} ${order.customer.lastName}`.trim(),
   };
   // Publishing the items to a store (store managers; not for orders placed in a store).
-  const canPublish = hasAnyRole(staff.roles, ["STORE_MANAGER"]) && order.lines.length > 0 && order.source !== "STOREFRONT";
+  const canPublish = hasAnyRole(staff.roles, ["STORE_MANAGER"]) && order.lines.length > 0 && order.source !== "STOREFRONT" && order.source !== "STORE_BATCH";
   const [publishStores, published] = canPublish
     ? await Promise.all([
         db.store.findMany({ where: { active: true }, orderBy: [{ kind: "asc" }, { name: "asc" }], select: { id: true, name: true, kind: true, _count: { select: { items: true } } } }),
@@ -148,6 +151,37 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             <p className="text-sm text-gray-500">
               Placed online{order.store ? ` at ${order.store.name}` : ""} on {when(order.placedAt)}
               {!order.discount.isZero() && <> · promo {order.promoCode?.code} saved ${order.discount.toFixed(2)}</>}
+            </p>
+          )}
+          {order.heldForBatch && (
+            <div className="mt-2 flex flex-wrap items-center gap-3 rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-900" data-testid="batch-note">
+              <span>
+                Held for {order.store?.name ?? "the store"}&apos;s batch
+                {order.store?.closesAt ? `, made when the store closes on ${order.store.closesAt.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}` : ""}.
+              </span>
+              {hasAnyRole(staff.roles, ["PRODUCTION", "STORE_MANAGER"]) && (
+                <ActionForm action={releaseFromBatchAction} submitLabel="Produce now instead" confirm="Take this order out of the batch and make its production jobs now?" className="flex">
+                  <input type="hidden" name="orderId" value={order.id} />
+                </ActionForm>
+              )}
+            </div>
+          )}
+          {order.batch && (
+            <p className="mt-2 rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-900" data-testid="batch-note">
+              Produced in {order.store?.name} batch {order.batch.number}:{" "}
+              <Link href={`/admin/orders/${order.batch.orderId}`} className="font-medium underline">order {orderRef(order.batch.order)}</Link>
+            </p>
+          )}
+          {order.producesBatch && (
+            <p className="mt-2 rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-900" data-testid="batch-note">
+              {order.store?.name} batch {order.producesBatch.number}, made from{" "}
+              {order.producesBatch.orders.map((o, i) => (
+                <span key={o.id}>
+                  {i > 0 && ", "}
+                  <Link href={`/admin/orders/${o.id}`} className="underline">{orderRef(o)}</Link>
+                </span>
+              ))}
+              . Its items carry no price; the shoppers paid on their own orders.
             </p>
           )}
           {order.title && <p className="text-gray-700">{order.title}</p>}
