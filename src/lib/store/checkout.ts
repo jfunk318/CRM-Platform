@@ -3,6 +3,7 @@ import { Prisma, type Business, type Store } from "@prisma/client";
 import type { BusinessDb } from "@/lib/db";
 import { deliveryNote, isValidEmail, sendEmail } from "@/lib/email/mailer";
 import { orderConfirmationEmail, staffAlertEmail } from "@/lib/email/templates";
+import { backOfficeOrigin } from "@/lib/business";
 import { customerLink } from "@/lib/orders/customer-flow";
 import { nextOrderNumber, orderRef } from "@/lib/orders/numbers";
 import { balances, refreshPaidTotal } from "@/lib/orders/payments";
@@ -309,7 +310,7 @@ async function sendOrderEmails(
   }
   if (isValidEmail(business.email)) {
     const heading = `New online order ${ref} from ${order.customer.firstName} ${order.customer.lastName}`.trim();
-    const content = staffAlertEmail({ brand, heading, lines: [`${store.name}: $${order.total.toFixed(2)}`, ...items], url: `${origin}/admin/orders/${order.id}` });
+    const content = staffAlertEmail({ brand, heading, lines: [`${store.name}: $${order.total.toFixed(2)}`, ...items], url: `${backOfficeOrigin(origin, store.slug)}/admin/orders/${order.id}` });
     await sendEmail(db, { ...content, to: business.email, fromName: business.name, orderId: order.id });
   }
 }

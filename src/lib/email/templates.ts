@@ -185,3 +185,11 @@ export function signInEmail(o: { brand: Brand; url: string; minutes: number }): 
   const button = { label: "Sign in", url: o.url };
   return { subject, text: text(paragraphs, button, o.brand), html: layout(o.brand, "Sign in", paragraphs, button) };
 }
+
+/** Staff answered a store owner's request. */
+export function storeRequestReplyEmail(o: { brand: Brand; storeName: string; subject: string; status: string; reply: string; url: string }): EmailContent {
+  const heading = `Re: ${o.subject}`;
+  const paragraphs = [o.reply, `Status: ${o.status}.`];
+  const button = { label: `Open the ${o.storeName} portal`, url: o.url };
+  return { subject: `${heading} (${o.storeName})`, text: text(paragraphs, button, o.brand), html: layout(o.brand, heading, paragraphs, button) };
+}

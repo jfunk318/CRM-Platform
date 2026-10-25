@@ -13,6 +13,9 @@ import type { RequestStore } from "./resolve";
 // are optional on top of that.
 
 export const SHOPPER_COOKIE = "shopper_session";
+
+/** The owner portal; its sign-in works even in stores without shopper accounts. */
+export const isOwnerPath = (next: string | null | undefined) => next === "/owner" || !!next?.startsWith("/owner?");
 const SESSION_DAYS = 30;
 const LINK_MINUTES = 30;
 const hash = (t: string) => createHash("sha256").update(t).digest("hex");

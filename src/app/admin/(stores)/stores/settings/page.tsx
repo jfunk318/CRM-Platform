@@ -4,7 +4,7 @@ import { decryptSecret, maskSecret } from "@/lib/crypto";
 import { ACCOUNT_MODE_LABELS } from "@/lib/store/settings";
 import { ActionButton } from "@/components/admin/action-button";
 import { ActionForm } from "@/components/admin/action-form";
-import { removePaymentsAction, saveDefaultsAction, savePaymentsAction } from "../actions";
+import { removePaymentsAction, removeSlackAction, saveDefaultsAction, savePaymentsAction, saveSlackAction } from "../actions";
 
 /** What every store inherits, and card payments for all stores. */
 export default async function StoreDefaultsPage() {
@@ -62,6 +62,21 @@ export default async function StoreDefaultsPage() {
         </ActionForm>
         <p className="text-xs text-gray-500">Keys are stored encrypted and never shown again in full.</p>
         {key && <ActionButton action={removePaymentsAction} fields={{}} label="Disconnect Stripe" confirm="Remove the Stripe keys? Card checkout stops working." className="text-xs text-red-700 hover:underline" />}
+      </section>
+
+      <section className="card space-y-3" data-testid="slack">
+        <h2 className="font-semibold">Store requests in Slack</h2>
+        <p className="text-sm text-gray-600">
+          Post store owners&apos; requests to a Slack channel as well as emailing them to you. In Slack, create an app with an Incoming Webhook for the channel and paste its URL.
+          {business.slackWebhookEnc ? " A webhook is saved." : " None saved."}
+        </p>
+        <ActionForm action={saveSlackAction} submitLabel={business.slackWebhookEnc ? "Replace webhook" : "Save webhook"} resetOnSuccess className="flex flex-wrap items-end gap-2">
+          <div className="min-w-72 flex-1">
+            <label className="label" htmlFor="slackWebhook">Webhook URL</label>
+            <input className="input font-mono" id="slackWebhook" name="slackWebhook" autoComplete="off" placeholder="https://hooks.slack.com/services/…" required />
+          </div>
+        </ActionForm>
+        {business.slackWebhookEnc && <ActionButton action={removeSlackAction} fields={{}} label="Stop posting to Slack" className="text-xs text-red-700 hover:underline" />}
       </section>
     </div>
   );

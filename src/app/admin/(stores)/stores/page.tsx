@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import { requireStaff } from "@/lib/auth/session";
 import { storeUrlHere } from "@/lib/business";
+import { newRequestCounts } from "@/lib/store/portal";
 import { storeStatus } from "@/lib/store/settings";
 import { ActionForm } from "@/components/admin/action-form";
 import { createStoreAction } from "./actions";
@@ -41,6 +42,7 @@ export default async function StoresDashboard({ searchParams }: { searchParams: 
     db.store.findFirst({ where: { kind: "ROOT" } }),
     db.customer.count(),
   ]);
+  const requests = await newRequestCounts(db);
   const salesOf = (id: string) => sales.find((s) => s.storeId === id);
   const now = new Date();
   let stores = all.map((s) => ({ ...s, status: storeStatus(s, now), orders: salesOf(s.id)?._count ?? 0, total: salesOf(s.id)?._sum.total ?? null }));
@@ -116,6 +118,11 @@ export default async function StoresDashboard({ searchParams }: { searchParams: 
               <tr key={s.id}>
                 <td>
                   <Link href={`/admin/stores/${s.id}`} className="font-medium text-amber-700 hover:underline">{s.name}</Link>
+                  {requests.get(s.id) && (
+                    <Link href={`/admin/stores/${s.id}/requests`} className="ml-1.5 rounded-full bg-red-600 px-1.5 py-0.5 text-[11px] font-semibold text-white" data-testid="store-request-flag">
+                      {requests.get(s.id)} new request{requests.get(s.id) === 1 ? "" : "s"}
+                    </Link>
+                  )}
                   {s.group && <span className="ml-1.5 rounded-full border border-gray-200 px-1.5 text-[11px] text-gray-600">{s.group.name}</span>}
                   <div className="text-xs text-gray-500">
                     <a href={urls.get(s.id)} target="_blank" className="font-mono hover:underline">{urls.get(s.id)!.replace(/^https?:\/\//, "")}</a>

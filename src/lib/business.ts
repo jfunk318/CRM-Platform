@@ -91,6 +91,9 @@ export async function storeUrlHere(storeSlug: string | null): Promise<string> {
   return `${proto}://${storeSlug}.${rest}`;
 }
 
+/** The back office's base URL from a store's address (the back office never opens on a store subdomain). */
+export const backOfficeOrigin = (origin: string, storeSlug: string | null) => (storeSlug ? origin.replace(`://${storeSlug}.`, "://") : origin);
+
 /**
  * Base URL of the address this request came in on, for links in emails
  * (e.g. https://companyname.com or http://companyname.localhost:3000).

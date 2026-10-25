@@ -128,8 +128,9 @@ phases 1–3 need real product data.
   chosen stores, publishing a quote/order to a new or existing store
   (update or overwrite), mockups as store item pictures, name/number
   personalization (store items and staff rosters), batching orders into one
-  production order at store close, commissions with payouts. Still to do:
-  the store owner portal with requests and live request flags, visit counts,
+  production order at store close, commissions with payouts, the store
+  owner portal (sections, contacts, code usage, commission, requests with
+  live flags, draft quotes and Slack). Still to do: visit counts and the
   drag-and-drop showcase editor.
 - **Supplier catalog file import (done):** SanMar's product data download
   (SanMar_SDL_N) imports from Suppliers, choosing brands, categories,

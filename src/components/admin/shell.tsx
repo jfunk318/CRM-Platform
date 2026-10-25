@@ -4,8 +4,10 @@ import { hasAnyRole } from "@/lib/auth/roles";
 import type { StaffContext } from "@/lib/auth/session";
 import { PLATFORM_NAME } from "@/lib/platform";
 import { logout } from "@/app/admin/(auth)/login/actions";
+import { LiveRequestBadge } from "./live-request-badge";
 
-export type NavItem = { href: string; label: string; roles: StaffRole[] };
+/** `requests`: shows the live count of new store requests next to the item. */
+export type NavItem = { href: string; label: string; roles: StaffRole[]; requests?: boolean };
 export type AdminArea = "business" | "stores";
 
 /** Who can switch to the affiliate stores side of the back office. */
@@ -16,8 +18,10 @@ export const canManageStores = (roles: StaffRole[]) => hasAnyRole(roles, ["STORE
  * affiliate stores area (for store managers and admins), and the left menu
  * for whichever area is open.
  */
-export function AdminShell({ staff, area, nav, children }: { staff: StaffContext; area: AdminArea; nav: NavItem[]; children: React.ReactNode }) {
+export async function AdminShell({ staff, area, nav, children }: { staff: StaffContext; area: AdminArea; nav: NavItem[]; children: React.ReactNode }) {
   const switcher = canManageStores(staff.roles);
+  // New store owners' requests, flagged (and kept current) for store managers.
+  const newRequests = switcher ? await staff.db.storeRequest.count({ where: { status: "NEW" } }) : 0;
   return (
     <div className="min-h-screen bg-gray-50 md:flex">
       <aside className="border-b border-gray-200 bg-white md:min-h-screen md:w-56 md:border-r md:border-b-0">
@@ -31,6 +35,7 @@ export function AdminShell({ staff, area, nav, children }: { staff: StaffContext
             </Link>
             <Link href="/admin/stores" className={`rounded px-2 py-1.5 ${area === "stores" ? "bg-white shadow-sm" : "text-gray-600 hover:text-gray-900"}`}>
               Affiliate stores
+              {area === "business" && <LiveRequestBadge initial={newRequests} />}
             </Link>
           </div>
         )}
@@ -38,6 +43,7 @@ export function AdminShell({ staff, area, nav, children }: { staff: StaffContext
           {nav.filter((n) => hasAnyRole(staff.roles, n.roles)).map((n) => (
             <Link key={n.href} href={n.href} className="rounded px-2 py-1.5 text-sm text-gray-700 hover:bg-amber-50">
               {n.label}
+              {n.requests && switcher && <LiveRequestBadge initial={newRequests} />}
             </Link>
           ))}
         </nav>

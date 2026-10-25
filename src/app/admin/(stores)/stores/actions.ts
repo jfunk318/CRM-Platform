@@ -1,7 +1,7 @@
 "use server";
 
 import { randomBytes } from "node:crypto";
-import type { AccountMode, CommissionKind, MarkupKind, PersonalizationMode, PromoKind } from "@prisma/client";
+import type { AccountMode, CommissionKind, MarkupKind, PersonalizationMode, PromoKind, StoreRequestStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireStaff } from "@/lib/auth/session";
@@ -15,6 +15,9 @@ import { OrderError } from "@/lib/orders/service";
 import { normalizeCode } from "@/lib/store/cart";
 import { createStoreItem, refreshMockupPicture, repriceStoreItem } from "@/lib/store/items";
 import { batchStoreOrders } from "@/lib/store/batches";
+import { isPortalSection, quoteFromRequest, updateStoreRequest } from "@/lib/store/portal";
+import { isValidEmail } from "@/lib/email/mailer";
+import { storeUrlHere } from "@/lib/business";
 import { checkStoreSlug, createAffiliateStore, StoreError } from "@/lib/store/stores";
 import { ACCOUNT_MODE_LABELS } from "@/lib/store/settings";
 
@@ -261,6 +264,26 @@ export async function removePaymentsAction(): Promise<ActionResult> {
   });
 }
 
+export async function saveSlackAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["ADMIN"]);
+  return run(async () => {
+    const url = text(form, "slackWebhook", "Webhook URL");
+    if (!/^https:\/\/hooks\.slack\.com\/services\/[A-Za-z0-9/_-]+$/.test(url)) throw new FormError("Slack webhook URLs start with https://hooks.slack.com/services/");
+    await db.business.update({ where: { id: db.$businessId }, data: { slackWebhookEnc: encryptSecret(url) } });
+    revalidatePath("/admin/stores/settings");
+    return "Saved";
+  });
+}
+
+export async function removeSlackAction(): Promise<ActionResult> {
+  const { db } = await requireStaff(["ADMIN"]);
+  return run(async () => {
+    await db.business.update({ where: { id: db.$businessId }, data: { slackWebhookEnc: null } });
+    revalidatePath("/admin/stores/settings");
+    return "Slack removed";
+  });
+}
+
 // ─── Pages ──────────────────────────────────────────────────────────────
 
 export async function createPageAction(_: ActionResult, form: FormData): Promise<ActionResult> {
@@ -371,6 +394,69 @@ export async function removePayoutAction(_: ActionResult, form: FormData): Promi
     await db.commissionPayout.delete({ where: { id: text(form, "id") } });
     refresh();
   });
+}
+
+// ─── Owner portal ───────────────────────────────────────────────────────
+
+export async function savePortalAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  return run(async () => {
+    const store = await storeOf(db, form);
+    const sections = form.getAll("sections").map(String).filter(isPortalSection);
+    await db.store.update({ where: { id: store.id }, data: { portalSections: sections, requestQuotes: checkbox(form, "requestQuotes") } });
+    refresh();
+  });
+}
+
+export async function addContactAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  return run(async () => {
+    const store = await storeOf(db, form);
+    const email = text(form, "email", "Email").toLowerCase();
+    if (!isValidEmail(email)) throw new FormError("Enter a valid email address");
+    // The contact signs in with this email, so reuse the customer who has it.
+    const customer =
+      (await db.customer.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, orderBy: { createdAt: "asc" } })) ??
+      (await db.customer.create({ data: { businessId: db.$businessId, firstName: text(form, "firstName", "First name"), lastName: optionalText(form, "lastName") ?? "", email, companyId: store.customerId ? (await db.customer.findUnique({ where: { id: store.customerId } }))?.companyId : null } }));
+    if (customer.id === store.customerId) throw new FormError("That's the store's customer; they can already open the portal");
+    if (await db.storeContact.findUnique({ where: { storeId_customerId: { storeId: store.id, customerId: customer.id } } })) throw new FormError(`${email} is already a contact`);
+    await db.storeContact.create({ data: { businessId: db.$businessId, storeId: store.id, customerId: customer.id, title: optionalText(form, "title"), canManage: checkbox(form, "canManage") } });
+    refresh();
+    return "Contact added";
+  });
+}
+
+export async function removeContactAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  return run(async () => {
+    await db.storeContact.delete({ where: { id: text(form, "id") } });
+    refresh();
+  });
+}
+
+const REQUEST_STATUSES: StoreRequestStatus[] = ["NEW", "IN_PROGRESS", "DONE", "DECLINED"];
+
+export async function updateRequestAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  return run(async () => {
+    const status = String(form.get("status") ?? "") as StoreRequestStatus;
+    if (!REQUEST_STATUSES.includes(status)) throw new FormError("Choose a status");
+    const request = await db.storeRequest.findUniqueOrThrow({ where: { id: text(form, "id") }, include: { store: true } });
+    const emailed = await updateStoreRequest(db, request.id, { status, reply: optionalText(form, "reply") }, await storeUrlHere(request.store.slug));
+    refresh();
+    return emailed ? "Saved and emailed to the owner" : "Saved";
+  });
+}
+
+export async function requestQuoteAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const staff = await requireStaff(["STORE_MANAGER"]);
+  let quoteId = "";
+  const r = await run(async () => {
+    quoteId = await quoteFromRequest(staff.db, text(form, "id"), staff.id);
+    refresh();
+  });
+  if (r.error) return r;
+  redirect(`/admin/orders/${quoteId}`);
 }
 
 // ─── Items ──────────────────────────────────────────────────────────────

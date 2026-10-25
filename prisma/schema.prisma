@@ -69,6 +69,8 @@ model Business {
   // stored encrypted (APP_SECRET).
   stripeSecretKeyEnc     String?
   stripeWebhookSecretEnc String?
+  // Slack incoming webhook for store owners' requests (encrypted).
+  slackWebhookEnc        String?
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
 
@@ -141,6 +143,8 @@ model Business {
   giftCodeUses           GiftCodeUse[]
   customerSessions       CustomerSession[]
   customerTokens         CustomerToken[]
+  storeContacts          StoreContact[]
+  storeRequests          StoreRequest[]
 }
 
 // People who run the platform itself (not staff of a business).
@@ -732,6 +736,8 @@ model Customer {
   externalId      String?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
+  storeContacts   StoreContact[]
+  storeRequests   StoreRequest[]
 
   @@unique([businessId, id])
   @@unique([businessId, externalSource, externalId])
@@ -954,11 +960,11 @@ model Order {
   externalId       String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
+  fromRequests     StoreRequest[]    @relation("RequestQuote")
 
   @@unique([businessId, id])
   @@unique([businessId, type, number])
   @@unique([businessId, quoteId])
-  @@unique([businessId, invoiceNumber])
   @@unique([businessId, externalSource, externalId])
   @@index([businessId, statusId])
   @@index([businessId, assignedToId])
@@ -1570,6 +1576,13 @@ model Store {
   commissionKind        CommissionKind?
   commissionValue       Decimal?              @db.Decimal(10, 2)
   commissionPayouts     CommissionPayout[]
+  // The owner portal (/owner on the store's address): which sections owners see,
+  // the people who can sign in to it besides the store's customer, and their requests.
+  portalSections        String[]              @default(["sales", "orders", "codes", "commission", "requests"])
+  contacts              StoreContact[]
+  requests              StoreRequest[]
+  // Make a draft quote for each new request.
+  requestQuotes         Boolean               @default(false)
   // Listed in store showcases (owners can opt out later).
   showcase              Boolean               @default(true)
   promoCodes            PromoCodeStore[]
@@ -1632,6 +1645,53 @@ model CommissionPayout {
   createdAt   DateTime   @default(now())
 
   @@index([storeId])
+}
+
+// Someone at the store's organization (coach, booster president…) who can
+// sign in to the owner portal with their shopper account.
+model StoreContact {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  storeId    String
+  store      Store    @relation(fields: [businessId, storeId], references: [businessId, id], onDelete: Cascade)
+  customerId String
+  customer   Customer @relation(fields: [businessId, customerId], references: [businessId, id], onDelete: Cascade)
+  title      String? // "Head coach"
+  canManage  Boolean  @default(true) // can open the owner portal
+  createdAt  DateTime @default(now())
+
+  @@unique([storeId, customerId])
+}
+
+enum StoreRequestStatus {
+  NEW
+  IN_PROGRESS
+  DONE
+  DECLINED
+}
+
+// A store owner asking for something (new items, a reorder, a change).
+model StoreRequest {
+  id         String             @id @default(cuid())
+  businessId String
+  business   Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  storeId    String
+  store      Store              @relation(fields: [businessId, storeId], references: [businessId, id], onDelete: Cascade)
+  customerId String
+  customer   Customer           @relation(fields: [businessId, customerId], references: [businessId, id], onDelete: NoAction)
+  subject    String
+  body       String
+  status     StoreRequestStatus @default(NEW)
+  seenAt     DateTime? // when staff first opened it (unseen ones are flagged)
+  reply      String? // staff's answer, shown in the portal
+  quoteId    String?
+  quote      Order?             @relation("RequestQuote", fields: [businessId, quoteId], references: [businessId, id], onDelete: NoAction)
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@index([businessId, seenAt])
+  @@index([storeId, createdAt])
 }
 
 model StoreDeliveryMethod {

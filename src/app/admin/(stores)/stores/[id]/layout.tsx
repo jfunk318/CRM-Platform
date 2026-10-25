@@ -6,14 +6,21 @@ const STATE_CLASS = { open: "bg-green-50 text-green-800", scheduled: "bg-blue-50
 /** One store's dashboard: header and tabs. */
 export default async function StoreDashboardLayout({ children, params }: { children: React.ReactNode; params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { store, status, url } = await loadAdminStore(id);
+  const { db, store, status, url } = await loadAdminStore(id);
+  const newRequests = await db.storeRequest.count({ where: { storeId: id, status: "NEW" } });
   const main = store.kind === "ROOT";
   const tabs = [
     { href: `/admin/stores/${id}`, label: "Overview" },
     { href: `/admin/stores/${id}/items`, label: "Items" },
     { href: `/admin/stores/${id}/pages`, label: "Pages" },
     { href: `/admin/stores/${id}/codes`, label: "Codes" },
-    ...(main ? [] : [{ href: `/admin/stores/${id}/commission`, label: "Commission" }]),
+    ...(main
+      ? []
+      : [
+          { href: `/admin/stores/${id}/commission`, label: "Commission" },
+          { href: `/admin/stores/${id}/portal`, label: "Owner portal" },
+          { href: `/admin/stores/${id}/requests`, label: newRequests ? `Requests (${newRequests} new)` : "Requests" },
+        ]),
     { href: `/admin/stores/${id}/settings`, label: "Settings" },
   ];
   return (

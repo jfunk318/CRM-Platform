@@ -10,7 +10,8 @@ import { ensurePublicToken } from "@/lib/orders/customer-flow";
 import { OrderError } from "@/lib/orders/service";
 import { parseDay } from "@/lib/production/defaults";
 import { ACCESS_COOKIE, accessToken } from "@/lib/store/access";
-import { getShopper, passwordSignIn, sendSignInLink, setShopperPassword, signOut, updateShopperProfile } from "@/lib/store/accounts";
+import { portalRole, submitStoreRequest } from "@/lib/store/portal";
+import { getShopper, isOwnerPath, passwordSignIn, sendSignInLink, setShopperPassword, signOut, updateShopperProfile } from "@/lib/store/accounts";
 import { addToCart, currentCart, setCartQty } from "@/lib/store/cart";
 import { applyCode, payLater, placeOrderFromCart, removeCode, saveCheckoutDetails, startCheckout, startOrderPayment } from "@/lib/store/checkout";
 import { createQuoteRequest } from "@/lib/store/quote-request";
@@ -247,7 +248,7 @@ export async function trackOrderAction(_: ActionResult, form: FormData): Promise
 export async function sendLinkAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   const rs = await store();
   return run(async () => {
-    if (rs.settings.accountMode === "GUEST_ONLY") throw new FormError("This store doesn't use accounts");
+    if (rs.settings.accountMode === "GUEST_ONLY" && !isOwnerPath(str(form, "next"))) throw new FormError("This store doesn't use accounts");
     if (await looksLikeSpam(form, "signin", 20)) throw new FormError("Too many tries. Wait a while and try again.");
     const status = await sendSignInLink(rs, str(form, "email"), await requestOrigin(), str(form, "next") || "/account");
     return status === "LOGGED"
@@ -292,5 +293,24 @@ export async function profileAction(_: ActionResult, form: FormData): Promise<Ac
     if (!me) throw new FormError("Please sign in again");
     await updateShopperProfile(rs, me.id, { firstName: str(form, "firstName"), lastName: str(form, "lastName"), phone: optionalText(form, "phone") });
     revalidatePath("/account");
+  });
+}
+
+// ─── Owner portal ───────────────────────────────────────────────────────
+
+export async function ownerSignOutAction() {
+  const rs = await getRequestStore();
+  if (rs) await signOut(rs);
+  redirect("/owner/login");
+}
+
+export async function storeRequestAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const rs = await store();
+  return run(async () => {
+    const me = await getShopper(rs);
+    if (!me || !(await portalRole(rs.db, rs.store, me)) || !rs.store.portalSections.includes("requests")) throw new FormError("Sign in as the store's owner to send requests");
+    await submitStoreRequest(rs.db, rs.store, me, { subject: str(form, "subject"), body: String(form.get("body") ?? "") }, await requestOrigin());
+    revalidatePath("/owner");
+    return "Sent. We'll get back to you here and by email.";
   });
 }

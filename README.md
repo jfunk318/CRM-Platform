@@ -197,6 +197,17 @@ Customers only see artwork through their own link (`/c/<token>/art/…`).
   keeps the commission worked out when it was placed; it's earned once the
   order is paid in full, and cancelled orders don't count. Record payouts
   there to see what's owed (`src/lib/store/commissions.ts`).
+- **Owner portal** (`/owner` on a store's address, e.g.
+  `tigers.companyname.com/owner`): the store's customer and any contacts
+  you add (store → Owner portal) sign in with an emailed link, even while
+  the store is closed or private. They see the sections you turn on
+  (sales, orders with names and numbers, codes and their use, commission,
+  requests) plus the store's contacts. **Requests** they send are emailed to
+  you, posted to Slack if a webhook is saved (Defaults & payments), and
+  flagged live in the back office: a red count next to Affiliate stores /
+  All stores (checked every 30 seconds), on the store's row and its Requests
+  tab. Answer them there (the owner is emailed) or make a draft quote from
+  one; a store can make the quote automatically (`src/lib/store/portal.ts`).
 - **Publish to a store** (on a quote or order, for store managers) puts its
   items in a new store for the customer or an existing one. Each item
   sells every size its color comes in, priced at the quantity ordered (or a
