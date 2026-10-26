@@ -145,6 +145,7 @@ model Business {
   customerTokens         CustomerToken[]
   storeContacts          StoreContact[]
   storeRequests          StoreRequest[]
+  storeVisitDays         StoreVisitDay[]
 }
 
 // People who run the platform itself (not staff of a business).
@@ -1581,6 +1582,7 @@ model Store {
   portalSections        String[]              @default(["sales", "orders", "codes", "commission", "requests"])
   contacts              StoreContact[]
   requests              StoreRequest[]
+  visitDays             StoreVisitDay[]
   // Make a draft quote for each new request.
   requestQuotes         Boolean               @default(false)
   // Listed in store showcases (owners can opt out later).
@@ -1692,6 +1694,21 @@ model StoreRequest {
 
   @@index([businessId, seenAt])
   @@index([storeId, createdAt])
+}
+
+// Visits to a store per day: a visit is a browser session, a view each page shown.
+// Counted by a small script on store pages (so most bots don't count); no
+// cookies or personal data are kept.
+model StoreVisitDay {
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  storeId    String
+  store      Store    @relation(fields: [businessId, storeId], references: [businessId, id], onDelete: Cascade)
+  day        DateTime @db.Date
+  visits     Int      @default(0)
+  views      Int      @default(0)
+
+  @@id([storeId, day])
 }
 
 model StoreDeliveryMethod {

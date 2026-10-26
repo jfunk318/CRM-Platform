@@ -28,9 +28,11 @@ export function priceRange(item: ShopItem, store: Store & { group?: StoreGroup |
   return lo.equals(hi) ? money(lo) : `${money(lo)} – ${money(hi)}`;
 }
 
-export function ItemGrid({ items, store, showPrices }: { items: ShopItem[]; store: Store & { group?: StoreGroup | null }; showPrices: boolean }) {
+const COLS = ["", "md:grid-cols-1", "md:grid-cols-2", "md:grid-cols-3", "md:grid-cols-4", "md:grid-cols-5", "md:grid-cols-6"];
+
+export function ItemGrid({ items, store, showPrices, columns = 4 }: { items: ShopItem[]; store: Store & { group?: StoreGroup | null }; showPrices: boolean; columns?: number }) {
   return (
-    <div className="grid grid-cols-2 gap-5 md:grid-cols-4" data-testid="item-grid">
+    <div className={`grid grid-cols-2 gap-5 ${COLS[columns] ?? COLS[4]}`} data-testid="item-grid">
       {items.map((item) => {
         const img = itemImage(item);
         return (

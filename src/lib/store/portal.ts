@@ -8,6 +8,7 @@ import { staffAlertEmail, storeRequestReplyEmail } from "@/lib/email/templates";
 import { createOrder, logEvent, OrderError } from "@/lib/orders/service";
 import { codeWorksIn } from "./cart";
 import { commissionSummary } from "./commissions";
+import { visitStats } from "./visits";
 
 /** Sections staff can show in a store's owner portal. */
 export const PORTAL_SECTIONS = {
@@ -65,8 +66,9 @@ export async function portalData(db: BusinessDb, store: Store) {
     on("requests") ? db.storeRequest.findMany({ where: { storeId: store.id }, orderBy: { createdAt: "desc" }, include: { customer: { select: { firstName: true, lastName: true } } } }) : null,
     db.storeContact.findMany({ where: { storeId: store.id }, include: { customer: true }, orderBy: { createdAt: "asc" } }),
   ]);
+  const visits = on("sales") ? (await visitStats(db, [store.id])).get(store.id)! : null;
   return {
-    sales: sales && { orders: sales._count, sold: (sales._sum.merchandise ?? new Prisma.Decimal(0)).minus(sales._sum.discount ?? 0), pieces: pieces?._sum.qty ?? 0 },
+    sales: sales && { orders: sales._count, sold: (sales._sum.merchandise ?? new Prisma.Decimal(0)).minus(sales._sum.discount ?? 0), pieces: pieces?._sum.qty ?? 0, visits: visits!.visits },
     orders,
     codes,
     commission,

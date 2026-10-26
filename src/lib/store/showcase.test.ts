@@ -1,19 +1,27 @@
 import { describe, expect, it } from "vitest";
 import { storeStatus } from "./settings";
-import { parseShowcase, splitBlocks } from "./showcase";
+import { DEFAULT_ITEMS, DEFAULT_SHOWCASE, joinBlocks, parseItems, parseShowcase, splitBlocks } from "./showcase";
 
-describe("store showcase blocks", () => {
-  it("splits a page into text and showcase blocks", () => {
-    const blocks = splitBlocks("# Hi\n\nIntro\n\n[[stores]]\n\nMore\n[[stores group=\"High Schools\" sort=sales limit=3 columns=2 status=all]]");
-    expect(blocks.map((b) => b.kind)).toEqual(["markdown", "stores", "markdown", "stores"]);
-    expect(blocks[3]).toEqual({ kind: "stores", options: { group: "High Schools", sort: "sales", limit: 3, columns: 2, includeClosed: true } });
+describe("page blocks", () => {
+  it("splits a page into text, showcase and item blocks", () => {
+    const blocks = splitBlocks('# Hi\n\nIntro\n\n[[stores]]\n\nMore\n[[stores group="High Schools" sort=sales limit=3 columns=2 status=all layout=list filters]]\n[[items featured sort=price]]');
+    expect(blocks.map((b) => b.kind)).toEqual(["markdown", "stores", "markdown", "stores", "items"]);
+    expect(blocks[3]).toEqual({ kind: "stores", options: { group: "High Schools", sort: "sales", limit: 3, columns: 2, includeClosed: true, layout: "list", filters: true } });
+    expect(blocks[4]).toEqual({ kind: "items", options: { ...DEFAULT_ITEMS, sort: "price", featuredOnly: true } });
   });
   it("uses safe defaults for missing or odd options", () => {
-    expect(parseShowcase("")).toEqual({ group: null, sort: "newest", limit: 12, columns: 4, includeClosed: false });
-    expect(parseShowcase(" sort=random limit=500 columns=0")).toMatchObject({ sort: "newest", limit: 48, columns: 1 });
+    expect(parseShowcase("")).toEqual(DEFAULT_SHOWCASE);
+    expect(parseShowcase(" sort=random limit=500 columns=0 layout=carousel")).toMatchObject({ sort: "newest", limit: 48, columns: 1, layout: "grid" });
+    expect(parseItems("limit=x")).toEqual(DEFAULT_ITEMS);
   });
-  it("only treats a whole line as a showcase", () => {
+  it("only treats a whole line as a widget", () => {
     expect(splitBlocks("See [[stores]] here").map((b) => b.kind)).toEqual(["markdown"]);
+  });
+  it("writes blocks back as page text that reads the same", () => {
+    const body = '# Welcome\n\nPick your team.\n\n[[stores group="Teams" sort=closing limit=6 layout=list filters]]\n\n[[items sort=name featured]]\n\nThanks!';
+    expect(joinBlocks(splitBlocks(body))).toBe(body);
+    expect(joinBlocks([{ kind: "stores", options: { ...DEFAULT_SHOWCASE, group: 'Odd "name"]' } }])).toBe('[[stores group="Odd name"]]');
+    expect(splitBlocks(joinBlocks([{ kind: "stores", options: DEFAULT_SHOWCASE }]))).toEqual([{ kind: "stores", options: DEFAULT_SHOWCASE }]);
   });
 });
 

@@ -170,9 +170,21 @@ Customers only see artwork through their own link (`/c/<token>/art/…`).
   business defaults → group → store.
 - **The main site** (the business's own address) is managed the same way
   under Affiliate stores → Main site. It sells the business's own items,
-  offers the blank catalog and quote requests, and shows the stores: put a
-  line like `[[stores]]` or `[[stores group="Schools" sort=sales limit=6
-  columns=3]]` on any page.
+  offers the blank catalog and quote requests, and shows the stores.
+- **Page builder:** every store page (main site and affiliate stores) is
+  edited as blocks: Text, Store showcase (which group, order including
+  "closing soon", how many, cards or a list, columns, closed stores, and a
+  search box and group buttons for shoppers) and Items (the store's own
+  items: featured first, newest, name or lowest price). Drag blocks (or use
+  the arrows) to reorder them. Blocks are saved as the page's text, so "Edit
+  as text" shows Markdown with lines like `[[stores group="Schools"
+  sort=closing layout=list filters]]` and `[[items featured]]`
+  (`src/lib/store/showcase.ts`).
+- **Visits:** store pages count visits (one per browser session) and page
+  views per day, with no cookies or personal data and most bots left out.
+  The stores list shows 30-day visits; a store's Overview adds a daily
+  chart and the share of visits that ordered; owners see visits in the
+  portal (`src/lib/store/visits.ts`).
 - **Items** are priced per size from your pricing as a batch (base), with
   overrides and item, store or group markups. An item whose design has
   artwork placed gets its mockup as its picture (unless you upload one).

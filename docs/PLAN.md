@@ -44,7 +44,7 @@ orders come before the public storefront.
 5. ✅ **Storefront engine + checkout.** One storefront engine for the root
    storefront and every affiliate store, CMS pages, catalog browsing, cart,
    Stripe checkout, shopper accounts or guest checkout, promo and gift codes.
-6. **Affiliate stores.** Stores dashboard (consolidated columns, live
+6. ✅ **Affiliate stores.** Stores dashboard (consolidated columns, live
    request flags, grouping, views, bulk actions) and per-store dashboards;
    create stores manually or **publish a quote/order to a new or existing
    store (update or overwrite)**; staff mockup tool for store item images;
@@ -116,9 +116,9 @@ phases 1–3 need real product data.
   payments and create production jobs. Deferred: store groups and affiliate
   subdomains (phase 6), name/number personalization (phase 6), ShipStation
   rates (phase 8), the customer designer (phase 9).
-- **Phase 6 (in progress):** the storefront built in phase 5 became the
+- **Phase 6 (done):** the storefront built in phase 5 became the
   first affiliate store (Affiliate Store 1 at store1.<domain>) and every
-  business got a fresh main site. Done so far: store subdomains (platform
+  business got a fresh main site. Built: store subdomains (platform
   and custom domains), a role-based back-office switcher (Store manager
   role), the stores dashboard (search, group/status/manager filters, newest /
   highest sales / closing soon views), per-store dashboards (overview,
@@ -130,8 +130,10 @@ phases 1–3 need real product data.
   personalization (store items and staff rosters), batching orders into one
   production order at store close, commissions with payouts, the store
   owner portal (sections, contacts, code usage, commission, requests with
-  live flags, draft quotes and Slack). Still to do: visit counts and the
-  drag-and-drop showcase editor.
+  live flags, draft quotes and Slack), visit counts, and a drag-and-drop
+  page builder with store showcase (filters, sorting, layouts) and item
+  blocks. Deferred: a scheduler for the store-batch cron endpoint is the
+  host's job (see Production notes in the README).
 - **Supplier catalog file import (done):** SanMar's product data download
   (SanMar_SDL_N) imports from Suppliers, choosing brands, categories,
   discontinued styles and which price is the cost; it runs in the background,

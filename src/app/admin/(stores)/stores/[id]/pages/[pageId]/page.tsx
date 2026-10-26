@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/admin/action-form";
 import { PageBody } from "@/components/store/showcase";
+import { PageBuilder } from "@/components/admin/page-builder";
 import { loadAdminStore } from "@/lib/store/admin";
 import { deletePageAction, savePageAction } from "../../../actions";
 
@@ -11,6 +12,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
   const page = await db.storePage.findUnique({ where: { id: pageId, storeId: id } });
   if (!page) notFound();
   const home = page.slug === "home";
+  const groups = await db.storeGroup.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }], select: { name: true } });
   const parents = await db.storePage.findMany({ where: { storeId: page.storeId, parentId: null, id: { not: page.id }, slug: { not: "home" } }, orderBy: { title: "asc" } });
   return (
     <div className="space-y-5">
@@ -29,15 +31,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
                 <input className="input font-mono" id="slug" name="slug" defaultValue={home ? "/" : page.slug} disabled={home} required />
               </div>
             </div>
-            <div>
-              <label className="label" htmlFor="body">Content</label>
-              <textarea className="input min-h-96 font-mono text-sm" id="body" name="body" defaultValue={page.body} />
-              <p className="mt-1 text-xs text-gray-500">
-                Markdown: <code># Heading</code>, <code>**bold**</code>, <code>*italic*</code>, <code>- list</code>, <code>[link](/catalog)</code>, <code>![picture](https://…)</code>, <code>&gt; quote</code>, <code>---</code>.
-                <br />
-                Store showcase: a line with <code>[[stores]]</code>, optionally <code>[[stores group=&quot;Schools&quot; sort=sales limit=6 columns=3]]</code> (sort: newest, oldest, sales, name; add <code>status=all</code> to include closed stores).
-              </p>
-            </div>
+            <PageBuilder initial={page.body} groups={groups.map((g) => g.name)} />
             {!home && (
               <div className="grid gap-3 sm:grid-cols-3">
                 <div>

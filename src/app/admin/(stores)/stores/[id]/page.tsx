@@ -4,6 +4,8 @@ import { OrderTable, orderTableInclude } from "@/components/admin/order-table";
 import { ActionForm } from "@/components/admin/action-form";
 import { orderRef } from "@/lib/orders/numbers";
 import { heldOrdersWhere } from "@/lib/store/batches";
+import { conversion, visitStats } from "@/lib/store/visits";
+import { VisitBars } from "@/components/admin/visit-bars";
 import { batchNowAction } from "../actions";
 
 const money = (v: { toFixed(n: number): string }) => `$${v.toFixed(2)}`;
@@ -17,6 +19,9 @@ export default async function StoreOverview({ params }: { params: Promise<{ id: 
     db.storeBatch.findMany({ where: { storeId: store.id }, orderBy: { number: "desc" }, include: { order: { include: { status: true } }, _count: { select: { orders: true } } } }),
   ]);
   const heldPieces = held.reduce((n, o) => n + o.lines.reduce((m, l) => m + l.sizes.reduce((a, s) => a + s.qty, 0), 0), 0);
+  const visits = (await visitStats(db, [store.id])).get(store.id)!;
+  // Orders since visits were first counted in the period, so the two compare.
+  const recentOrders = visits.since ? await db.order.count({ where: { storeId: store.id, type: "ORDER", source: "STOREFRONT", placedAt: { gte: visits.since } } }) : 0;
   const [sales, items, published, pages, orders] = await Promise.all([
     db.order.aggregate({ where: { storeId: store.id, type: "ORDER", source: { not: "STORE_BATCH" } }, _sum: { total: true }, _count: true, _max: { placedAt: true } }),
     db.storeItem.count({ where: { storeId: store.id } }),
@@ -32,6 +37,17 @@ export default async function StoreOverview({ params }: { params: Promise<{ id: 
         <Stat label="Items on sale" value={`${published} of ${items}`} href={`/admin/stores/${store.id}/items`} />
         <Stat label="Last order" value={sales._max.placedAt ? day(sales._max.placedAt) : "—"} />
       </div>
+      <section className="card flex flex-wrap items-end gap-6" data-testid="store-visits">
+        <div>
+          <div className="text-2xl font-semibold">{visits.visits}</div>
+          <div className="text-sm text-gray-500">Visits, last 30 days ({visits.views} pages viewed)</div>
+        </div>
+        <div>
+          <div className="text-2xl font-semibold">{conversion(recentOrders, visits.visits)}</div>
+          <div className="text-sm text-gray-500">Visits that ordered ({recentOrders} order{recentOrders === 1 ? "" : "s"})</div>
+        </div>
+        <VisitBars daily={visits.daily} className="min-w-48 flex-1" />
+      </section>
       <section className="card grid gap-3 text-sm sm:grid-cols-3">
         <div>
           <div className="label">Address</div>

@@ -4,6 +4,7 @@ import { hasStoreAccess } from "@/lib/store/access";
 import { currentCart } from "@/lib/store/cart";
 import { ActionForm } from "@/components/admin/action-form";
 import { Analytics } from "@/components/store/analytics";
+import { VisitBeacon } from "@/components/store/visit-beacon";
 import { StoreFooter, StoreHeader } from "@/components/store/chrome";
 import { enterAccessCode } from "./actions";
 
@@ -59,6 +60,7 @@ export default async function StoreLayout({ children }: { children: React.ReactN
       </main>
       <StoreFooter business={business} store={store} pages={top} />
       <Analytics ga4Id={store.ga4Id} metaPixelId={store.metaPixelId} />
+      <VisitBeacon />
     </div>
   );
 }

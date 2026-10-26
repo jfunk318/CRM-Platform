@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { requireStaff } from "@/lib/auth/session";
 import { storeUrlHere } from "@/lib/business";
 import { newRequestCounts } from "@/lib/store/portal";
+import { visitStats } from "@/lib/store/visits";
 import { storeStatus } from "@/lib/store/settings";
 import { ActionForm } from "@/components/admin/action-form";
 import { createStoreAction } from "./actions";
@@ -43,6 +44,7 @@ export default async function StoresDashboard({ searchParams }: { searchParams: 
     db.customer.count(),
   ]);
   const requests = await newRequestCounts(db);
+  const visits = await visitStats(db, all.map((s) => s.id));
   const salesOf = (id: string) => sales.find((s) => s.storeId === id);
   const now = new Date();
   let stores = all.map((s) => ({ ...s, status: storeStatus(s, now), orders: salesOf(s.id)?._count ?? 0, total: salesOf(s.id)?._sum.total ?? null }));
@@ -104,6 +106,7 @@ export default async function StoresDashboard({ searchParams }: { searchParams: 
               <th>Status</th>
               <th className="text-right">Orders</th>
               <th className="text-right">Sales</th>
+              <th className="text-right" title="Visits in the last 30 days">Visits (30d)</th>
               <th>Manager</th>
               <th></th>
             </tr>
@@ -111,7 +114,7 @@ export default async function StoresDashboard({ searchParams }: { searchParams: 
           <tbody>
             {stores.length === 0 && (
               <tr>
-                <td colSpan={6} className="text-gray-500">{all.length === 0 && !q ? "No affiliate stores yet. Create the first one below." : "No stores match."}</td>
+                <td colSpan={7} className="text-gray-500">{all.length === 0 && !q ? "No affiliate stores yet. Create the first one below." : "No stores match."}</td>
               </tr>
             )}
             {stores.map((s) => (
@@ -132,6 +135,7 @@ export default async function StoresDashboard({ searchParams }: { searchParams: 
                 <td><span className={`rounded-full px-2 py-0.5 text-xs whitespace-nowrap ${STATE_CLASS[s.status.state]}`}>{s.status.label}</span></td>
                 <td className="text-right">{s.orders}</td>
                 <td className="text-right">{s.total ? money(s.total) : "—"}</td>
+                <td className="text-right">{visits.get(s.id)?.visits ?? 0}</td>
                 <td>{s.manager?.name ?? <span className="text-gray-400">—</span>}</td>
                 <td><Link href={`/admin/stores/${s.id}`} className="btn-secondary px-2 py-1 text-xs">Manage</Link></td>
               </tr>

@@ -64,10 +64,11 @@ export default async function OwnerPortal({ searchParams }: { searchParams: Prom
       </nav>
 
       {tab === "sales" && data.sales && (
-        <div className="grid gap-4 sm:grid-cols-3" data-testid="owner-sales">
+        <div className="grid gap-4 sm:grid-cols-4" data-testid="owner-sales">
           <Stat label="Orders" value={String(data.sales.orders)} />
           <Stat label="Pieces sold" value={String(data.sales.pieces)} />
           <Stat label="Sales (after discounts)" value={money(data.sales.sold)} />
+          <Stat label="Visits, last 30 days" value={String(data.sales.visits)} />
         </div>
       )}
 
