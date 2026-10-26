@@ -51,6 +51,29 @@ Every business table has a `businessId`, and:
 
 `src/lib/isolation.db.test.ts` checks all three.
 
+## Leads
+
+Business → Leads (Sales role) holds people who might buy but haven't yet.
+
+- **Add a lead** with their name, organization, title, email, phone, source
+  (suggestions like Phone, Referral, Trade show, or anything typed), what
+  they're after, an estimated value and an owner. Someone already on file
+  with the same email or phone (a customer or an open lead) is flagged
+  before they're added twice.
+- **Statuses:** New → Contacted → Qualified → Converted, or Lost (with a
+  reason). Logging a call, email or meeting on a new lead moves it to
+  Contacted. Every contact, note, status and owner change is on the lead's
+  timeline.
+- **The list** shows open leads by default (or one status, or all), filtered
+  by owner (mine, nobody's, anyone's) and searchable, with the open leads'
+  total estimated value.
+- **Convert** makes the customer (or matches the one with the same email),
+  makes or matches their organization as a company, and can start a draft
+  quote. The customer page links back to the lead.
+- **Website quote requests** from people who have never ordered also become
+  New leads (source "Website quote request"), linked to their customer and
+  quote (`src/lib/crm/leads.ts`).
+
 ## Customer links, proofs and payments
 
 - **Quotes:** "Email quote" on a quote sends the customer a private link

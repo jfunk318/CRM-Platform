@@ -19,6 +19,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
         company: { include: { pricingGroup: true } },
         addresses: { orderBy: { isDefault: "desc" } },
         orders: { orderBy: { createdAt: "desc" }, include: orderTableInclude },
+        leads: { orderBy: { createdAt: "desc" }, select: { id: true, source: true, status: true } },
       },
     }),
     db.company.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
@@ -41,6 +42,11 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
               {customer.company.name}
             </Link>
           )}
+          {customer.leads.map((l) => (
+            <Link key={l.id} href={`/admin/leads/${l.id}`} className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700 hover:bg-amber-50" data-testid="customer-lead">
+              {l.status === "CONVERTED" ? "From a lead" : "Open lead"}{l.source ? ` · ${l.source}` : ""}
+            </Link>
+          ))}
         </div>
         <div className="flex gap-2">
           <ActionForm action={startOrder} submitLabel="New quote" className="flex">

@@ -1,6 +1,7 @@
 import "server-only";
 import { isValidEmail, sendEmail } from "@/lib/email/mailer";
 import { staffAlertEmail } from "@/lib/email/templates";
+import { createLead } from "@/lib/crm/leads";
 import { addOrderFiles } from "@/lib/files/order-files";
 import { nextOrderNumber, orderRef } from "@/lib/orders/numbers";
 import { addLine, logEvent, OrderError } from "@/lib/orders/service";
@@ -31,9 +32,10 @@ export async function createQuoteRequest(rs: RequestStore, r: QuoteRequest) {
   if (!firstName) throw new OrderError("Enter your name");
   if (!r.details.trim() && !r.product) throw new OrderError("Tell us what you'd like");
 
-  const customer =
-    (await db.customer.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, orderBy: { updatedAt: "desc" } })) ??
-    (await db.customer.create({ data: { businessId: business.id, firstName: firstName.slice(0, 80), lastName: rest.join(" ").slice(0, 80), email, phone: r.phone } }));
+  const existing = await db.customer.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, orderBy: { updatedAt: "desc" }, include: { _count: { select: { orders: { where: { type: "ORDER" } } } } } });
+  const customer = existing ?? (await db.customer.create({ data: { businessId: business.id, firstName: firstName.slice(0, 80), lastName: rest.join(" ").slice(0, 80), email, phone: r.phone } }));
+  // Someone who has never ordered is a new prospect: they're also a lead.
+  const newcomer = !existing || existing._count.orders === 0;
   const status = await db.orderStatus.findFirst({ where: { type: "QUOTE", isDefault: true } });
   if (!status) throw new OrderError("Quotes aren't set up yet. Please email us instead.");
   const productName = r.product ? (await db.product.findUnique({ where: { id: r.product.productId } }))?.name : null;
@@ -66,6 +68,25 @@ export async function createQuoteRequest(rs: RequestStore, r: QuoteRequest) {
     }
   }
   if (r.files.length) await addOrderFiles(db, quote.id, r.files, "CUSTOMER", null);
+  if (newcomer) {
+    await createLead(
+      db,
+      {
+        firstName: customer.firstName,
+        lastName: customer.lastName,
+        organization: r.organization,
+        title: null,
+        email,
+        phone: r.phone,
+        source: "Website quote request",
+        interest: [productName, r.details.trim()].filter(Boolean).join("\n") || null,
+        estimatedValue: null,
+        ownerId: null,
+      },
+      null,
+      { customerId: customer.id, quoteId: quote.id },
+    );
+  }
 
   if (isValidEmail(business.email)) {
     const content = staffAlertEmail({

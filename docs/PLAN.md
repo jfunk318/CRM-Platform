@@ -142,6 +142,11 @@ phases 1–3 need real product data.
   store items, price check) and a paged, searchable storefront catalog.
   Still to do: S&S Activewear's file format, and live API connections once
   SanMar/S&S credentials are available (phase 8).
+- **Phase 7 (in progress):** leads (contact and opportunity details,
+  sources, owners, statuses with lost reasons, a contact timeline, duplicate
+  warnings, converting into a customer and company with a draft quote, and
+  website quote requests from newcomers becoming leads). Still to do:
+  follow-up tasks, the pipeline board, Mailchimp sync.
 - **Design studio (done):** artwork placed on quote/order items and store
   items: upload (PNG/JPG/GIF/WebP/SVG), drag and size within the print
   area on the product photo, DPI check against each method, background

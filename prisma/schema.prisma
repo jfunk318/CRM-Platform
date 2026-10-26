@@ -146,6 +146,8 @@ model Business {
   storeContacts          StoreContact[]
   storeRequests          StoreRequest[]
   storeVisitDays         StoreVisitDay[]
+  leads                  Lead[]
+  leadEvents             LeadEvent[]
 }
 
 // People who run the platform itself (not staff of a business).
@@ -211,6 +213,9 @@ model StaffUser {
   stockMovements    StockMovement[]
   shipments         Shipment[]
   storeBatches      StoreBatch[]
+  leadsOwned        Lead[]              @relation("LeadOwner")
+  leadsCreated      Lead[]              @relation("LeadCreator")
+  leadEvents        LeadEvent[]
   commissionPayouts CommissionPayout[]
 
   @@unique([businessId, id])
@@ -739,11 +744,84 @@ model Customer {
   updatedAt       DateTime          @updatedAt
   storeContacts   StoreContact[]
   storeRequests   StoreRequest[]
+  leads           Lead[]
 
   @@unique([businessId, id])
   @@unique([businessId, externalSource, externalId])
   @@index([businessId, email])
   @@index([businessId, lastName, firstName])
+}
+
+// ─── Leads ───────────────────────────────────────────────────────────────
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED // a real opportunity: they need something and can buy
+  CONVERTED // became a customer (and usually a quote)
+  LOST
+}
+
+// Someone who might buy but hasn't yet: a phone call, a trade-show card, a
+// website quote request from a newcomer. Converting makes (or links) the
+// customer and company, and can start a quote.
+model Lead {
+  id             String      @id @default(cuid())
+  businessId     String
+  business       Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  firstName      String
+  lastName       String      @default("")
+  organization   String? // school, team, business…
+  title          String? // "Athletic director"
+  email          String?
+  phone          String?
+  source         String? // "Phone", "Referral", "Website quote request"…
+  interest       String? // what they're after: "Spring soccer uniforms, ~60 pieces"
+  estimatedValue Decimal?    @db.Decimal(10, 2)
+  status         LeadStatus  @default(NEW)
+  lostReason     String?
+  ownerId        String?
+  owner          StaffUser?  @relation("LeadOwner", fields: [businessId, ownerId], references: [businessId, id], onDelete: NoAction)
+  createdById    String?
+  createdBy      StaffUser?  @relation("LeadCreator", fields: [businessId, createdById], references: [businessId, id], onDelete: NoAction)
+  customerId     String?
+  customer       Customer?   @relation(fields: [businessId, customerId], references: [businessId, id], onDelete: NoAction)
+  quoteId        String?
+  quote          Order?      @relation("LeadQuote", fields: [businessId, quoteId], references: [businessId, id], onDelete: NoAction)
+  lastContactAt  DateTime?
+  convertedAt    DateTime?
+  events         LeadEvent[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@unique([businessId, id])
+  @@index([businessId, status])
+  @@index([businessId, email])
+}
+
+enum LeadEventType {
+  CREATED
+  NOTE
+  CALL
+  EMAIL
+  MEETING
+  STATUS // status, owner or details changed
+  CONVERTED
+}
+
+model LeadEvent {
+  id         String        @id @default(cuid())
+  businessId String
+  business   Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  leadId     String
+  lead       Lead          @relation(fields: [businessId, leadId], references: [businessId, id], onDelete: Cascade)
+  type       LeadEventType
+  body       String
+  staffId    String?
+  staff      StaffUser?    @relation(fields: [businessId, staffId], references: [businessId, id], onDelete: NoAction)
+  createdAt  DateTime      @default(now())
+
+  @@index([leadId, createdAt])
 }
 
 model Address {
@@ -962,6 +1040,7 @@ model Order {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   fromRequests     StoreRequest[]    @relation("RequestQuote")
+  fromLeads        Lead[]            @relation("LeadQuote")
 
   @@unique([businessId, id])
   @@unique([businessId, type, number])
