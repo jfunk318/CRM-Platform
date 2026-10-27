@@ -194,3 +194,17 @@ export async function leadSummary(db: BusinessDb) {
   const openValue = OPEN_LEAD_STATUSES.reduce((t, s) => t.plus(by[s]?._sum.estimatedValue ?? 0), new Prisma.Decimal(0));
   return { counts: Object.fromEntries((Object.keys(LEAD_STATUS_LABELS) as LeadStatus[]).map((s) => [s, by[s]?._count ?? 0])) as Record<LeadStatus, number>, openValue };
 }
+
+/** Move a lead on the pipeline board (New, Contacted or Lost with a reason). */
+export async function setLeadStatus(db: BusinessDb, leadId: string, status: "NEW" | "CONTACTED" | "LOST", reason: string | null, staffId: string | null) {
+  const lead = await db.lead.findUniqueOrThrow({ where: { id: leadId } });
+  if (lead.status === "CONVERTED") throw new LeadError("This lead is already a customer");
+  // Contacted covers Qualified on the board, so a qualified lead stays qualified there.
+  const next = status === "CONTACTED" && lead.status === "QUALIFIED" ? "QUALIFIED" : status;
+  if (next === lead.status) return;
+  const lostReason = next === "LOST" ? reason?.trim().slice(0, 300) || null : null;
+  await db.$transaction(async (tx) => {
+    await tx.lead.update({ where: { id: leadId }, data: { status: next, lostReason } });
+    await logLeadEvent(tx, leadId, "STATUS", `Status: ${LEAD_STATUS_LABELS[lead.status]} → ${LEAD_STATUS_LABELS[next]}${lostReason ? ` (${lostReason})` : ""}`, staffId);
+  });
+}

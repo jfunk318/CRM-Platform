@@ -74,6 +74,25 @@ Business → Leads (Sales role) holds people who might buy but haven't yet.
   New leads (source "Website quote request"), linked to their customer and
   quote (`src/lib/crm/leads.ts`).
 
+## Pipeline
+
+Business → Pipeline shows every open opportunity, leads and quotes
+together, in columns: **New lead**, **Contacted** (including qualified),
+**Quoting** (draft quotes), **Quote sent** (sent or changes requested),
+**Won** (approved or converted to an order) and **Lost** (lost leads,
+declined quotes). A lead that has a quote shows as its quote, so nothing
+appears twice; quotes for existing customers are on the board too.
+
+- Each column shows its count and value (estimated value for leads, the
+  quote total for quotes); cards show who, value, owner and how long
+  they've been in that column.
+- The header shows open count and value, and won, lost and the win rate
+  over the last 30 days, 90 days or a year. Show everyone's, mine, or one
+  person's (a lead's owner, a quote's assignee).
+- Drag a lead between New, Contacted and Lost (Lost asks why). Quotes move
+  with their status: send, approve, convert or decline the quote
+  (`src/lib/crm/pipeline.ts`).
+
 ## Tasks
 
 Follow-ups for staff (Business → Tasks): what to do, a due date (with

@@ -17,6 +17,7 @@ const NAV: NavItem[] = [
   { href: "/admin/inventory", label: "Inventory", roles: ["PURCHASING"] },
   { href: "/admin/shipping", label: "Shipping", roles: ["SHIPPING"] },
   { href: "/admin/leads", label: "Leads", roles: ["SALES"] },
+  { href: "/admin/pipeline", label: "Pipeline", roles: ["SALES"] },
   { href: "/admin/customers", label: "Customers", roles: ["SALES"] },
   { href: "/admin/products", label: "Products", roles: ["SALES", "PURCHASING"] },
   { href: "/admin/categories", label: "Categories", roles: ["SALES"] },
