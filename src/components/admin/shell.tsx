@@ -5,9 +5,11 @@ import type { StaffContext } from "@/lib/auth/session";
 import { PLATFORM_NAME } from "@/lib/platform";
 import { logout } from "@/app/admin/(auth)/login/actions";
 import { LiveRequestBadge } from "./live-request-badge";
+import { dueTaskCount } from "@/lib/crm/tasks";
 
 /** `requests`: shows the live count of new store requests next to the item. */
-export type NavItem = { href: string; label: string; roles: StaffRole[]; requests?: boolean };
+/** `tasks`: shows how many of my tasks are due (today or overdue). */
+export type NavItem = { href: string; label: string; roles: StaffRole[]; requests?: boolean; tasks?: boolean };
 export type AdminArea = "business" | "stores";
 
 /** Who can switch to the affiliate stores side of the back office. */
@@ -22,6 +24,7 @@ export async function AdminShell({ staff, area, nav, children }: { staff: StaffC
   const switcher = canManageStores(staff.roles);
   // New store owners' requests, flagged (and kept current) for store managers.
   const newRequests = switcher ? await staff.db.storeRequest.count({ where: { status: "NEW" } }) : 0;
+  const dueTasks = nav.some((n) => n.tasks) ? await dueTaskCount(staff.db, staff.id) : 0;
   return (
     <div className="min-h-screen bg-gray-50 md:flex">
       <aside className="border-b border-gray-200 bg-white md:min-h-screen md:w-56 md:border-r md:border-b-0">
@@ -44,6 +47,11 @@ export async function AdminShell({ staff, area, nav, children }: { staff: StaffC
             <Link key={n.href} href={n.href} className="rounded px-2 py-1.5 text-sm text-gray-700 hover:bg-amber-50">
               {n.label}
               {n.requests && switcher && <LiveRequestBadge initial={newRequests} />}
+              {n.tasks && dueTasks > 0 && (
+                <span className="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold text-white" title={`${dueTasks} task${dueTasks === 1 ? "" : "s"} due`} data-testid="task-badge">
+                  {dueTasks}
+                </span>
+              )}
             </Link>
           ))}
         </nav>

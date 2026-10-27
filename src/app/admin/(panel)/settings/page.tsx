@@ -61,6 +61,11 @@ export default async function SettingsPage() {
                 <label className="label" htmlFor="defaultDepositPct">Suggested deposit (% of order)</label>
                 <input className="input" id="defaultDepositPct" name="defaultDepositPct" defaultValue={toPercentInput(settings.defaultDepositPct)} placeholder="0" />
               </div>
+              <div>
+                <label className="label" htmlFor="quoteFollowUpDays">Follow up on unanswered quotes after (days)</label>
+                <input className="input" id="quoteFollowUpDays" name="quoteFollowUpDays" defaultValue={settings.quoteFollowUpDays ?? ""} placeholder="Off" inputMode="numeric" />
+                <p className="mt-1 text-xs text-gray-500">Makes a task for whoever has the quote. Blank = off.</p>
+              </div>
             </div>
             <h2 className="font-semibold">Contact details (shown to customers on quotes, proofs, invoices and emails)</h2>
             <div className="grid gap-3 sm:grid-cols-3">

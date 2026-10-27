@@ -145,8 +145,10 @@ phases 1–3 need real product data.
 - **Phase 7 (in progress):** leads (contact and opportunity details,
   sources, owners, statuses with lost reasons, a contact timeline, duplicate
   warnings, converting into a customer and company with a draft quote, and
-  website quote requests from newcomers becoming leads). Still to do:
-  follow-up tasks, the pipeline board, Mailchimp sync.
+  website quote requests from newcomers becoming leads); follow-up tasks
+  (due dates, assignees, linked to leads, customers, quotes and orders, a
+  Tasks page, menu count and dashboard list, automatic follow-ups for
+  unanswered quotes). Still to do: the pipeline board, Mailchimp sync.
 - **Design studio (done):** artwork placed on quote/order items and store
   items: upload (PNG/JPG/GIF/WebP/SVG), drag and size within the print
   area on the product photo, DPI check against each method, background

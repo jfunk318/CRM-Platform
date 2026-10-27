@@ -18,6 +18,8 @@ import { orderBlankStatus } from "@/lib/purchasing/service";
 import { freeStoreSlug } from "@/lib/store/stores";
 import { rosterText } from "@/lib/store/personalization";
 import { Roster } from "@/components/roster";
+import { TasksCard } from "@/components/admin/tasks";
+import { taskInclude } from "@/lib/crm/tasks";
 import { PublishToStoreFields } from "@/components/admin/publish-to-store";
 import { CustomerLinkSection, EmailsSection, FilesSection, orderSectionsInclude, PaymentsSection, ProofsSection } from "./sections";
 import { BlanksSection, fulfillmentInclude, ProductionSection, ShippingSection } from "./fulfillment";
@@ -85,6 +87,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const suggestedDeposit = order.total.times(staff.business.defaultDepositPct).toFixed(2);
 
   const isOrder = order.type === "ORDER";
+  const tasks = await db.task.findMany({ where: { orderId: id }, include: taskInclude, orderBy: [{ doneAt: { sort: "desc", nulls: "first" } }, { dueDate: { sort: "asc", nulls: "last" } }] });
   const [statuses, staffList, groups, deliveryMethods, blanks] = await Promise.all([
     db.orderStatus.findMany({ where: { type: order.type }, orderBy: { sortOrder: "asc" } }),
     db.staffUser.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
@@ -482,6 +485,8 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             </dl>
             {order.pricingGroup && <p className="mt-2 text-xs text-gray-500">Priced with {order.pricingGroup.name}</p>}
           </section>
+
+          <TasksCard tasks={tasks} link={{ orderId: order.id, customerId: order.customerId }} staff={staffList} me={staff.id} />
 
           <section className="card space-y-3">
             <h2 className="font-semibold">Activity</h2>

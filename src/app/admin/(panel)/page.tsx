@@ -3,6 +3,8 @@ import { requireStaff } from "@/lib/auth/session";
 import { hasAnyRole } from "@/lib/auth/roles";
 import { today } from "@/lib/production/defaults";
 import { OrderTable, orderTableInclude } from "@/components/admin/order-table";
+import { TaskList } from "@/components/admin/tasks";
+import { taskInclude } from "@/lib/crm/tasks";
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string }> }) {
   const staff = await requireStaff();
@@ -26,6 +28,12 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     db.productVariant.findMany({ where: { reorderPoint: { not: null }, stockOnHand: { not: null } }, select: { stockOnHand: true, reorderPoint: true } }),
   ]);
   const lowStock = stocked.filter((v) => v.stockOnHand! <= v.reorderPoint!).length;
+  const myTasks = await db.task.findMany({
+    where: { assigneeId: staff.id, doneAt: null, dueDate: { lte: now } },
+    include: taskInclude,
+    orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
+    take: 10,
+  });
 
   return (
     <div className="space-y-6">
@@ -52,6 +60,15 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         {hasAnyRole(staff.roles, ["PURCHASING"]) && <Stat label="Low-stock items" value={lowStock} href="/admin/inventory?low=1" warn={lowStock > 0} />}
         {hasAnyRole(staff.roles, ["SHIPPING"]) && <Stat label="Ready to go out" value={readyToShip} href="/admin/shipping" />}
       </div>
+      {myTasks.length > 0 && (
+        <section className="card space-y-1" data-testid="dashboard-tasks">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">Due today and overdue</h2>
+            <Link href="/admin/tasks" className="text-sm text-amber-700 hover:underline">All tasks →</Link>
+          </div>
+          <TaskList tasks={myTasks} showAssignee={false} />
+        </section>
+      )}
       <section className="space-y-2">
         <h2 className="font-semibold">Assigned to me</h2>
         <OrderTable orders={mine} empty="Nothing open is assigned to you." />

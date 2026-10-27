@@ -74,6 +74,26 @@ Business → Leads (Sales role) holds people who might buy but haven't yet.
   New leads (source "Website quote request"), linked to their customer and
   quote (`src/lib/crm/leads.ts`).
 
+## Tasks
+
+Follow-ups for staff (Business → Tasks): what to do, a due date (with
+Today / Tomorrow / In 3 days / Next week shortcuts), who it's for, and
+optionally the lead, customer, quote or order it's about.
+
+- **Tasks** lists mine, everyone's or unassigned tasks as Overdue, Today,
+  Coming up and No due date, with recently done ones below. Tick one to
+  mark it done.
+- Leads, customers, quotes and orders each have a **Tasks** card with their
+  open tasks and a form to add one; tasks on a lead also go on its
+  timeline.
+- The menu shows how many of my tasks are due today or overdue, and the
+  Dashboard lists them.
+- **Quote follow-ups:** when a quote was emailed some days ago (Shop & tax →
+  "Follow up on unanswered quotes after", 5 by default, blank = off) and
+  is still waiting for an answer, a "Follow up on quote …" task is made
+  for whoever has it, once per sending (runs with the hourly schedule; see
+  Production notes) (`src/lib/crm/tasks.ts`).
+
 ## Customer links, proofs and payments
 
 - **Quotes:** "Email quote" on a quote sends the customer a private link
@@ -308,10 +328,11 @@ toddler), since SanMar's own size index isn't reliable.
 - Run behind a proxy that sets `X-Forwarded-Host` and `X-Forwarded-Proto`
   (customer links in emails are built from them).
 - Set `APP_SECRET` before saving any Stripe keys.
-- Set `CRON_SECRET` and have a scheduler call `POST /api/cron/store-batches`
-  hourly with `Authorization: Bearer $CRON_SECRET`; it batches stores that
-  have closed (e.g. `curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET"
-  https://PLATFORM_DOMAIN/api/cron/store-batches`).
+- Set `CRON_SECRET` and have a scheduler call `POST /api/cron/hourly` every
+  hour with `Authorization: Bearer $CRON_SECRET` (e.g. `curl -fsS -X POST -H
+  "Authorization: Bearer $CRON_SECRET" https://PLATFORM_DOMAIN/api/cron/hourly`).
+  It batches stores that have closed and makes quote follow-up tasks.
+  (`/api/cron/store-batches` does just the batching.)
 - `STORAGE_DIR` must be on persistent disk, and backed up, until file storage
   moves to S3/R2. Allow 55 MB request bodies at the proxy for uploads.
 

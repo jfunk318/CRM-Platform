@@ -48,6 +48,8 @@ model Business {
   currency               String         @default("USD")
   priceRounding          PriceRounding  @default(CENT)
   rushFeePct             Decimal        @default(0) @db.Decimal(6, 4)
+  // Make a follow-up task when a sent quote has had no answer for this many days (empty = off).
+  quoteFollowUpDays      Int?           @default(5)
   paymentSurchargePct    Decimal        @default(0) @db.Decimal(6, 4)
   // Shown on quotes, proofs, invoices and customer emails.
   email                  String? // replies from customers go here
@@ -148,6 +150,7 @@ model Business {
   storeVisitDays         StoreVisitDay[]
   leads                  Lead[]
   leadEvents             LeadEvent[]
+  tasks                  Task[]
 }
 
 // People who run the platform itself (not staff of a business).
@@ -216,6 +219,9 @@ model StaffUser {
   leadsOwned        Lead[]              @relation("LeadOwner")
   leadsCreated      Lead[]              @relation("LeadCreator")
   leadEvents        LeadEvent[]
+  tasksAssigned     Task[]              @relation("TaskAssignee")
+  tasksCreated      Task[]              @relation("TaskCreator")
+  tasksDone         Task[]              @relation("TaskDoneBy")
   commissionPayouts CommissionPayout[]
 
   @@unique([businessId, id])
@@ -745,6 +751,7 @@ model Customer {
   storeContacts   StoreContact[]
   storeRequests   StoreRequest[]
   leads           Lead[]
+  tasks           Task[]
 
   @@unique([businessId, id])
   @@unique([businessId, externalSource, externalId])
@@ -791,6 +798,7 @@ model Lead {
   lastContactAt  DateTime?
   convertedAt    DateTime?
   events         LeadEvent[]
+  tasks          Task[]
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
@@ -822,6 +830,40 @@ model LeadEvent {
   createdAt  DateTime      @default(now())
 
   @@index([leadId, createdAt])
+}
+
+// A follow-up: something someone has to do by a day, for a lead, customer,
+// quote or order (or nothing in particular).
+model Task {
+  id          String     @id @default(cuid())
+  businessId  String
+  business    Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  title       String
+  notes       String?
+  dueDate     DateTime?  @db.Date
+  assigneeId  String?
+  assignee    StaffUser? @relation("TaskAssignee", fields: [businessId, assigneeId], references: [businessId, id], onDelete: NoAction)
+  createdById String?
+  createdBy   StaffUser? @relation("TaskCreator", fields: [businessId, createdById], references: [businessId, id], onDelete: NoAction)
+  leadId      String?
+  lead        Lead?      @relation(fields: [businessId, leadId], references: [businessId, id], onDelete: Cascade)
+  customerId  String?
+  customer    Customer?  @relation(fields: [businessId, customerId], references: [businessId, id], onDelete: Cascade)
+  orderId     String?
+  order       Order?     @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: Cascade)
+  doneAt      DateTime?
+  doneById    String?
+  doneBy      StaffUser? @relation("TaskDoneBy", fields: [businessId, doneById], references: [businessId, id], onDelete: NoAction)
+  // Set on tasks made automatically ("quote-follow-up:<orderId>"), so each is made once.
+  autoKey     String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([businessId, autoKey])
+  @@index([businessId, assigneeId, doneAt])
+  @@index([leadId])
+  @@index([customerId])
+  @@index([orderId])
 }
 
 model Address {
@@ -1041,6 +1083,7 @@ model Order {
   updatedAt        DateTime          @updatedAt
   fromRequests     StoreRequest[]    @relation("RequestQuote")
   fromLeads        Lead[]            @relation("LeadQuote")
+  tasks            Task[]
 
   @@unique([businessId, id])
   @@unique([businessId, type, number])

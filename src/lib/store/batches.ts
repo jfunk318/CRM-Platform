@@ -78,7 +78,7 @@ export async function batchStoreOrders(db: BusinessDb, storeId: string, staffId:
 
 /**
  * Batch every closed store that holds orders, across all businesses. Run it
- * on a schedule (hourly is plenty): see `/api/cron/store-batches`.
+ * on a schedule (hourly is plenty): see `/api/cron/hourly`.
  */
 export async function runDueBatches(now = new Date()): Promise<{ store: string; orders: number; error?: string }[]> {
   const due = await prisma.store.findMany({

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireStaff } from "@/lib/auth/session";
+import { TasksCard } from "@/components/admin/tasks";
+import { taskInclude } from "@/lib/crm/tasks";
 import { ActionForm } from "@/components/admin/action-form";
 import { CompanyPicker } from "@/components/admin/company-picker";
 import { OrderTable, orderTableInclude } from "@/components/admin/order-table";
@@ -10,7 +12,8 @@ import { libraryFor } from "@/lib/design/library";
 import { saveAddresses, saveCustomer, startOrder } from "../actions";
 
 export default async function CustomerPage({ params }: { params: Promise<{ id: string }> }) {
-  const { db } = await requireStaff(["SALES"]);
+  const staff = await requireStaff(["SALES"]);
+  const { db } = staff;
   const { id } = await params;
   const [customer, companies, groups] = await Promise.all([
     db.customer.findUnique({
@@ -27,6 +30,10 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
   ]);
   if (!customer) notFound();
   const artwork = await libraryFor(db, { customerId: customer.id, companyId: customer.companyId });
+  const [tasks, staffList] = await Promise.all([
+    db.task.findMany({ where: { customerId: customer.id }, include: taskInclude, orderBy: [{ doneAt: { sort: "desc", nulls: "first" } }, { dueDate: { sort: "asc", nulls: "last" } }] }),
+    db.staffUser.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+  ]);
   const quotes = customer.orders.filter((o) => o.type === "QUOTE");
   const orders = customer.orders.filter((o) => o.type === "ORDER");
   const inheritedGroup = customer.company?.pricingGroup?.name ?? groups.find((g) => g.isDefault)?.name ?? "default";
@@ -59,6 +66,8 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
           </ActionForm>
         </div>
       </div>
+
+      <TasksCard tasks={tasks} link={{ customerId: customer.id }} staff={staffList} me={staff.id} />
 
       <section className="space-y-2">
         <h2 className="font-semibold">Quotes</h2>

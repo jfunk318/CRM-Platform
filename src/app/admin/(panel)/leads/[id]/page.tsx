@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireStaff } from "@/lib/auth/session";
+import { TasksCard } from "@/components/admin/tasks";
+import { taskInclude } from "@/lib/crm/tasks";
 import { CONTACT_TYPES, LEAD_STATUS_LABELS, possibleDuplicates } from "@/lib/crm/leads";
 import { orderRef } from "@/lib/orders/numbers";
 import { ActionForm } from "@/components/admin/action-form";
@@ -19,9 +21,10 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
     include: { customer: { include: { company: true } }, quote: true, owner: true, createdBy: true, events: { orderBy: { createdAt: "desc" }, include: { staff: { select: { name: true } } } } },
   });
   if (!lead) notFound();
-  const [staffList, dupes] = await Promise.all([
+  const [staffList, dupes, tasks] = await Promise.all([
     db.staffUser.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
     lead.status === "CONVERTED" ? null : possibleDuplicates(db, { email: lead.email, phone: lead.phone }, lead.id),
+    db.task.findMany({ where: { leadId: id }, include: taskInclude, orderBy: [{ doneAt: { sort: "desc", nulls: "first" } }, { dueDate: { sort: "asc", nulls: "last" } }] }),
   ]);
   const converted = lead.status === "CONVERTED";
   const others = dupes ? [...dupes.customers.filter((c) => c.id !== lead.customerId), ...dupes.leads] : [];
@@ -72,6 +75,8 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
               <textarea className="input min-h-16" name="body" aria-label="What happened" placeholder="Talked to Coach Lee: wants a quote for 60 jerseys, call back Tuesday" required />
             </ActionForm>
           </section>
+
+          <TasksCard tasks={tasks} link={{ leadId: lead.id }} staff={staffList} me={staff.id} />
 
           <section className="card space-y-3">
             <h2 className="font-semibold">Timeline</h2>

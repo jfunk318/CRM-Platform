@@ -30,6 +30,7 @@ export async function saveShopSettings(_: ActionResult, form: FormData): Promise
       priceRounding: field(form, "priceRounding") === "UP_TO_99" ? ("UP_TO_99" as const) : ("CENT" as const),
       rushFeePct: percent(field(form, "rushFeePct") || "0", "Rush fee"),
       paymentSurchargePct: percent(field(form, "paymentSurchargePct") || "0", "Card surcharge"),
+      quoteFollowUpDays: followUpDays(field(form, "quoteFollowUpDays")),
     };
     // The domain is set by platform admins (see /platform), not here.
     await db.business.update({ where: { id: db.$businessId }, data });
@@ -77,4 +78,12 @@ export async function deleteTaxRate(_: ActionResult, form: FormData): Promise<Ac
     revalidatePath("/admin/settings");
     return "Deleted";
   });
+}
+
+/** Blank = no automatic quote follow-ups. */
+function followUpDays(raw: string): number | null {
+  if (!raw.trim()) return null;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1 || n > 90) throw new FormError("Quote follow-up days must be a whole number from 1 to 90, or blank");
+  return n;
 }

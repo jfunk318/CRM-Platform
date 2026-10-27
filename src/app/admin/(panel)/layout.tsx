@@ -9,6 +9,7 @@ export async function generateMetadata() {
 
 const NAV: NavItem[] = [
   { href: "/admin", label: "Dashboard", roles: [] },
+  { href: "/admin/tasks", label: "Tasks", roles: [], tasks: true },
   { href: "/admin/orders?type=ORDER", label: "Orders", roles: [] },
   { href: "/admin/orders?type=QUOTE", label: "Quotes", roles: ["SALES"] },
   { href: "/admin/production", label: "Production", roles: ["PRODUCTION"] },
