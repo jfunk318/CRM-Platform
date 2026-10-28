@@ -22,6 +22,7 @@ import { Roster } from "@/components/roster";
 import { TasksCard } from "@/components/admin/tasks";
 import { taskInclude } from "@/lib/crm/tasks";
 import { PublishToStoreFields } from "@/components/admin/publish-to-store";
+import { NavHint } from "@/components/admin/side-nav";
 import { CustomerLinkSection, EmailsSection, FilesSection, orderSectionsInclude, PaymentsSection, ProofsSection } from "./sections";
 import { BlanksSection, fulfillmentInclude, ProductionSection, ShippingSection } from "./fulfillment";
 import {
@@ -143,6 +144,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="space-y-6">
+      <NavHint href={`/admin/orders?type=${order.type}`} />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <Link href={`/admin/orders?type=${order.type}`} className="text-sm text-amber-700 hover:underline">
