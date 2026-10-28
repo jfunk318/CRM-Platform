@@ -35,28 +35,28 @@ export function ShowcaseCards({ stores, layout, columns, filters }: { stores: Sh
                 key={g ?? "all"}
                 type="button"
                 onClick={() => setGroup(g)}
-                className={`rounded-full border px-3 py-1 text-sm ${group === g ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-gray-300 hover:border-[var(--accent)]"}`}
+                className={`rounded-full border px-3 py-1 text-sm ${group === g ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-contrast)]" : "border-[var(--st-border)] hover:border-[var(--accent)]"}`}
               >
                 {g ?? "All"}
               </button>
             ))}
         </div>
       )}
-      {shown.length === 0 && <p className="text-gray-500">{stores.length ? "No stores match." : "No stores to show right now."}</p>}
+      {shown.length === 0 && <p className="text-[var(--st-muted)]">{stores.length ? "No stores match." : "No stores to show right now."}</p>}
       {layout === "list" ? (
-        <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+        <ul className="divide-y divide-[var(--st-border)] rounded-lg border border-[var(--st-border)] bg-[var(--st-surface)]">
           {shown.map((s) => (
             <li key={s.id}>
-              <a href={s.url} className="group flex items-center gap-4 p-3 hover:bg-gray-50">
+              <a href={s.url} className="group flex items-center gap-4 p-3 hover:bg-[var(--st-subtle)]">
                 <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md" style={{ background: s.accent ?? "#f3f4f6" }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   {s.logo ? <img src={s.logo} alt="" className="max-h-10 w-auto" /> : <span className="text-lg font-bold text-white drop-shadow">{s.name.slice(0, 1)}</span>}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block font-semibold group-hover:text-[var(--accent)]">{s.name}</span>
-                  <span className="block truncate text-sm text-gray-600">{[s.tagline, s.group].filter(Boolean).join(" · ")}</span>
+                  <span className="block truncate text-sm text-[var(--st-muted)]">{[s.tagline, s.group].filter(Boolean).join(" · ")}</span>
                 </span>
-                <span className="hidden text-xs text-gray-500 sm:block">{s.status}</span>
+                <span className="hidden text-xs text-[var(--st-muted)] sm:block">{s.status}</span>
                 <span className="text-sm text-[var(--accent)]">Visit →</span>
               </a>
             </li>
@@ -65,7 +65,7 @@ export function ShowcaseCards({ stores, layout, columns, filters }: { stores: Sh
       ) : (
         <div className={`grid grid-cols-2 gap-5 ${COLS[columns]}`}>
           {shown.map((s) => (
-            <a key={s.id} href={s.url} className="group block overflow-hidden rounded-lg border border-gray-200 bg-white hover:border-[var(--accent)]">
+            <a key={s.id} href={s.url} className="group block overflow-hidden rounded-lg border border-[var(--st-border)] bg-[var(--st-surface)] hover:border-[var(--accent)]">
               <div className="flex h-28 items-center justify-center p-4" style={{ background: s.accent ?? "#f3f4f6" }}>
                 {s.logo ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -76,7 +76,7 @@ export function ShowcaseCards({ stores, layout, columns, filters }: { stores: Sh
               </div>
               <div className="space-y-1 p-3">
                 <div className="font-semibold group-hover:text-[var(--accent)]">{s.name}</div>
-                {s.tagline && <div className="text-sm text-gray-600">{s.tagline}</div>}
+                {s.tagline && <div className="text-sm text-[var(--st-muted)]">{s.tagline}</div>}
                 {s.pictures.length > 0 && (
                   <div className="flex gap-1.5 pt-1">
                     {s.pictures.map((p) => (
@@ -85,7 +85,7 @@ export function ShowcaseCards({ stores, layout, columns, filters }: { stores: Sh
                     ))}
                   </div>
                 )}
-                <div className="text-xs text-gray-500">{s.status}</div>
+                <div className="text-xs text-[var(--st-muted)]">{s.status}</div>
                 <div className="text-xs text-[var(--accent)]">Visit the store →</div>
               </div>
             </a>

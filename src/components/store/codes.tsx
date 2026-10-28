@@ -11,7 +11,7 @@ export function CodeBox({ cart, t }: { cart: CartWithItems; t: CartTotals }) {
         <div className="flex items-center justify-between gap-2">
           <span>
             Promo <span className="font-mono">{cart.promoCode.code}</span>
-            {t.promoError ? <span className="text-red-600"> · {t.promoError}</span> : cart.promoCode.description ? <span className="text-gray-500"> · {cart.promoCode.description}</span> : null}
+            {t.promoError ? <span className="text-red-600"> · {t.promoError}</span> : cart.promoCode.description ? <span className="text-[var(--st-muted)]"> · {cart.promoCode.description}</span> : null}
           </span>
           <ActionButton action={removeCodeAction} fields={{ which: "promo" }} label="Remove" className="text-xs text-red-700 hover:underline" />
         </div>
@@ -20,7 +20,7 @@ export function CodeBox({ cart, t }: { cart: CartWithItems; t: CartTotals }) {
         <div className="flex items-center justify-between gap-2">
           <span>
             Gift code <span className="font-mono">{cart.giftCode.code}</span>
-            {t.giftError ? <span className="text-red-600"> · {t.giftError}</span> : <span className="text-gray-500"> · ${cart.giftCode.balance.toFixed(2)} balance</span>}
+            {t.giftError ? <span className="text-red-600"> · {t.giftError}</span> : <span className="text-[var(--st-muted)]"> · ${cart.giftCode.balance.toFixed(2)} balance</span>}
           </span>
           <ActionButton action={removeCodeAction} fields={{ which: "gift" }} label="Remove" className="text-xs text-red-700 hover:underline" />
         </div>

@@ -21,9 +21,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     <div className="space-y-8">
       <form action="/search" className="flex max-w-lg gap-2">
         <input className="input" name="q" type="search" defaultValue={q} placeholder="Search products and pages" aria-label="Search" />
-        <button className="rounded-md bg-[var(--accent)] px-4 py-2 font-semibold text-white">Search</button>
+        <button className="st-btn">Search</button>
       </form>
-      {q && items.length + products.length + pages.length === 0 && <p className="text-gray-600">Nothing matches “{q}”.</p>}
+      {q && items.length + products.length + pages.length === 0 && <p className="text-[var(--st-muted)]">Nothing matches “{q}”.</p>}
       {items.length > 0 && (
         <section className="space-y-3">
           <h2 className="text-xl font-semibold">In the shop</h2>
@@ -35,7 +35,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           <h2 className="text-xl font-semibold">Catalog</h2>
           <ul className="grid gap-2 sm:grid-cols-2">
             {products.map((p) => (
-              <li key={p.id}><Link href={`/catalog/${p.slug}`} className="hover:underline">{p.name} <span className="text-sm text-gray-500">{p.styleCode}</span></Link></li>
+              <li key={p.id}><Link href={`/catalog/${p.slug}`} className="hover:underline">{p.name} <span className="text-sm text-[var(--st-muted)]">{p.styleCode}</span></Link></li>
             ))}
           </ul>
         </section>

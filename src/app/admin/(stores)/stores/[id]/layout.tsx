@@ -12,6 +12,7 @@ export default async function StoreDashboardLayout({ children, params }: { child
   const tabs = [
     { href: `/admin/stores/${id}`, label: "Overview" },
     { href: `/admin/stores/${id}/items`, label: "Items" },
+    { href: `/admin/stores/${id}/look`, label: "Look" },
     { href: `/admin/stores/${id}/pages`, label: "Pages" },
     { href: `/admin/stores/${id}/codes`, label: "Codes" },
     ...(main

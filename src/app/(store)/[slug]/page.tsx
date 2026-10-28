@@ -32,7 +32,7 @@ export default async function ContentPage({ params }: { params: Promise<{ slug: 
         <ul className="mt-8 grid gap-3 sm:grid-cols-2">
           {page.children.map((c) => (
             <li key={c.id}>
-              <Link href={`/${c.slug}`} className="block rounded-lg border border-gray-200 p-4 font-medium hover:border-[var(--accent)]">{c.title} →</Link>
+              <Link href={`/${c.slug}`} className="block rounded-lg border border-[var(--st-border)] p-4 font-medium hover:border-[var(--accent)]">{c.title} →</Link>
             </li>
           ))}
         </ul>

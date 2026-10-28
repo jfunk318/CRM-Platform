@@ -39,7 +39,7 @@ function inline(text: string, key = 0): ReactNode[] {
       );
     } else if (bold !== undefined) out.push(<strong key={k++}>{inline(bold, k * 100)}</strong>);
     else if (italic !== undefined) out.push(<em key={k++}>{inline(italic, k * 100)}</em>);
-    else if (code !== undefined) out.push(<code key={k++} className="rounded bg-gray-100 px-1">{code}</code>);
+    else if (code !== undefined) out.push(<code key={k++} className="rounded bg-[var(--st-subtle)] px-1">{code}</code>);
     rest = rest.slice(m.index + whole.length);
   }
   return out;
@@ -67,7 +67,7 @@ export function Markdown({ source }: { source: string }) {
       continue;
     }
     if (/^(-{3,}|\*{3,})$/.test(line.trim())) {
-      blocks.push(<hr key={key++} className="my-6 border-gray-200" />);
+      blocks.push(<hr key={key++} className="my-6 border-[var(--st-border)]" />);
       i++;
       continue;
     }
@@ -86,12 +86,12 @@ export function Markdown({ source }: { source: string }) {
     if (line.startsWith(">")) {
       const quote: string[] = [];
       while (i < lines.length && lines[i].startsWith(">")) quote.push(lines[i++].replace(/^>\s?/, ""));
-      blocks.push(<blockquote key={key++} className="my-3 border-l-4 border-gray-200 pl-4 text-gray-700">{withBreaks(quote)}</blockquote>);
+      blocks.push(<blockquote key={key++} className="my-3 border-l-4 border-[var(--st-border)] pl-4 text-[var(--st-muted)]">{withBreaks(quote)}</blockquote>);
       continue;
     }
     const para: string[] = [];
     while (i < lines.length && lines[i].trim() && !/^(#{1,3}\s|>|\s*([-*]|\d+\.)\s+|-{3,}$)/.test(lines[i])) para.push(lines[i++]);
     blocks.push(<p key={key++} className="my-3 leading-relaxed">{withBreaks(para)}</p>);
   }
-  return <div className="text-gray-800">{blocks}</div>;
+  return <div className="text-[var(--st-text)]">{blocks}</div>;
 }

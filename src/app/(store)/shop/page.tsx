@@ -18,7 +18,7 @@ export default async function ShopPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Shop</h1>
-      {items.length === 0 ? <p className="text-gray-600">Nothing for sale here yet.</p> : <ItemGrid items={items} store={rs.store} showPrices={rs.settings.showPrices} />}
+      {items.length === 0 ? <p className="text-[var(--st-muted)]">Nothing for sale here yet.</p> : <ItemGrid items={items} store={rs.store} showPrices={rs.settings.showPrices} />}
     </div>
   );
 }

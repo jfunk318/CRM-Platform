@@ -1219,7 +1219,8 @@ model StoredFile {
   uploadedBy    StaffUser?         @relation(fields: [businessId, uploadedById], references: [businessId, id], onDelete: NoAction)
   orderFiles    OrderFile[]
   proofFiles    ProofFile[]
-  storeLogos    Store[]
+  storeLogos    Store[]            @relation("StoreLogo")
+  storeHeroes   Store[]            @relation("StoreHero")
   storeItems    StoreItem[]
   artworkFor    DesignDecoration[] @relation("DecorationArtwork")
   artSourceFor  DesignDecoration[] @relation("DecorationArtSource")
@@ -1677,7 +1678,15 @@ model Store {
   name                  String
   tagline               String?
   logoFileId            String?
-  logo                  StoredFile?           @relation(fields: [businessId, logoFileId], references: [businessId, id], onDelete: NoAction)
+  logo                  StoredFile?           @relation("StoreLogo", fields: [businessId, logoFileId], references: [businessId, id], onDelete: NoAction)
+  // The look: a theme (lib/store/themes.ts) and the homepage banner.
+  theme                 String                @default("minimal")
+  showHero              Boolean               @default(true)
+  heroImageFileId       String?
+  heroImage             StoredFile?           @relation("StoreHero", fields: [businessId, heroImageFileId], references: [businessId, id], onDelete: NoAction)
+  heroHeadline          String? // defaults to the store name
+  heroText              String? // defaults to the tagline
+  heroButton            String? // defaults to "Shop now"
   accentColor           String? // "#f59e0b"
   announcement          String? // bar across the top of every page
   footerText            String?

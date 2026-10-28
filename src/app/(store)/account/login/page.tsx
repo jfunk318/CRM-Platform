@@ -16,8 +16,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     <div className="mx-auto grid max-w-3xl gap-8 md:grid-cols-2">
       <section className="space-y-3">
         <h1 className="text-2xl font-bold">Sign in or create an account</h1>
-        {expired && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">That link has expired or was already used. Request a new one below.</p>}
-        <p className="text-sm text-gray-600">We&apos;ll email you a link to sign in. No password needed; new here? The same link creates your account.</p>
+        {expired && <p className="rounded-md bg-[var(--st-subtle)] px-3 py-2 text-sm text-[var(--st-text)]">That link has expired or was already used. Request a new one below.</p>}
+        <p className="text-sm text-[var(--st-muted)]">We&apos;ll email you a link to sign in. No password needed; new here? The same link creates your account.</p>
         <ActionForm action={sendLinkAction} submitLabel="Email me a sign-in link" className="space-y-3">
           <Honeypot />
           <input type="hidden" name="next" value={next} />
@@ -41,7 +41,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             <input className="input" id="pw-password" name="password" type="password" required autoComplete="current-password" />
           </div>
         </ActionForm>
-        <p className="text-xs text-gray-500">Forgot it? Use the emailed link, then set a new password on your account page.</p>
+        <p className="text-xs text-[var(--st-muted)]">Forgot it? Use the emailed link, then set a new password on your account page.</p>
       </section>
     </div>
   );

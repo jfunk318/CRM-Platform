@@ -16,12 +16,12 @@ export default async function Thanks({ searchParams }: { searchParams: Promise<{
     <div className="mx-auto max-w-lg space-y-4 py-8 text-center" data-testid="thanks">
       <h1 className="text-3xl font-bold">Thank you, {order.customer.firstName}!</h1>
       <p className="text-lg">Your order <span className="font-semibold">{orderRef(order)}</span> is in.</p>
-      <p className="text-gray-600">
+      <p className="text-[var(--st-muted)]">
         Total {money(order.total)}{order.paidTotal.gt(0) && <> · paid {money(order.paidTotal)}</>}
         {order.total.gt(order.paidTotal) && <> · balance due {money(order.total.minus(order.paidTotal))}</>}
       </p>
-      <p className="text-gray-600">We&apos;ve emailed a confirmation to {order.customer.email}.</p>
-      <Link href={`/c/${token}`} className="inline-block rounded-md bg-[var(--accent)] px-4 py-2 font-semibold text-white">View your order</Link>
+      <p className="text-[var(--st-muted)]">We&apos;ve emailed a confirmation to {order.customer.email}.</p>
+      <Link href={`/c/${token}`} className="inline-block st-btn">View your order</Link>
     </div>
   );
 }

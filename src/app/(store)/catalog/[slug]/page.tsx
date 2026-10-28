@@ -34,16 +34,16 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   return (
     <div className="grid gap-8 md:grid-cols-2">
       <div className="space-y-3">
-        <div className="flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-gray-100">
+        <div className="flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-[var(--st-subtle)]">
           {images[0] ? (
             <ProductImage src={images[0].url} alt={product.name} width={900} height={900} sizes="(min-width: 768px) 50vw, 100vw" className="h-full w-full object-cover" />
           ) : (
-            <span className="text-5xl font-bold text-gray-300">{product.styleCode}</span>
+            <span className="text-5xl font-bold text-[var(--st-faint)]">{product.styleCode}</span>
           )}
         </div>
         <div className="flex flex-wrap gap-2">
           {product.colors.map((c) => (
-            <span key={c.id} className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-2 py-0.5 text-xs">
+            <span key={c.id} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--st-border)] px-2 py-0.5 text-xs">
               <span className="h-3 w-3 rounded-full border" style={{ background: c.hex ?? "#fff" }} />
               {c.name}
             </span>
@@ -53,21 +53,21 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       <div className="space-y-4">
         <Link href="/catalog" className="text-sm text-[var(--accent)] hover:underline">← Catalog</Link>
         <h1 className="text-3xl font-bold">{product.name}</h1>
-        <div className="text-gray-600">{product.brand ? `${product.brand} · ` : ""}{product.styleCode}</div>
+        <div className="text-[var(--st-muted)]">{product.brand ? `${product.brand} · ` : ""}{product.styleCode}</div>
         {from && <div className="text-lg">Blanks from <span className="font-semibold">{money(from)}</span> each, plus decoration</div>}
         {product.description &&
           (product.description.includes("\n") ? (
-            <ul className="list-disc space-y-0.5 pl-5 text-gray-700">
+            <ul className="list-disc space-y-0.5 pl-5 text-[var(--st-muted)]">
               {product.description.split("\n").filter((l) => l.trim()).map((l, i) => <li key={i}>{l.replace(/^[-•*]\s*/, "")}</li>)}
             </ul>
           ) : (
-            <p className="text-gray-700">{product.description}</p>
+            <p className="text-[var(--st-muted)]">{product.description}</p>
           ))}
-        <div className="text-sm text-gray-600">Sizes: {product.sizes.map((s) => s.code).join(", ")}</div>
+        <div className="text-sm text-[var(--st-muted)]">Sizes: {product.sizes.map((s) => s.code).join(", ")}</div>
         {product.specSheetUrl && /^https:\/\//.test(product.specSheetUrl) && (
           <a href={product.specSheetUrl} target="_blank" rel="noreferrer" className="text-sm text-[var(--accent)] underline">Spec sheet</a>
         )}
-        <section className="rounded-lg border border-gray-200 p-4">
+        <section className="rounded-lg border border-[var(--st-border)] p-4">
           <h2 className="mb-3 text-lg font-semibold">Get a quote for this</h2>
           <QuoteForm product={{ id: product.id, colors: product.colors, sizes: product.sizes }} />
         </section>

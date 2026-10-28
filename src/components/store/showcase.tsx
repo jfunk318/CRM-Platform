@@ -78,7 +78,7 @@ export async function ItemsBlock({ db, options, storeId }: { db: BusinessDb; opt
   });
   const lowest = (it: (typeof items)[number]) => Math.min(...it.prices.map((p) => itemPrice(p, it, store).toNumber()));
   const sorted = options.sort === "price" ? [...items].sort((a, b) => lowest(a) - lowest(b)) : items;
-  if (sorted.length === 0) return <p className="my-4 text-gray-500">No items to show yet.</p>;
+  if (sorted.length === 0) return <p className="my-4 text-[var(--st-muted)]">No items to show yet.</p>;
   return (
     <div className="my-6">
       <ItemGrid items={sorted.slice(0, options.limit)} store={store} showPrices={effectiveSettings(business, store, store.group).showPrices} columns={options.columns} />

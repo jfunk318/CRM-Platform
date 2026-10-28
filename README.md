@@ -233,6 +233,21 @@ Customers only see artwork through their own link (`/c/<token>/art/…`).
 - **The main site** (the business's own address) is managed the same way
   under Affiliate stores → Main site. It sells the business's own items,
   offers the blank catalog and quote requests, and shows the stores.
+- **Look** (store → Look): every store (and the main site) has a theme:
+  **Minimal** (clean white, modern sans-serif, split banner), **Team /
+  sports** (bold condensed capitals, a header and striped banner in the
+  team color), **Dark** (near-black with a glowing accent), **Luxury**
+  (ivory and gold, serif headings, square corners, centered logo) or
+  **Local / rustic** (warm paper tones, slab-serif headings). A theme sets
+  the fonts (Google Fonts), colors, corners, header, homepage banner and
+  product cards, and dresses every storefront page including cart,
+  checkout and account forms. Per store: the accent color (or the theme's),
+  the logo, and the homepage banner (on/off, headline, text, button, and an
+  image; without one the banner shows the store's own product mockups, so a
+  store published from a quote looks finished straight away). The Look tab
+  previews each theme and shows the live store. New stores start with
+  Minimal, or the theme chosen when publishing a quote to a new store
+  (`src/lib/store/themes.ts`).
 - **Page builder:** every store page (main site and affiliate stores) is
   edited as blocks: Text, Store showcase (which group, order including
   "closing soon", how many, cards or a list, columns, closed stores, and a

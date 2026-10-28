@@ -28,8 +28,8 @@ export default async function CheckoutPage() {
     return (
       <div className="mx-auto max-w-md space-y-3 py-8 text-center">
         <h1 className="text-2xl font-bold">Sign in to check out</h1>
-        <p className="text-gray-600">This store needs an account to place orders.</p>
-        <Link href="/account/login?next=/checkout" className="inline-block rounded-md bg-[var(--accent)] px-4 py-2 font-semibold text-white">Sign in or create an account</Link>
+        <p className="text-[var(--st-muted)]">This store needs an account to place orders.</p>
+        <Link href="/account/login?next=/checkout" className="inline-block st-btn">Sign in or create an account</Link>
       </div>
     );
   }
@@ -49,7 +49,7 @@ export default async function CheckoutPage() {
       <section className="space-y-6">
         <h1 className="text-3xl font-bold">Checkout</h1>
         {!shopper && rs.settings.accountMode === "OPTIONAL" && (
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-[var(--st-muted)]">
             Have an account? <Link href="/account/login?next=/checkout" className="text-[var(--accent)] underline">Sign in</Link> — or just check out as a guest.
           </p>
         )}
@@ -65,20 +65,20 @@ export default async function CheckoutPage() {
             <fieldset className="space-y-2">
               <legend className="mb-2 text-lg font-semibold">Delivery</legend>
               {t.methods.map((m) => (
-                <label key={m.id} className="flex items-start gap-2 rounded-md border border-gray-200 p-3 text-sm">
+                <label key={m.id} className="flex items-start gap-2 rounded-md border border-[var(--st-border)] p-3 text-sm">
                   <input type="radio" name="deliveryMethodId" value={m.id} defaultChecked={(cart.deliveryMethodId ?? t.methods[0].id) === m.id} className="mt-0.5" />
                   <span className="flex-1">
-                    <span className="font-medium">{m.name}</span> <span className="text-gray-500">({DELIVERY_KIND_LABELS[m.kind]})</span>
-                    {m.description && <span className="block text-gray-600">{m.description}</span>}
+                    <span className="font-medium">{m.name}</span> <span className="text-[var(--st-muted)]">({DELIVERY_KIND_LABELS[m.kind]})</span>
+                    {m.description && <span className="block text-[var(--st-muted)]">{m.description}</span>}
                   </span>
-                  {prices && <span>{m.price.isZero() ? "Free" : money(m.price)}{m.freeOver && <span className="block text-xs text-gray-500">free over {money(m.freeOver)}</span>}</span>}
+                  {prices && <span>{m.price.isZero() ? "Free" : money(m.price)}{m.freeOver && <span className="block text-xs text-[var(--st-muted)]">free over {money(m.freeOver)}</span>}</span>}
                 </label>
               ))}
             </fieldset>
           )}
           <fieldset className="grid gap-3 sm:grid-cols-6">
             <legend className="mb-1 text-lg font-semibold">Shipping address</legend>
-            <p className="text-sm text-gray-500 sm:col-span-6">Only needed if we&apos;re shipping it to you.</p>
+            <p className="text-sm text-[var(--st-muted)] sm:col-span-6">Only needed if we&apos;re shipping it to you.</p>
             <div className="sm:col-span-3"><Field label="Name" name="shipName" value={cart.shipName ?? ""} autoComplete="name" /></div>
             <div className="sm:col-span-3"><Field label="Street" name="shipLine1" value={cart.shipLine1 ?? ""} autoComplete="address-line1" /></div>
             <div className="sm:col-span-2"><Field label="Apt / suite" name="shipLine2" value={cart.shipLine2 ?? ""} autoComplete="address-line2" /></div>
@@ -93,12 +93,12 @@ export default async function CheckoutPage() {
         </ActionForm>
       </section>
 
-      <aside className="space-y-4 self-start rounded-lg border border-gray-200 p-4" data-testid="checkout-summary">
+      <aside className="space-y-4 self-start rounded-lg border border-[var(--st-border)] p-4" data-testid="checkout-summary">
         <h2 className="font-semibold">Your order</h2>
         <ul className="space-y-1 text-sm">
           {t.lines.map((l) => (
             <li key={l.id} className="flex justify-between gap-2">
-              <span>{l.qty} × {l.name} <span className="text-gray-500">({l.detail})</span></span>
+              <span>{l.qty} × {l.name} <span className="text-[var(--st-muted)]">({l.detail})</span></span>
               {prices && <span>{money(l.total)}</span>}
             </li>
           ))}
@@ -106,9 +106,9 @@ export default async function CheckoutPage() {
         {prices && <CartSummary t={t} showShipping />}
         <CodeBox cart={cart} t={t} />
         {!saved ? (
-          <p className="text-sm text-gray-600">Fill in your details and press Continue to see the total and pay.</p>
+          <p className="text-sm text-[var(--st-muted)]">Fill in your details and press Continue to see the total and pay.</p>
         ) : problem ? (
-          <p className="text-sm text-amber-800" role="alert">{problem}</p>
+          <p className="text-sm text-[var(--accent)]" role="alert">{problem}</p>
         ) : (
           <div className="space-y-2">
             <ActionForm action={placeOrderAction} submitLabel={t.amountDue.gt(0) ? `Pay ${money(t.amountDue)}` : "Place order"} className="space-y-2">
@@ -119,7 +119,7 @@ export default async function CheckoutPage() {
                 <input type="hidden" name="payLater" value="1" />
               </ActionForm>
             )}
-            <p className="text-xs text-gray-500">Card payments are handled securely by Stripe.</p>
+            <p className="text-xs text-[var(--st-muted)]">Card payments are handled securely by Stripe.</p>
           </div>
         )}
       </aside>

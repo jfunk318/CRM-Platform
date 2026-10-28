@@ -65,38 +65,38 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-3xl font-bold">{selected?.name ?? "Catalog"}</h1>
-            <p className="text-gray-600">{selected?.description ?? "Garments we decorate. Pick one to see colors and sizes, then request a quote."}</p>
+            <p className="text-[var(--st-muted)]">{selected?.description ?? "Garments we decorate. Pick one to see colors and sizes, then request a quote."}</p>
           </div>
           <form action="/catalog" className="flex gap-2" role="search">
             {selected && <input type="hidden" name="category" value={selected.slug} />}
-            <input className="w-56 rounded border border-gray-300 px-3 py-1.5 text-sm" name="q" defaultValue={q ?? ""} placeholder="Style, brand or name" aria-label="Search the catalog" />
-            <button className="rounded border border-gray-300 px-3 py-1.5 text-sm">Search</button>
+            <input className="w-56 rounded border border-[var(--st-border)] px-3 py-1.5 text-sm" name="q" defaultValue={q ?? ""} placeholder="Style, brand or name" aria-label="Search the catalog" />
+            <button className="rounded border border-[var(--st-border)] px-3 py-1.5 text-sm">Search</button>
           </form>
         </div>
         {total > 0 && (
-          <p className="text-sm text-gray-500" data-testid="catalog-count">
+          <p className="text-sm text-[var(--st-muted)]" data-testid="catalog-count">
             {total.toLocaleString()} style{total === 1 ? "" : "s"}{q ? ` matching “${q}”` : ""}
             {pages > 1 ? ` · page ${page} of ${pages}` : ""}
           </p>
         )}
-        {products.length === 0 && <p className="text-gray-500">{q ? "Nothing matches that search." : "Nothing here yet."}</p>}
+        {products.length === 0 && <p className="text-[var(--st-muted)]">{q ? "Nothing matches that search." : "Nothing here yet."}</p>}
         <div className="grid grid-cols-2 gap-5 lg:grid-cols-3" data-testid="catalog-grid">
           {products.map((p) => {
             const img = p.views[0]?.images[0]?.url;
             return (
               <Link key={p.id} href={`/catalog/${p.slug}`} className="group block">
-                <div className="flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-gray-100">
+                <div className="flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-[var(--st-subtle)]">
                   {img && /^https:\/\//.test(img) ? (
                     <ProductImage src={img} alt={p.name} width={600} height={600} sizes="(min-width: 1024px) 300px, 50vw" className="h-full w-full object-cover" />
                   ) : (
-                    <span className="text-4xl font-bold text-gray-300">{p.styleCode}</span>
+                    <span className="text-4xl font-bold text-[var(--st-faint)]">{p.styleCode}</span>
                   )}
                 </div>
                 <div className="mt-2 font-medium group-hover:text-[var(--accent)]">{p.name}</div>
-                <div className="text-xs text-gray-500">{p.brand ? `${p.brand} · ` : ""}{p.styleCode} · {p._count.colors} color{p._count.colors === 1 ? "" : "s"}</div>
+                <div className="text-xs text-[var(--st-muted)]">{p.brand ? `${p.brand} · ` : ""}{p.styleCode} · {p._count.colors} color{p._count.colors === 1 ? "" : "s"}</div>
                 {from.get(p.id) && <div className="text-sm">Blanks from {money(from.get(p.id)!)}</div>}
                 <div className="mt-1 flex flex-wrap gap-1">
-                  {p.colors.map((c) => <span key={c.id} title={c.name} className="h-3.5 w-3.5 rounded-full border border-gray-300" style={{ background: c.hex ?? "#fff" }} />)}
+                  {p.colors.map((c) => <span key={c.id} title={c.name} className="h-3.5 w-3.5 rounded-full border border-[var(--st-border)]" style={{ background: c.hex ?? "#fff" }} />)}
                 </div>
               </Link>
             );
@@ -104,9 +104,9 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
         </div>
         {pages > 1 && (
           <nav className="flex items-center justify-center gap-4 text-sm" aria-label="Pages">
-            {page > 1 ? <Link href={href({ page: page - 1 })} className="hover:underline">← Previous</Link> : <span className="text-gray-300">← Previous</span>}
-            <span className="text-gray-500">Page {page} of {pages}</span>
-            {page < pages ? <Link href={href({ page: page + 1 })} className="hover:underline">Next →</Link> : <span className="text-gray-300">Next →</span>}
+            {page > 1 ? <Link href={href({ page: page - 1 })} className="hover:underline">← Previous</Link> : <span className="text-[var(--st-faint)]">← Previous</span>}
+            <span className="text-[var(--st-muted)]">Page {page} of {pages}</span>
+            {page < pages ? <Link href={href({ page: page + 1 })} className="hover:underline">Next →</Link> : <span className="text-[var(--st-faint)]">Next →</span>}
           </nav>
         )}
       </div>

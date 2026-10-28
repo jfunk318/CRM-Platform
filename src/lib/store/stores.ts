@@ -2,6 +2,7 @@ import "server-only";
 import type { BusinessDb } from "@/lib/db";
 import { slugify } from "@/lib/catalog/products";
 import { isValidSlug } from "@/lib/hosts";
+import { themeOf } from "./themes";
 
 export class StoreError extends Error {}
 
@@ -26,7 +27,7 @@ export async function checkStoreSlug(db: BusinessDb, slug: string, exceptId?: st
 /** A new affiliate store with a home page. */
 export async function createAffiliateStore(
   db: BusinessDb,
-  o: { name: string; slug: string | null; groupId?: string | null; managerId?: string | null; customerId?: string | null },
+  o: { name: string; slug: string | null; groupId?: string | null; managerId?: string | null; customerId?: string | null; theme?: string | null },
 ) {
   const slug = (o.slug ?? slugify(o.name)).toLowerCase();
   await checkStoreSlug(db, slug);
@@ -39,7 +40,9 @@ export async function createAffiliateStore(
       groupId: o.groupId ?? null,
       managerId: o.managerId ?? null,
       customerId: o.customerId ?? null,
-      pages: { create: { slug: "home", title: "Home", body: `# ${o.name}\n\nWelcome to the ${o.name} store. Pick your gear below.` } },
+      theme: themeOf(o.theme),
+      // The homepage banner shows the name; the page itself starts empty.
+      pages: { create: { slug: "home", title: "Home", body: "" } },
     },
   });
 }

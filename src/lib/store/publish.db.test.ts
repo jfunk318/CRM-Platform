@@ -102,6 +102,15 @@ describe("publishing to a store", () => {
   });
 });
 
+describe("new stores", () => {
+  it("start with the chosen theme and an empty home page (the banner shows the name)", async () => {
+    const store = await createAffiliateStore(t.db, { name: "Owls", slug: `owls-${Date.now()}`, theme: "luxury" });
+    expect(store).toMatchObject({ theme: "luxury", showHero: true });
+    expect((await t.db.storePage.findFirstOrThrow({ where: { storeId: store.id, slug: "home" } })).body).toBe("");
+    expect((await createAffiliateStore(t.db, { name: "Hawks", slug: `hawks-${Date.now()}`, theme: "neon" })).theme).toBe("minimal");
+  });
+});
+
 describe("store addresses", () => {
   it("suggests a free address and refuses taken or reserved ones", async () => {
     expect(await freeStoreSlug(t.db, "Tigers Football")).toBe("tigers-football-2");

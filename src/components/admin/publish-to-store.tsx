@@ -10,11 +10,13 @@ export function PublishToStoreFields({
   stores,
   defaultName,
   defaultSlug,
+  themes,
 }: {
   lines: { id: string; label: string; qty: number }[];
   stores: PublishStore[];
   defaultName: string;
   defaultSlug: string;
+  themes: { key: string; label: string }[];
 }) {
   // Default to a store this order was published to before, else a new one.
   const [target, setTarget] = useState(stores.find((s) => s.fromThisOrder > 0)?.id ?? "new");
@@ -45,6 +47,13 @@ export function PublishToStoreFields({
             <label className="label" htmlFor="pub-slug">Address</label>
             <input className="input" id="pub-slug" name="storeSlug" defaultValue={defaultSlug} placeholder="tigers-football" />
             <p className="mt-1 text-xs text-gray-500">The store&apos;s subdomain. It&apos;s for this customer, and you manage it.</p>
+          </div>
+          <div>
+            <label className="label" htmlFor="pub-theme">Look</label>
+            <select className="input" id="pub-theme" name="storeTheme" defaultValue="minimal">
+              {themes.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">Change it any time on the store&apos;s Look tab.</p>
           </div>
         </div>
       ) : (

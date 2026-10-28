@@ -18,7 +18,7 @@ export default async function CheckoutSuccess({ searchParams }: { searchParams: 
   return (
     <div className="mx-auto max-w-md space-y-3 py-12 text-center">
       <h1 className="text-2xl font-bold">Finishing your order…</h1>
-      <p className="text-gray-600">Your payment is being confirmed. You&apos;ll get an email as soon as it&apos;s done; you can refresh this page in a moment.</p>
+      <p className="text-[var(--st-muted)]">Your payment is being confirmed. You&apos;ll get an email as soon as it&apos;s done; you can refresh this page in a moment.</p>
     </div>
   );
 }

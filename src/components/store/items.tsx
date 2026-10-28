@@ -32,21 +32,23 @@ const COLS = ["", "md:grid-cols-1", "md:grid-cols-2", "md:grid-cols-3", "md:grid
 
 export function ItemGrid({ items, store, showPrices, columns = 4 }: { items: ShopItem[]; store: Store & { group?: StoreGroup | null }; showPrices: boolean; columns?: number }) {
   return (
-    <div className={`grid grid-cols-2 gap-5 ${COLS[columns] ?? COLS[4]}`} data-testid="item-grid">
+    <div className={`grid grid-cols-2 gap-x-5 gap-y-8 ${COLS[columns] ?? COLS[4]}`} data-testid="item-grid">
       {items.map((item) => {
         const img = itemImage(item);
         return (
-          <Link key={item.id} href={`/shop/${item.slug}`} className="group block">
-            <div className="flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-gray-100">
+          <Link key={item.id} href={`/shop/${item.slug}`} className="st-item group block" data-testid="item-card">
+            <div className="st-item-image flex aspect-square items-center justify-center overflow-hidden">
               {img ? (
-                <ProductImage src={img} alt={item.name} width={500} height={500} sizes="(min-width: 768px) 25vw, 50vw" className="h-full w-full object-cover transition group-hover:scale-105" />
+                <ProductImage src={img} alt={item.name} width={500} height={500} sizes="(min-width: 768px) 25vw, 50vw" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
               ) : (
                 <span className="h-16 w-16 rounded-full border" style={{ background: item.design.color.hex ?? "#e5e7eb" }} />
               )}
             </div>
-            <div className="mt-2 font-medium group-hover:text-[var(--accent)]">{item.name}</div>
-            <div className="text-sm text-gray-600">{item.design.color.name}</div>
-            {showPrices && <div className="text-sm font-semibold">{priceRange(item, store)}</div>}
+            <div className="st-item-body mt-3 space-y-0.5">
+              <div className="st-item-name group-hover:text-[var(--accent)]">{item.name}</div>
+              <div className="text-sm text-[var(--st-muted)]">{item.design.color.name}</div>
+              {showPrices && <div className="st-item-price text-sm font-semibold">{priceRange(item, store)}</div>}
+            </div>
           </Link>
         );
       })}

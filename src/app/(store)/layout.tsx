@@ -6,9 +6,8 @@ import { ActionForm } from "@/components/admin/action-form";
 import { Analytics } from "@/components/store/analytics";
 import { VisitBeacon } from "@/components/store/visit-beacon";
 import { StoreFooter, StoreHeader } from "@/components/store/chrome";
+import { THEMES, themeFontsUrl, themeOf, themeStyle } from "@/lib/store/themes";
 import { enterAccessCode } from "./actions";
-
-const HEX = /^#[0-9a-f]{6}$/i;
 
 /** Every storefront page: the store's branding, navigation and footer. */
 export default async function StoreLayout({ children }: { children: React.ReactNode }) {
@@ -28,11 +27,15 @@ export default async function StoreLayout({ children }: { children: React.ReactN
     hasStoreAccess(store),
   ]);
   const top = pages.filter((p) => p.showInNav && !p.parentId).map((p) => ({ ...p, children: pages.filter((c) => c.parentId === p.id) }));
-  const accent = store.accentColor && HEX.test(store.accentColor) ? store.accentColor : "#d97706";
+  const theme = themeOf(store.theme);
   return (
-    <div className="flex min-h-screen flex-col bg-white text-gray-900" style={{ "--accent": accent } as React.CSSProperties}>
-      {store.announcement && <div className="bg-[var(--accent)] px-4 py-2 text-center text-sm font-medium text-white">{store.announcement}</div>}
+    <div className="storefront flex min-h-screen flex-col overflow-x-clip" data-theme={theme} style={themeStyle(theme, store.accentColor) as React.CSSProperties}>
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+      <link rel="stylesheet" href={themeFontsUrl(theme)} precedence="default" />
+      {store.announcement && <div className="bg-[var(--accent)] px-4 py-2 text-center text-sm font-medium text-[var(--accent-contrast)]">{store.announcement}</div>}
       <StoreHeader
+        style={THEMES[theme].header}
         store={store}
         pages={top}
         cartCount={cart?.items.reduce((n, i) => n + i.qty, 0) ?? 0}
@@ -44,14 +47,14 @@ export default async function StoreLayout({ children }: { children: React.ReactN
         {rs.status.state !== "open" ? (
           <div className="mx-auto max-w-md space-y-3 py-12 text-center" data-testid="store-closed">
             <h1 className="text-2xl font-bold">{rs.status.state === "scheduled" ? "This store isn't open yet" : "This store is closed"}</h1>
-            <p className="text-gray-600">{rs.status.label}. Questions? {business.email ? <a href={`mailto:${business.email}`} className="underline">{business.email}</a> : business.phone}</p>
+            <p className="text-[var(--st-muted)]">{rs.status.label}. Questions? {business.email ? <a href={`mailto:${business.email}`} className="underline">{business.email}</a> : business.phone}</p>
           </div>
         ) : access ? (
           children
         ) : (
           <div className="mx-auto max-w-sm space-y-4 py-12 text-center">
             <h1 className="text-2xl font-bold">This store is private</h1>
-            <p className="text-gray-600">Enter the access code you were given.</p>
+            <p className="text-[var(--st-muted)]">Enter the access code you were given.</p>
             <ActionForm action={enterAccessCode} submitLabel="Enter" className="space-y-3">
               <input className="input text-center" name="code" aria-label="Access code" required autoComplete="off" />
             </ActionForm>

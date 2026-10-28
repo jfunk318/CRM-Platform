@@ -37,11 +37,11 @@ export default async function AccountPage() {
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Orders and quotes</h2>
         {orders.length === 0 ? (
-          <p className="text-gray-600">Nothing yet. <Link href="/shop" className="text-[var(--accent)] underline">Start shopping</Link></p>
+          <p className="text-[var(--st-muted)]">Nothing yet. <Link href="/shop" className="text-[var(--accent)] underline">Start shopping</Link></p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-gray-200">
+          <div className="overflow-x-auto rounded-lg border border-[var(--st-border)]">
             <table className="w-full text-sm" data-testid="account-orders">
-              <thead className="bg-gray-50 text-left">
+              <thead className="bg-[var(--st-subtle)] text-left">
                 <tr>
                   <th className="px-3 py-2">Number</th>
                   <th className="px-3 py-2">Date</th>
@@ -52,7 +52,7 @@ export default async function AccountPage() {
               </thead>
               <tbody>
                 {orders.map((o) => (
-                  <tr key={o.id} className="border-t border-gray-100">
+                  <tr key={o.id} className="border-t border-[var(--st-border)]">
                     <td className="px-3 py-2"><Link href={`/c/${o.publicToken}`} className="font-medium text-[var(--accent)] hover:underline">{o.type === "QUOTE" ? "Quote " : "Order "}{orderRef(o)}</Link></td>
                     <td className="px-3 py-2">{day(o.placedAt ?? o.createdAt)}</td>
                     <td className="px-3 py-2">{o.status.name}</td>
@@ -84,12 +84,12 @@ export default async function AccountPage() {
               <label className="label" htmlFor="me-phone">Phone</label>
               <input className="input" id="me-phone" name="phone" defaultValue={me.phone ?? ""} />
             </div>
-            <p className="text-sm text-gray-500">Email: {me.email}</p>
+            <p className="text-sm text-[var(--st-muted)]">Email: {me.email}</p>
           </ActionForm>
         </section>
         <section className="space-y-3">
           <h2 className="text-xl font-semibold">{me.passwordHash ? "Change password" : "Set a password"}</h2>
-          <p className="text-sm text-gray-600">Optional: you can always sign in with an emailed link instead.</p>
+          <p className="text-sm text-[var(--st-muted)]">Optional: you can always sign in with an emailed link instead.</p>
           <ActionForm action={setPasswordAction} resetOnSuccess className="space-y-3">
             <div>
               <label className="label" htmlFor="me-pw">New password (at least {MIN_PASSWORD_LENGTH} characters)</label>

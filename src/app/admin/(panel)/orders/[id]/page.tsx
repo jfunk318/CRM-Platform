@@ -16,6 +16,7 @@ import { SourceTag, StatusBadge } from "@/components/admin/order-table";
 import { requestOrigin } from "@/lib/business";
 import { orderBlankStatus } from "@/lib/purchasing/service";
 import { freeStoreSlug } from "@/lib/store/stores";
+import { THEMES } from "@/lib/store/themes";
 import { rosterText } from "@/lib/store/personalization";
 import { Roster } from "@/components/roster";
 import { TasksCard } from "@/components/admin/tasks";
@@ -395,6 +396,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                     }))}
                     defaultName={storeName}
                     defaultSlug={await freeStoreSlug(db, storeName)}
+                    themes={Object.entries(THEMES).map(([key, t]) => ({ key, label: t.label }))}
                   />
                 </ActionForm>
               </div>

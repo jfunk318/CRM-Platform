@@ -184,7 +184,7 @@ export async function publishToStoreAction(_: ActionResult, form: FormData): Pro
       if (batchQty !== null && !(Number.isInteger(batchQty) && batchQty >= 1)) throw new FormError("Batch quantity must be a whole number, 1 or more");
       const store =
         target === "new"
-          ? await createAffiliateStore(db, { name: text(form, "storeName", "Store name"), slug: optionalText(form, "storeSlug"), customerId: order.customerId, managerId: staff.id })
+          ? await createAffiliateStore(db, { name: text(form, "storeName", "Store name"), slug: optionalText(form, "storeSlug"), customerId: order.customerId, managerId: staff.id, theme: optionalText(form, "storeTheme") })
           : await db.store.findUniqueOrThrow({ where: { id: target } });
       const mode = form.get("mode") === "overwrite" && target !== "new" ? "overwrite" : "update";
       await publishToStore(db, order.id, { storeId: store.id, mode, lineIds, batchQty, staffId: staff.id });

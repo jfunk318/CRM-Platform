@@ -1,10 +1,8 @@
 import { loadAdminStore } from "@/lib/store/admin";
 import { ACCOUNT_MODE_LABELS, effectiveMarkup, effectiveSettings } from "@/lib/store/settings";
 import { DELIVERY_KIND_LABELS } from "@/lib/shipping/labels";
-import { ActionButton } from "@/components/admin/action-button";
 import { ActionForm } from "@/components/admin/action-form";
-import { FilePicker } from "@/components/file-picker";
-import { deleteStoreAction, removeLogoAction, saveStoreAction, uploadLogoAction } from "../../actions";
+import { deleteStoreAction, saveStoreAction } from "../../actions";
 
 const yesNo = (v: boolean) => (v ? "yes" : "no");
 const day = (d: Date | null, endOfDay = false) => (d ? new Date(d.getTime() - (endOfDay ? 86_399_000 : 0)).toISOString().slice(0, 10) : "");
@@ -87,15 +85,9 @@ export default async function StoreSettingsPage({ params }: { params: Promise<{ 
             )}
           </div>
 
-          <h3 className="text-sm font-semibold">Look</h3>
+          <h3 className="text-sm font-semibold">Text around the store</h3>
+          <p className="text-xs text-gray-500">Theme, colors, banner and logo are on the <a href={`/admin/stores/${store.id}/look`} className="text-amber-700 hover:underline">Look</a> tab.</p>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="label" htmlFor="accentColor">Accent color</label>
-              <div className="flex items-center gap-2">
-                <input className="input w-32 font-mono" id="accentColor" name="accentColor" defaultValue={store.accentColor ?? "#d97706"} placeholder="#d97706" />
-                <span className="h-8 w-8 rounded border" style={{ background: store.accentColor ?? "#d97706" }} />
-              </div>
-            </div>
             <Field label="Announcement bar (optional)" name="announcement" value={store.announcement} placeholder="e.g. Orders close Friday" />
             <div className="sm:col-span-2">
               <label className="label" htmlFor="footerText">Footer text</label>
@@ -150,24 +142,6 @@ export default async function StoreSettingsPage({ params }: { params: Promise<{ 
             <Field label="Meta Pixel ID" name="metaPixelId" value={store.metaPixelId} />
           </div>
         </ActionForm>
-      </section>
-
-      <section className="card space-y-3">
-        <h2 className="font-semibold">Logo</h2>
-        <div className="flex flex-wrap items-center gap-4">
-          {store.logoFileId ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={`/admin/files/${store.logoFileId}`} alt="Logo" className="h-14 w-auto rounded border" />
-          ) : (
-            <span className="text-sm text-gray-500">No logo; the store name is shown instead.</span>
-          )}
-          <ActionForm action={uploadLogoAction} submitLabel="Upload" resetOnSuccess className="w-full max-w-md space-y-2">
-            <input type="hidden" name="storeId" value={store.id} />
-            <label className="label" htmlFor="logo-file">Logo file</label>
-            <FilePicker id="logo-file" name="logo" accept="image/png,image/jpeg,image/gif,image/webp" required hint="PNG, JPG, GIF or WebP" />
-          </ActionForm>
-          {store.logoFileId && <ActionButton action={removeLogoAction} fields={{ storeId: store.id }} label="Remove" className="text-xs text-red-700 hover:underline" />}
-        </div>
       </section>
 
       {affiliate && (

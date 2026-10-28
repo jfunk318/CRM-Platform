@@ -20,6 +20,7 @@ import { isValidEmail } from "@/lib/email/mailer";
 import { storeUrlHere } from "@/lib/business";
 import { checkStoreSlug, createAffiliateStore, StoreError } from "@/lib/store/stores";
 import { ACCOUNT_MODE_LABELS } from "@/lib/store/settings";
+import { THEMES } from "@/lib/store/themes";
 
 type Db = Awaited<ReturnType<typeof requireStaff>>["db"];
 
@@ -95,8 +96,6 @@ export async function saveStoreAction(_: ActionResult, form: FormData): Promise<
     const affiliate = store.kind === "AFFILIATE";
     const slug = affiliate ? text(form, "slug", "Address").toLowerCase() : null;
     if (slug !== null) await checkStoreSlug(db, slug, store.id);
-    const accent = optionalText(form, "accentColor");
-    if (accent && !/^#[0-9a-f]{6}$/i.test(accent)) throw new FormError("Accent color must look like #d97706");
     const ga4Id = optionalText(form, "ga4Id");
     if (ga4Id && !/^G-[A-Z0-9]{4,15}$/.test(ga4Id)) throw new FormError("Google Analytics ID should look like G-XXXXXXX");
     const metaPixelId = optionalText(form, "metaPixelId");
@@ -117,7 +116,6 @@ export async function saveStoreAction(_: ActionResult, form: FormData): Promise<
           name: text(form, "name", "Store name"),
           ...(slug !== null ? { slug } : {}),
           tagline: optionalText(form, "tagline"),
-          accentColor: accent,
           announcement: optionalText(form, "announcement"),
           footerText: optionalText(form, "footerText"),
           ...(affiliate
@@ -170,6 +168,55 @@ export async function removeLogoAction(_: ActionResult, form: FormData): Promise
     await db.store.update({ where: { id: store.id }, data: { logoFileId: null } });
     refresh();
     return "Logo removed";
+  });
+}
+
+// ─── Look ───────────────────────────────────────────────────────────────
+
+export async function saveLookAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  return run(async () => {
+    const store = await storeOf(db, form);
+    const theme = text(form, "theme", "Theme");
+    if (!(theme in THEMES)) throw new FormError("Choose a theme");
+    const accent = checkbox(form, "themeAccent") ? null : optionalText(form, "accentColor");
+    if (accent && !/^#[0-9a-f]{6}$/i.test(accent)) throw new FormError("Accent color must look like #d97706");
+    await db.store.update({
+      where: { id: store.id },
+      data: {
+        theme,
+        accentColor: accent,
+        showHero: checkbox(form, "showHero"),
+        heroHeadline: optionalText(form, "heroHeadline")?.slice(0, 120) ?? null,
+        heroText: optionalText(form, "heroText")?.slice(0, 300) ?? null,
+        heroButton: optionalText(form, "heroButton")?.slice(0, 40) ?? null,
+      },
+    });
+    refresh();
+  });
+}
+
+export async function uploadHeroAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const staff = await requireStaff(["STORE_MANAGER"]);
+  return run(async () => {
+    const store = await storeOf(staff.db, form);
+    const [file] = formFiles(form, "hero");
+    if (!file) throw new FormError("Choose an image");
+    if (!isImage(file.name)) throw new FormError("The banner must be a PNG, JPG, GIF or WebP image");
+    const saved = await saveUpload(staff.db, file, staff.id);
+    await staff.db.store.update({ where: { id: store.id }, data: { heroImageFileId: saved.id } });
+    refresh();
+    return "Banner image updated";
+  });
+}
+
+export async function removeHeroAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  return run(async () => {
+    const store = await storeOf(db, form);
+    await db.store.update({ where: { id: store.id }, data: { heroImageFileId: null } });
+    refresh();
+    return "Banner image removed; the store's products show instead";
   });
 }
 

@@ -9,7 +9,7 @@ export function CartSummary({ t, showShipping }: { t: CartTotals; showShipping: 
       {t.discount.gt(0) && <Row label="Discount" value={`−${money(t.discount)}`} className="text-green-700" />}
       {showShipping && <Row label={t.method ? `Delivery: ${t.method.name}` : "Delivery"} value={t.method ? (t.shipping.isZero() ? "Free" : money(t.shipping)) : "Choose at checkout"} />}
       {showShipping && <Row label="Tax" value={money(t.tax)} />}
-      <div className="flex justify-between border-t border-gray-200 pt-1 text-base font-semibold">
+      <div className="flex justify-between border-t border-[var(--st-border)] pt-1 text-base font-semibold">
         <dt>Total</dt>
         <dd data-testid="cart-total">{money(showShipping ? t.total : t.merchandise.minus(t.discount))}</dd>
       </div>
@@ -27,7 +27,7 @@ export function CartSummary({ t, showShipping }: { t: CartTotals; showShipping: 
 function Row({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
     <div className={`flex justify-between ${className ?? ""}`}>
-      <dt className="text-gray-600">{label}</dt>
+      <dt className="text-[var(--st-muted)]">{label}</dt>
       <dd>{value}</dd>
     </div>
   );

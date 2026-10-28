@@ -11,7 +11,7 @@ export default async function TrackPage() {
   return (
     <div className="mx-auto max-w-md space-y-4">
       <h1 className="text-3xl font-bold">Track your order</h1>
-      <p className="text-gray-600">Enter your order number and the email you ordered with.</p>
+      <p className="text-[var(--st-muted)]">Enter your order number and the email you ordered with.</p>
       <ActionForm action={trackOrderAction} submitLabel="Find my order" className="space-y-3">
         <Honeypot />
         <div>

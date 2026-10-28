@@ -44,7 +44,7 @@ export default async function ItemPage({ params }: { params: Promise<{ slug: str
   return (
     <div className="grid gap-8 md:grid-cols-2">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
-      <div className="flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-gray-100">
+      <div className="st-item-image flex aspect-square items-center justify-center overflow-hidden">
         {img ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={img} alt={item.name} className="h-full w-full object-cover" />
@@ -56,18 +56,18 @@ export default async function ItemPage({ params }: { params: Promise<{ slug: str
         <Link href="/shop" className="text-sm text-[var(--accent)] hover:underline">← Shop</Link>
         <h1 className="text-3xl font-bold">{item.name}</h1>
         {showPrices && <div className="text-xl font-semibold" data-testid="price-range">{priceRange(item, rs.store)}</div>}
-        <div className="text-gray-700">
+        <div className="text-[var(--st-muted)]">
           {product.brand ? `${product.brand} ` : ""}{product.name} · {item.design.color.name}
         </div>
-        {item.description && <p className="whitespace-pre-wrap text-gray-700">{item.description}</p>}
+        {item.description && <p className="whitespace-pre-wrap text-[var(--st-muted)]">{item.description}</p>}
         {item.design.decorations.length > 0 && (
-          <ul className="text-sm text-gray-600">
-            {item.design.decorations.map((d) => <li key={d.id}>{d.location}</li>)}
+          <ul className="text-sm text-[var(--st-muted)]">
+            {[...new Set(item.design.decorations.map((d) => d.location))].map((loc) => <li key={loc}>{loc}</li>)}
           </ul>
         )}
         {personal ? (
           // Personalized: one name/number at a time, so each gets its own cart line.
-          <ActionForm action={addToCartAction} submitLabel="Add to cart" resetOnSuccess className="space-y-4 rounded-lg border border-gray-200 p-4">
+          <ActionForm action={addToCartAction} submitLabel="Add to cart" resetOnSuccess className="space-y-4 rounded-lg border border-[var(--st-border)] p-4">
             <input type="hidden" name="itemId" value={item.id} />
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
@@ -88,27 +88,27 @@ export default async function ItemPage({ params }: { params: Promise<{ slug: str
               {item.nameMode !== "OFF" && (
                 <div>
                   <label className="mb-1 block text-sm font-medium" htmlFor="buy-name">
-                    Name{item.nameMode === "OPTIONAL" && <span className="font-normal text-gray-500"> (optional)</span>}
-                    {showPrices && !item.namePrice.isZero() && <span className="font-normal text-gray-500"> +{money(item.namePrice)}</span>}
+                    Name{item.nameMode === "OPTIONAL" && <span className="font-normal text-[var(--st-muted)]"> (optional)</span>}
+                    {showPrices && !item.namePrice.isZero() && <span className="font-normal text-[var(--st-muted)]"> +{money(item.namePrice)}</span>}
                   </label>
                   <input className="input" id="buy-name" name="personalName" maxLength={item.nameMaxLength} required={item.nameMode === "REQUIRED"} autoComplete="off" />
-                  <p className="mt-1 text-xs text-gray-500">Up to {item.nameMaxLength} letters, printed as typed.</p>
+                  <p className="mt-1 text-xs text-[var(--st-muted)]">Up to {item.nameMaxLength} letters, printed as typed.</p>
                 </div>
               )}
               {item.numberMode !== "OFF" && (
                 <div>
                   <label className="mb-1 block text-sm font-medium" htmlFor="buy-number">
-                    Number{item.numberMode === "OPTIONAL" && <span className="font-normal text-gray-500"> (optional)</span>}
-                    {showPrices && !item.numberPrice.isZero() && <span className="font-normal text-gray-500"> +{money(item.numberPrice)}</span>}
+                    Number{item.numberMode === "OPTIONAL" && <span className="font-normal text-[var(--st-muted)]"> (optional)</span>}
+                    {showPrices && !item.numberPrice.isZero() && <span className="font-normal text-[var(--st-muted)]"> +{money(item.numberPrice)}</span>}
                   </label>
                   <input className="input" id="buy-number" name="personalNumber" inputMode="numeric" maxLength={item.numberMaxDigits} pattern="[0-9]*" required={item.numberMode === "REQUIRED"} autoComplete="off" />
                 </div>
               )}
             </div>
-            {item.personalizationLocation && <p className="text-xs text-gray-500">Printed on the {item.personalizationLocation.toLowerCase()}.</p>}
+            {item.personalizationLocation && <p className="text-xs text-[var(--st-muted)]">Printed on the {item.personalizationLocation.toLowerCase()}.</p>}
           </ActionForm>
         ) : (
-        <ActionForm action={addToCartAction} submitLabel="Add to cart" className="space-y-4 rounded-lg border border-gray-200 p-4">
+        <ActionForm action={addToCartAction} submitLabel="Add to cart" className="space-y-4 rounded-lg border border-[var(--st-border)] p-4">
           <input type="hidden" name="itemId" value={item.id} />
           <fieldset>
             <legend className="mb-2 text-sm font-medium">Sizes and quantities</legend>
@@ -116,7 +116,7 @@ export default async function ItemPage({ params }: { params: Promise<{ slug: str
               {item.prices.map((p) => (
                 <label key={p.id} className="text-sm">
                   <span className="block font-medium">{p.size.code}</span>
-                  {showPrices && <span className="block text-xs text-gray-500">{money(itemPrice(p, item, rs.store))}</span>}
+                  {showPrices && <span className="block text-xs text-[var(--st-muted)]">{money(itemPrice(p, item, rs.store))}</span>}
                   <input className="input mt-1" name={`qty_${p.sizeId}`} inputMode="numeric" placeholder="0" aria-label={`Quantity ${p.size.code}`} />
                 </label>
               ))}
