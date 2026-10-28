@@ -151,6 +151,9 @@ model Business {
   leads                  Lead[]
   leadEvents             LeadEvent[]
   tasks                  Task[]
+  automationRules        AutomationRule[]
+  automationEvents       AutomationEvent[]
+  automationRuns         AutomationRun[]
 }
 
 // People who run the platform itself (not staff of a business).
@@ -864,6 +867,77 @@ model Task {
   @@index([leadId])
   @@index([customerId])
   @@index([orderId])
+}
+
+// ─── Automations ──────────────────────────────────────────────────────────
+
+enum AutomationTrigger {
+  QUOTE_CREATED
+  ORDER_CREATED
+  ONLINE_ORDER // placed in a store
+  STATUS_CHANGED
+  ORDER_PAID // paid in full
+  PROOF_APPROVED
+  PROOF_CHANGES // the customer asked for changes to a proof
+  LEAD_CREATED
+  STORE_REQUEST
+}
+
+// "When this happens (and these conditions hold), do these things."
+// Conditions and actions are JSON, checked by lib/automation/rules.ts.
+model AutomationRule {
+  id         String            @id @default(cuid())
+  businessId String
+  business   Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name       String
+  active     Boolean           @default(true)
+  trigger    AutomationTrigger
+  conditions Json              @default("{}")
+  actions    Json              @default("[]")
+  runs       AutomationRun[]
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  @@unique([businessId, id])
+  @@index([businessId, trigger, active])
+}
+
+// Something that happened, queued with the change that caused it and
+// handled right after the request (or by the hourly sweep).
+model AutomationEvent {
+  id          String            @id @default(cuid())
+  businessId  String
+  business    Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  trigger     AutomationTrigger
+  orderId     String?
+  leadId      String?
+  requestId   String?
+  statusId    String?
+  // How many automations led to this one (stops rules setting each other off forever).
+  depth       Int               @default(0)
+  // The address the request came in on, for links in emails.
+  origin      String?
+  createdAt   DateTime          @default(now())
+  processedAt DateTime?
+  runs        AutomationRun[]
+
+  @@unique([businessId, id])
+  @@index([processedAt, createdAt])
+}
+
+model AutomationRun {
+  id         String          @id @default(cuid())
+  businessId String
+  business   Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  ruleId     String
+  rule       AutomationRule  @relation(fields: [businessId, ruleId], references: [businessId, id], onDelete: Cascade)
+  eventId    String
+  event      AutomationEvent @relation(fields: [businessId, eventId], references: [businessId, id], onDelete: Cascade)
+  ok         Boolean
+  message    String // what it did, or what went wrong
+  createdAt  DateTime        @default(now())
+
+  @@index([ruleId, createdAt])
 }
 
 model Address {

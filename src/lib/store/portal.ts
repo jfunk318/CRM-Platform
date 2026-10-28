@@ -8,6 +8,7 @@ import { staffAlertEmail, storeRequestReplyEmail } from "@/lib/email/templates";
 import { createOrder, logEvent, OrderError } from "@/lib/orders/service";
 import { codeWorksIn } from "./cart";
 import { commissionSummary } from "./commissions";
+import { emitAutomation } from "@/lib/automation/events";
 import { visitStats } from "./visits";
 
 /** Sections staff can show in a store's owner portal. */
@@ -106,7 +107,11 @@ export async function submitStoreRequest(db: BusinessDb, store: Store, customer:
   if (!body) throw new OrderError("Say what you need");
   const recent = await db.storeRequest.count({ where: { storeId: store.id, customerId: customer.id, createdAt: { gt: new Date(Date.now() - 3_600_000) } } });
   if (recent >= 10) throw new OrderError("That's a lot of requests in an hour; please wait a little before sending more");
-  const request = await db.storeRequest.create({ data: { businessId: db.$businessId, storeId: store.id, customerId: customer.id, subject, body } });
+  const request = await db.$transaction(async (tx) => {
+    const r = await tx.storeRequest.create({ data: { businessId: db.$businessId, storeId: store.id, customerId: customer.id, subject, body } });
+    await emitAutomation(tx, { trigger: "STORE_REQUEST", requestId: r.id });
+    return r;
+  });
   if (store.requestQuotes) await quoteFromRequest(db, request.id, null);
 
   const business = await db.business.findUniqueOrThrow({ where: { id: db.$businessId } });

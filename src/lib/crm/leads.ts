@@ -3,6 +3,7 @@ import { type LeadEventType, type LeadStatus, Prisma } from "@prisma/client";
 import type { BusinessDb, BusinessTx } from "@/lib/db";
 import { isValidEmail } from "@/lib/email/mailer";
 import { createOrder, OrderError } from "@/lib/orders/service";
+import { emitAutomation } from "@/lib/automation/events";
 
 export class LeadError extends Error {}
 
@@ -96,6 +97,7 @@ export async function createLead(db: BusinessDb, input: LeadInput, staffId: stri
   return db.$transaction(async (tx) => {
     const lead = await tx.lead.create({ data: { ...data, businessId: db.$businessId, createdById: staffId, customerId: extra.customerId, quoteId: extra.quoteId } });
     await logLeadEvent(tx, lead.id, "CREATED", `Lead added${data.source ? ` (${data.source})` : ""}`, staffId);
+    await emitAutomation(tx, { trigger: "LEAD_CREATED", leadId: lead.id });
     return lead.id;
   });
 }

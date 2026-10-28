@@ -93,6 +93,36 @@ appears twice; quotes for existing customers are on the board too.
   with their status: send, approve, convert or decline the quote
   (`src/lib/crm/pipeline.ts`).
 
+## Automations
+
+Business → Automations (admins): rules that do things when something
+happens. Each rule has a trigger, optional conditions and a list of
+actions run in order.
+
+- **Triggers:** a quote or order is created, a store order is placed, a
+  quote or order changes status (by staff, the customer or another rule),
+  an order is paid in full, the customer approves a proof or asks for
+  changes, a lead comes in, a store owner sends a request.
+- **Conditions:** the new status (any of several), quotes or orders,
+  from a given store or not from a store, rush only, total at least an
+  amount; for leads, the source contains some text. Only the conditions
+  that fit the trigger are offered.
+- **Actions:** email the customer (with a button to their quote or order),
+  email staff (the assignee or lead owner, the business email, or a
+  person), create a task due in N days, assign, set the status, post to
+  Slack, add a note to the timeline. Messages take placeholders such as
+  `{{customer.firstName}}`, `{{order.ref}}`, `{{order.total}}` and
+  `{{order.link}}`; click one to add it to the field.
+- Five recipes to start from (thank customers when they pay, call new
+  leads, tell the assignee about approved proofs, post store orders to
+  Slack, answer store owners' requests).
+- The change and its event are saved together; rules run right after the
+  request (the hourly job catches anything left). Every rule that ran is
+  logged with what it did or why it failed, on the list and the rule's
+  page; one failing rule doesn't stop the others. Rules that set off other
+  rules stop after three steps, so two rules can't loop forever
+  (`src/lib/automation/`).
+
 ## Tasks
 
 Follow-ups for staff (Business → Tasks): what to do, a due date (with
@@ -365,7 +395,8 @@ toddler), since SanMar's own size index isn't reliable.
 - Set `CRON_SECRET` and have a scheduler call `POST /api/cron/hourly` every
   hour with `Authorization: Bearer $CRON_SECRET` (e.g. `curl -fsS -X POST -H
   "Authorization: Bearer $CRON_SECRET" https://PLATFORM_DOMAIN/api/cron/hourly`).
-  It batches stores that have closed and makes quote follow-up tasks.
+  It batches stores that have closed, makes quote follow-up tasks and runs
+  any automations still waiting.
   (`/api/cron/store-batches` does just the batching.)
 - `STORAGE_DIR` must be on persistent disk, and backed up, until file storage
   moves to S3/R2. Allow 55 MB request bodies at the proxy for uploads.

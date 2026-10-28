@@ -1,4 +1,5 @@
 import "server-only";
+import { emitAutomation } from "@/lib/automation/events";
 import { Prisma, type PaymentMethod } from "@prisma/client";
 import type { BusinessDb, BusinessTx } from "@/lib/db";
 import { deliveryNote, isValidEmail, sendEmail } from "@/lib/email/mailer";
@@ -20,7 +21,10 @@ export function balances(o: { total: Prisma.Decimal; paidTotal: Prisma.Decimal; 
 
 export async function refreshPaidTotal(tx: BusinessTx, orderId: string) {
   const sum = await tx.payment.aggregate({ where: { orderId }, _sum: { amount: true } });
-  await tx.order.update({ where: { id: orderId }, data: { paidTotal: sum._sum.amount ?? 0 } });
+  const before = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
+  const after = await tx.order.update({ where: { id: orderId }, data: { paidTotal: sum._sum.amount ?? 0 } });
+  // Just became paid in full.
+  if (after.total.gt(0) && after.paidTotal.gte(after.total) && before.paidTotal.lt(before.total)) await emitAutomation(tx, { trigger: "ORDER_PAID", orderId });
 }
 
 /**

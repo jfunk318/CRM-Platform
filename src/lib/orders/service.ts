@@ -5,6 +5,7 @@ import type { BusinessDb, BusinessTx } from "@/lib/db";
 import { nextOrderNumber, orderRef } from "./numbers";
 import { itemPrice } from "@/lib/store/settings";
 import { repriceOrder } from "./pricing";
+import { emitAutomation } from "@/lib/automation/events";
 import { parseRoster, PersonalizationError } from "@/lib/store/personalization";
 
 export class OrderError extends Error {}
@@ -85,6 +86,7 @@ export async function moveToRole(
   if (forwardOnly && status.sortOrder <= order.status.sortOrder) return;
   await tx.order.update({ where: { id: orderId }, data: { statusId: status.id } });
   await logEvent(tx, businessId, orderId, "STATUS", `Status: ${order.status.name} → ${status.name} (${reason})`, staffId);
+  await emitAutomation(tx, { trigger: "STATUS_CHANGED", orderId, statusId: status.id });
 }
 
 /** A customer approved a specific version of a quote; any change clears that approval. */
@@ -133,6 +135,7 @@ export async function createOrder(
       },
     });
     await logEvent(tx, businessId, order.id, "CREATED", `${input.type === "QUOTE" ? "Quote" : "Order"} ${orderRef(order)} created`, input.staffId);
+    await emitAutomation(tx, { trigger: input.type === "QUOTE" ? "QUOTE_CREATED" : "ORDER_CREATED", orderId: order.id });
     return order.id;
   });
   await repriceOrder(db, id);
@@ -379,7 +382,13 @@ export async function removeLine(db: BusinessDb, lineId: string, staffId: string
   await clearQuoteApproval(db, line.orderId, staffId);
 }
 
-export async function setStatus(db: BusinessDb, orderId: string, statusId: string, staffId: string | null): Promise<void> {
+export async function setStatus(
+  db: BusinessDb,
+  orderId: string,
+  statusId: string,
+  staffId: string | null,
+  o: { depth?: number; reason?: string } = {},
+): Promise<void> {
   const businessId = db.$businessId;
   await db.$transaction(async (tx) => {
     const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { status: true } });
@@ -387,7 +396,8 @@ export async function setStatus(db: BusinessDb, orderId: string, statusId: strin
     if (status.type !== order.type) throw new OrderError("That status belongs to the other document type");
     if (status.id === order.statusId) return;
     await tx.order.update({ where: { id: orderId }, data: { statusId } });
-    await logEvent(tx, businessId, orderId, "STATUS", `Status: ${order.status.name} → ${status.name}`, staffId);
+    await logEvent(tx, businessId, orderId, "STATUS", `Status: ${order.status.name} → ${status.name}${o.reason ? ` (${o.reason})` : ""}`, staffId);
+    await emitAutomation(tx, { trigger: "STATUS_CHANGED", orderId, statusId, depth: o.depth });
   });
 }
 
@@ -414,7 +424,7 @@ export async function convertQuote(db: BusinessDb, quoteId: string, staffId: str
   const orderId = await db.$transaction(async (tx) => {
     const quote = await tx.order.findUniqueOrThrow({
       where: { id: quoteId },
-      include: { lines: { include: { sizes: true } }, convertedTo: true },
+      include: { lines: { include: { sizes: true, names: { orderBy: { sortOrder: "asc" } } } }, convertedTo: true },
     });
     if (quote.type !== "QUOTE") throw new OrderError("Only quotes can be converted");
     if (quote.convertedTo) throw new OrderError(`Already converted to order ${orderRef(quote.convertedTo)}`);
@@ -466,13 +476,19 @@ export async function convertQuote(db: BusinessDb, quoteId: string, staffId: str
             notes: l.notes,
             sortOrder: l.sortOrder,
             sizes: { create: l.sizes.map((s) => ({ sizeId: s.sizeId, qty: s.qty })) },
+            // The roster comes along.
+            names: { create: l.names.map((n) => ({ sizeId: n.sizeId, name: n.name, number: n.number, qty: n.qty, charge: n.charge, sortOrder: n.sortOrder })) },
           })),
         },
       },
     });
-    if (convertedStatus) await tx.order.update({ where: { id: quote.id }, data: { statusId: convertedStatus.id } });
+    if (convertedStatus) {
+      await tx.order.update({ where: { id: quote.id }, data: { statusId: convertedStatus.id } });
+      await emitAutomation(tx, { trigger: "STATUS_CHANGED", orderId: quote.id, statusId: convertedStatus.id });
+    }
     await logEvent(tx, businessId, quote.id, "CONVERTED", `Converted to order ${orderRef(order)}`, staffId);
     await logEvent(tx, businessId, order.id, "CREATED", `Order ${orderRef(order)} created from quote ${orderRef(quote)}`, staffId);
+    await emitAutomation(tx, { trigger: "ORDER_CREATED", orderId: order.id });
     return order.id;
   });
   await repriceOrder(db, orderId);

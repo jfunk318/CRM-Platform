@@ -157,6 +157,11 @@ phases 1–3 need real product data.
   unanswered quotes); the pipeline board (leads and quotes from new to
   won/lost, values per stage, win rate, drag leads between stages). Still
   to do: Mailchimp sync.
+- **Phase 8 (in progress):** the rules engine (triggers for quotes, orders,
+  status changes, payments, proofs, leads and store requests; conditions;
+  email, task, assign, status, Slack and note actions with placeholders;
+  recipes; a run log; loop protection). Still to do: QuickBooks Online,
+  more Slack, supplier live catalogs and ordering, the public API.
 - **Design studio (done):** artwork placed on quote/order items and store
   items: upload (PNG/JPG/GIF/WebP/SVG), drag and size within the print
   area on the product photo, DPI check against each method, background

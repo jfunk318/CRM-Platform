@@ -7,6 +7,7 @@ import { saveUpload } from "@/lib/files/storage";
 import { designMockups, renderMockup } from "@/lib/design/mockups";
 import { addToLibrary, orderOwner } from "@/lib/design/library";
 import { createProductionJobs } from "@/lib/production/jobs";
+import { emitAutomation } from "@/lib/automation/events";
 import { orderRef } from "./numbers";
 import { logEvent, moveToRole, newToken, OrderError } from "./service";
 
@@ -288,6 +289,7 @@ export async function customerRespondToProof(
         : `${name} asked for changes to proof ${proof.number}: ${note}${files}`,
       null,
     );
+    await emitAutomation(tx, { trigger: o.approve ? "PROOF_APPROVED" : "PROOF_CHANGES", orderId: proof.orderId });
   });
   await moveToRole(
     db,

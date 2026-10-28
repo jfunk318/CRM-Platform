@@ -12,6 +12,7 @@ import { logEvent, newToken, OrderError } from "@/lib/orders/service";
 import { createCheckoutSession, PaymentError, retrieveCheckoutSession, type StripeKeys, stripeKeys } from "@/lib/payments/stripe";
 import { createProductionJobs } from "@/lib/production/jobs";
 import { commissionFor } from "./commissions";
+import { emitAutomation } from "@/lib/automation/events";
 import { cartTotals, type CartWithItems, findCartById, giftProblem, normalizeCode, promoProblem } from "./cart";
 import type { RequestStore } from "./resolve";
 
@@ -268,6 +269,7 @@ async function buildOrder(db: BusinessDb, business: Business, cartId: string, pa
     await refreshPaidTotal(tx, o.id);
     await tx.cart.update({ where: { id: cartId }, data: { orderId: o.id, customerId: customer.id } });
     await logEvent(tx, businessId, o.id, "CREATED", `Order ${orderRef(o)} placed online at ${cart.store.name} by ${shopperName} (${email})`, null);
+    await emitAutomation(tx, { trigger: "ONLINE_ORDER", orderId: o.id });
     return o;
   });
 

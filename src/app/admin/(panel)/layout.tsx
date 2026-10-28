@@ -27,6 +27,7 @@ const NAV: NavItem[] = [
   { href: "/admin/price-check", label: "Price check", roles: ["SALES"] },
   { href: "/admin/settings", label: "Shop & tax", roles: ["ADMIN"] },
   { href: "/admin/order-statuses", label: "Order statuses", roles: ["ADMIN"] },
+  { href: "/admin/automations", label: "Automations", roles: ["ADMIN"] },
   { href: "/admin/delivery-methods", label: "Delivery methods", roles: ["ADMIN"] },
   { href: "/admin/staff", label: "Staff", roles: ["ADMIN"] },
 ];

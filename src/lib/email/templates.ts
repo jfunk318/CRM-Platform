@@ -193,3 +193,9 @@ export function storeRequestReplyEmail(o: { brand: Brand; storeName: string; sub
   const button = { label: `Open the ${o.storeName} portal`, url: o.url };
   return { subject: `${heading} (${o.storeName})`, text: text(paragraphs, button, o.brand), html: layout(o.brand, heading, paragraphs, button) };
 }
+
+/** A message written by the business (automation emails): paragraphs split on blank lines, optional button. */
+export function messageEmail(o: { brand: Brand; subject: string; body: string; button?: { label: string; url: string } | null }): EmailContent {
+  const paragraphs = o.body.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  return { subject: o.subject, text: text(paragraphs, o.button ?? undefined, o.brand), html: layout(o.brand, o.subject, paragraphs, o.button ?? undefined) };
+}
