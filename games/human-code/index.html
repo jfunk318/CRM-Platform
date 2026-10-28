@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Human Code</title>
+  <meta name="description" content="A neon-noir RPG about the robots who think they're human." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./src/style.css" />
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="hud" class="hidden">
+    <div id="echo-panel">
+      <div class="echo-head"><span class="echo-dot"></span>ECHO <span class="echo-sub">// personal agent</span></div>
+      <div id="echo-log"></div>
+    </div>
+
+    <div id="objective"><div class="obj-label">OBJECTIVE</div><div id="obj-text"></div></div>
+    <div id="trace" class="hidden">◆ TRACE DETECTED ◆</div>
+
+    <div id="markers"></div>
+    <div id="barks"></div>
+
+    <div id="crosshair"></div>
+    <div id="prompt" class="hidden"></div>
+
+    <div id="status">
+      <div id="status-title">CIVILIAN</div>
+      <div class="bar"><span class="bar-label" id="integrity-label">HEALTH</span><div class="bar-track"><div id="integrity-fill" class="bar-fill"></div></div></div>
+      <div class="bar"><span class="bar-label">CORE</span><div class="bar-track"><div id="core-fill" class="bar-fill core"></div></div></div>
+      <div id="awaken">AWAKENING <span id="awaken-val">0%</span></div>
+    </div>
+
+    <div id="abilities"></div>
+    <div id="fragment-count">FRAGMENTS <span id="frag-val">0/5</span></div>
+    <div id="damage-text" class="hidden"></div>
+    <div id="glitch-text"></div>
+  </div>
+
+  <div id="dialogue" class="hidden">
+    <div id="dlg-speaker"></div>
+    <div id="dlg-text"></div>
+    <div id="dlg-choices"></div>
+    <div id="dlg-hint">[E / Space] continue</div>
+  </div>
+
+  <div id="fragment-modal" class="hidden">
+    <div class="frag-head" id="frag-title"></div>
+    <pre id="frag-code"></pre>
+    <div class="frag-foot">[E] close</div>
+  </div>
+
+  <div id="codex" class="hidden">
+    <div class="codex-inner">
+      <div class="codex-title">CODEX <span>// recovered source</span></div>
+      <div id="codex-list"></div>
+      <div class="codex-foot">[Tab] close</div>
+    </div>
+  </div>
+
+  <div id="title-screen">
+    <div class="title-wrap">
+      <div class="title-kicker">a neon-noir RPG</div>
+      <h1 class="glitch" data-text="HUMAN//CODE">HUMAN//CODE</h1>
+      <p class="tagline">You were built so well you believe you were born.</p>
+      <div class="title-buttons">
+        <button id="btn-start" class="btn primary">Wake up</button>
+        <button id="btn-controls" class="btn">Controls</button>
+      </div>
+      <div class="settings">
+        <label><input type="checkbox" id="opt-reflections" checked /> Wet-street reflections</label>
+        <label><input type="checkbox" id="opt-bloom" checked /> Bloom</label>
+        <label><input type="checkbox" id="opt-hq" /> High resolution</label>
+      </div>
+      <div id="controls-card" class="hidden">
+        <div><kbd>WASD</kbd> move &nbsp; <kbd>Shift</kbd> sprint &nbsp; <kbd>Space</kbd> jump</div>
+        <div><kbd>Mouse</kbd> look &nbsp; <kbd>V</kbd> first / third person</div>
+        <div><kbd>Q</kbd> or <kbd>Right mouse</kbd> hold to <b>Peer</b> through the veil</div>
+        <div><kbd>E</kbd> talk / interact &nbsp; <kbd>Tab</kbd> codex &nbsp; <kbd>M</kbd> mute</div>
+        <div><kbd>F</kbd> Override &nbsp; <kbd>C</kbd> Phase dash &nbsp; <kbd>R</kbd> Overclock <span class="dim">(unlocked as you awaken)</span></div>
+      </div>
+      <div id="touch-note" class="hidden">Best played on a computer with a keyboard and mouse.</div>
+    </div>
+  </div>
+
+  <div id="intro" class="hidden"><div id="intro-text"></div><div id="intro-skip">[Space] skip</div></div>
+
+  <div id="pause" class="hidden">
+    <div class="pause-inner">
+      <div class="codex-title">PAUSED</div>
+      <button id="btn-resume" class="btn primary">Resume</button>
+      <div class="dim small">Click to look around. Esc releases the mouse.</div>
+    </div>
+  </div>
+
+  <div id="ending" class="hidden">
+    <div class="ending-inner">
+      <div id="ending-kicker"></div>
+      <h2 id="ending-title"></h2>
+      <div id="ending-text"></div>
+      <div id="ending-stats"></div>
+      <button id="btn-restart" class="btn primary hidden">Wake up again</button>
+    </div>
+  </div>
+
+  <div id="fade"></div>
+  <div id="loading">BOOTING PERCEPTION FILTER<span class="blink">_</span></div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
