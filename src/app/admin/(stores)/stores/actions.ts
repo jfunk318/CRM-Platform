@@ -1,5 +1,6 @@
 "use server";
 
+import { isArtKey } from "@/lib/store/banner-art";
 import { randomBytes } from "node:crypto";
 import type { AccountMode, CommissionKind, MarkupKind, PersonalizationMode, PromoKind, StoreRequestStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
@@ -181,6 +182,8 @@ export async function saveLookAction(_: ActionResult, form: FormData): Promise<A
     if (!(theme in THEMES)) throw new FormError("Choose a theme");
     const accent = checkbox(form, "themeAccent") ? null : optionalText(form, "accentColor");
     if (accent && !/^#[0-9a-f]{6}$/i.test(accent)) throw new FormError("Accent color must look like #d97706");
+    const art = optionalText(form, "heroArt");
+    if (art && art !== "none" && !isArtKey(art)) throw new FormError("Choose a banner art");
     await db.store.update({
       where: { id: store.id },
       data: {
@@ -190,6 +193,7 @@ export async function saveLookAction(_: ActionResult, form: FormData): Promise<A
         heroHeadline: optionalText(form, "heroHeadline")?.slice(0, 120) ?? null,
         heroText: optionalText(form, "heroText")?.slice(0, 300) ?? null,
         heroButton: optionalText(form, "heroButton")?.slice(0, 40) ?? null,
+        heroArt: art,
       },
     });
     refresh();

@@ -144,8 +144,8 @@ phases 1–3 need real product data.
   SanMar/S&S credentials are available (phase 8).
 - **Store themes (done):** five storefront themes (minimal, team/sports,
   dark, luxury, local/rustic) with per-store accent, logo and homepage
-  banner (image, headline, text, button; a mockup collage when there's no
-  image), applied to every storefront page, picked on a store's Look tab or
+  banner (image, headline, text, button; built-in art in the store's colors
+  when there's no image, two per theme, any of which a store can pick), applied to every storefront page, picked on a store's Look tab or
   when publishing a quote to a new store. More themes can be added in
   `src/lib/store/themes.ts`.
 - **Phase 7 (in progress):** leads (contact and opportunity details,

@@ -2,6 +2,8 @@ import { ActionButton } from "@/components/admin/action-button";
 import { ActionForm } from "@/components/admin/action-form";
 import { FilePicker } from "@/components/file-picker";
 import { loadAdminStore } from "@/lib/store/admin";
+import { BannerArt } from "@/components/store/banner-art";
+import { ARTS, artsFor, DEFAULT_ART } from "@/lib/store/banner-art";
 import { THEMES, type ThemeKey, themeOf, themeStyle } from "@/lib/store/themes";
 import { removeHeroAction, removeLogoAction, saveLookAction, uploadHeroAction, uploadLogoAction } from "../../actions";
 
@@ -61,12 +63,38 @@ export default async function LookPage({ params }: { params: Promise<{ id: strin
             <p className="text-xs text-gray-500">Left blank, the headline is the store name and the text its tagline (Settings).</p>
           </div>
         </section>
+
+        <section className="card space-y-3">
+          <div>
+            <h2 className="font-semibold">Banner art</h2>
+            <p className="text-sm text-gray-600">
+              Drawn in this store&apos;s colors, so it suits any team or brand. {store.heroImageFileId ? "A banner photo is uploaded, so it's shown instead; remove it to use art." : "Upload a banner photo below to use that instead."}
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6" style={themeStyle(store.theme, store.accentColor)} data-testid="art-picker">
+            {[null, ...artsFor(store.theme), "none" as const].map((key) => {
+              const shown = key === null ? DEFAULT_ART[current] : key === "none" ? null : key;
+              return (
+                <label key={key ?? "theme"} className="block cursor-pointer rounded-lg border-2 border-transparent p-1 has-[:checked]:border-amber-500">
+                  <input type="radio" name="heroArt" value={key ?? ""} defaultChecked={(store.heroArt ?? null) === key} className="sr-only" />
+                  <div className="relative aspect-[5/2] overflow-hidden rounded border border-gray-200" style={{ background: "var(--st-subtle)" }}>
+                    {shown ? <BannerArt art={shown} uid={`pick-${key ?? "theme"}`} /> : <span className="absolute inset-0 grid place-items-center text-xs text-gray-500">Plain</span>}
+                  </div>
+                  <div className="mt-1 px-1 text-xs font-medium">
+                    {key === null ? <>Theme&apos;s pick <span className="font-normal text-gray-500">({ARTS[DEFAULT_ART[current]].label})</span></> : key === "none" ? "None" : ARTS[key].label}
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+          <p className="text-xs text-gray-500">&ldquo;Theme&apos;s pick&rdquo; follows the theme if you change it. Thumbnails use the saved theme and accent; save to see a new one.</p>
+        </section>
       </ActionForm>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="card space-y-3">
           <h2 className="font-semibold">Banner image</h2>
-          <p className="text-sm text-gray-600">A wide photo (team photo, storefront, product shot). Without one, the banner shows the store&apos;s own products.</p>
+          <p className="text-sm text-gray-600">A wide photo (team photo, storefront, the field). It replaces the banner art.</p>
           {store.heroImageFileId && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={`/admin/files/${store.heroImageFileId}`} alt="Banner" className="max-h-40 rounded border" />
@@ -109,8 +137,13 @@ function ThemePreview({ theme, accent, name }: { theme: ThemeKey; accent: string
   const t = THEMES[theme];
   const vars = themeStyle(theme, accent);
   const tile = { background: vars["--st-subtle"], borderRadius: vars["--st-radius"] };
+  const art = DEFAULT_ART[theme];
+  const onAccent = ARTS[art].tone === "accent";
+  const center = t.hero === "glow" || t.hero === "cover";
+  // Minimal and rustic put the art beside the text.
+  const panel = t.hero === "split" || t.hero === "framed";
   return (
-    <div className="overflow-hidden rounded-md border border-gray-200 text-left" style={{ background: vars["--st-bg"], color: vars["--st-text"], fontFamily: t.body }}>
+    <div className="overflow-hidden rounded-md border border-gray-200 text-left" style={{ ...vars, background: vars["--st-bg"], color: vars["--st-text"], fontFamily: t.body }}>
       <div
         className="flex items-center justify-between px-2 py-1.5 text-[10px]"
         style={t.header === "bold" ? { background: vars["--accent"], color: vars["--accent-contrast"] } : { borderBottom: `1px solid ${vars["--st-border"]}`, background: vars["--st-surface"] }}
@@ -118,12 +151,19 @@ function ThemePreview({ theme, accent, name }: { theme: ThemeKey; accent: string
         <span className="font-bold" style={{ fontFamily: t.heading, textTransform: vars["--st-heading-transform"] as "none" }}>{name.slice(0, 18)}</span>
         <span className="rounded px-1.5" style={{ background: t.header === "bold" ? vars["--accent-contrast"] : vars["--accent"], color: t.header === "bold" ? vars["--accent"] : vars["--accent-contrast"] }}>Cart</span>
       </div>
-      <div className="space-y-1.5 p-2" style={t.hero === "stripes" ? { background: vars["--accent"], color: vars["--accent-contrast"] } : t.hero === "glow" ? { background: `radial-gradient(80% 80% at 80% 0%, ${vars["--accent"]}55, transparent), ${vars["--st-surface"]}` } : {}}>
-        <div className="text-base leading-tight" style={{ fontFamily: t.heading, fontWeight: Number(vars["--st-heading-weight"]), textTransform: vars["--st-heading-transform"] as "none", textAlign: t.hero === "glow" || t.hero === "cover" ? "center" : "left" }}>
+      <div className="relative space-y-1.5 overflow-hidden p-2" style={{ color: onAccent ? vars["--accent-contrast"] : vars["--st-text"] }}>
+        {panel ? (
+          <div className="absolute inset-y-1.5 right-1.5 w-[42%] overflow-hidden" style={{ borderRadius: vars["--st-radius"] }}>
+            <BannerArt art={art} uid={`theme-${theme}`} anchor="right" />
+          </div>
+        ) : (
+          <BannerArt art={art} uid={`theme-${theme}`} />
+        )}
+        <div className={`relative text-base leading-tight ${panel ? "w-[55%]" : ""}`} style={{ fontFamily: t.heading, fontWeight: Number(vars["--st-heading-weight"]), textTransform: vars["--st-heading-transform"] as "none", textAlign: center ? "center" : "left" }}>
           Gear up for the season
         </div>
-        <div className={t.hero === "glow" || t.hero === "cover" ? "flex justify-center" : ""}>
-          <span className="inline-block px-2 py-0.5 text-[9px] font-semibold" style={{ background: t.hero === "stripes" ? vars["--accent-contrast"] : vars["--accent"], color: t.hero === "stripes" ? vars["--accent"] : vars["--accent-contrast"], borderRadius: vars["--st-radius"] }}>Shop now</span>
+        <div className={`relative ${center ? "flex justify-center" : ""}`}>
+          <span className="inline-block px-2 py-0.5 text-[9px] font-semibold" style={{ background: onAccent ? vars["--accent-contrast"] : vars["--accent"], color: onAccent ? vars["--accent"] : vars["--accent-contrast"], borderRadius: vars["--st-radius"] }}>Shop now</span>
         </div>
       </div>
       <div className="grid grid-cols-3 gap-1.5 p-2">

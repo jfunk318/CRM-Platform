@@ -1761,6 +1761,7 @@ model Store {
   heroHeadline          String? // defaults to the store name
   heroText              String? // defaults to the tagline
   heroButton            String? // defaults to "Shop now"
+  heroArt               String? // built-in banner art; null = the theme's, "none" = plain
   accentColor           String? // "#f59e0b"
   announcement          String? // bar across the top of every page
   footerText            String?

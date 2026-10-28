@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import { PLATFORM_NAME } from "@/lib/platform";
 import { getRequestStore } from "@/lib/store/resolve";
 import { PageBody } from "@/components/store/showcase";
-import { itemImage, ItemGrid, shopItemsInclude } from "@/components/store/items";
+import { ItemGrid, shopItemsInclude } from "@/components/store/items";
 import { StoreHero } from "@/components/store/hero";
 import { THEMES, themeOf } from "@/lib/store/themes";
 
@@ -39,11 +39,10 @@ export default async function Home() {
     }),
   ]);
   const theme = THEMES[themeOf(rs.store.theme)];
-  const pictures = featured.map((it) => ({ src: itemImage(it), alt: it.name })).filter((p): p is { src: string; alt: string } => !!p.src);
   const hasBody = !!home?.body.trim();
   return (
     <div className="space-y-12">
-      {rs.store.showHero && <StoreHero store={rs.store} style={theme.hero} pictures={pictures} eyebrow={rs.store.kind === "AFFILIATE" && rs.store.closesAt ? rs.status.label : null} />}
+      {rs.store.showHero && <StoreHero store={rs.store} style={theme.hero} eyebrow={rs.store.kind === "AFFILIATE" && rs.store.closesAt ? rs.status.label : null} />}
       {hasBody ? <PageBody body={home!.body} db={rs.db} currentStoreId={rs.store.id} /> : !rs.store.showHero && <h1 className="text-4xl">{rs.store.name}</h1>}
       {featured.length > 0 && (
         <section className="space-y-6">

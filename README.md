@@ -272,9 +272,12 @@ Customers only see artwork through their own link (`/c/<token>/art/…`).
   the fonts (Google Fonts), colors, corners, header, homepage banner and
   product cards, and dresses every storefront page including cart,
   checkout and account forms. Per store: the accent color (or the theme's),
-  the logo, and the homepage banner (on/off, headline, text, button, and an
-  image; without one the banner shows the store's own product mockups, so a
-  store published from a quote looks finished straight away). The Look tab
+  the logo, and the homepage banner (on/off, headline, text, button, and its
+  picture). The picture is built-in art drawn in the store's colors (two per
+  theme: shapes and flowing lines, speed stripes and a game field, a neon
+  grid and aurora, art deco and silk, hills and a topo map), so a new store
+  looks finished straight away; any store can pick another art, none, or
+  upload its own photo (`src/components/store/banner-art.tsx`). The Look tab
   previews each theme and shows the live store. New stores start with
   Minimal, or the theme chosen when publishing a quote to a new store
   (`src/lib/store/themes.ts`).
