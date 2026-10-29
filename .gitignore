@@ -25,3 +25,6 @@ next-env.d.ts
 
 # uploaded files (local storage driver)
 /storage
+
+# Local caches (supplier spec sheets)
+.cache/

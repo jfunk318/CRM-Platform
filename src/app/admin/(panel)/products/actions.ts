@@ -354,7 +354,7 @@ export async function saveViewAreas(_: ActionResult, form: FormData): Promise<Ac
   const { db } = await requireStaff([...EDITORS]);
   return runAction(async () => {
     const viewId = text(form, "viewId");
-    const view = await db.productView.findUniqueOrThrow({ where: { id: viewId }, include: { areas: { select: { id: true } } } });
+    const view = await db.productView.findUniqueOrThrow({ where: { id: viewId }, include: { areas: true } });
 
     const [ids, names, widths, heights, xs, ys, ws, hs] = ["areaId", "name", "widthIn", "heightIn", "x", "y", "w", "h"].map((n) => all(form, n));
     const fraction = (raw: string, label: string) => {
@@ -380,7 +380,12 @@ export async function saveViewAreas(_: ActionResult, form: FormData): Promise<Ac
       // Quote/order items keep their location name when a print area is removed.
       await tx.designDecoration.updateMany({ where: { areaId: { in: d.deleteIds } }, data: { areaId: null } });
       await tx.decorationArea.deleteMany({ where: { id: { in: d.deleteIds } } });
-      for (const { id, ...data } of d.update) await tx.decorationArea.update({ where: { id }, data });
+      for (const { id, ...data } of d.update) {
+        // Adjusted by hand: later supplier spec syncs leave it alone.
+        const was = view.areas.find((a) => a.id === id)!;
+        const moved = was.name !== data.name || !was.widthIn.equals(data.widthIn) || !was.heightIn.equals(data.heightIn) || [was.x - data.x, was.y - data.y, was.w - data.w, was.h - data.h].some((v) => Math.abs(v) > 0.0005);
+        await tx.decorationArea.update({ where: { id }, data: { ...data, ...(moved ? { autoPlaced: false } : {}) } });
+      }
       if (d.create.length) await tx.decorationArea.createMany({ data: d.create.map((r) => ({ ...r, businessId: db.$businessId, viewId })) });
     });
     refresh(view.productId);

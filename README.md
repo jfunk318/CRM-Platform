@@ -43,6 +43,10 @@ Handy commands:
 - `npm run set-password -- you@example.com "new password"`: set a staff or
   platform login's password (the `SEED_*` values in `.env` are only used
   when the database is first set up).
+- `npm run sync-specs`: print areas for every imported SanMar product from
+  its Company Casuals decoration spec sheet (`-- PC54 PC78H` for some styles;
+  sheets are kept in `.cache/` for re-runs, `-- --refresh` fetches them
+  again). Run it after importing new styles.
 - `npm run fix-size-order`: put every product's sizes smallest to largest
   (for products imported before sizes were sorted).
 - After pulling changes, run `npx prisma migrate dev`; if a save fails with
@@ -274,7 +278,15 @@ the customer's artwork:
 
 Where a print area sits on each product photo is set under the product's
 Views & Decoration Areas; adjust it there if mockups sit too high or low.
-Customers only see artwork through their own link (`/c/<token>/art/…`).
+Imported SanMar garments get life-size areas from SanMar's decoration spec
+sheets (`npm run sync-specs`, below): every location the style offers (left
+and right chest, full front, upper/full back, back bottom, left/right
+bottom, sleeves, hoodie pouch), sized to SanMar's maximums and placed from
+measurements: a style's chest fills ~40% of the photo, left chest is the
+wearer's left (the right of a front photo) 3.75" off center and 3.5" below
+the collar, bottoms 2" above the hem, and on hooded styles the front and
+back locations drop below the hood (`src/lib/catalog/garment-specs.ts`).
+Areas adjusted by hand in the product editor are never moved again.
 
 ## Production, purchasing and shipping
 

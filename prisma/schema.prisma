@@ -487,6 +487,9 @@ model DecorationArea {
   y                 Float
   w                 Float
   h                 Float
+  // Placed by the importer or the supplier spec sync (moved again by later
+  // syncs); false once someone adjusts it by hand.
+  autoPlaced        Boolean            @default(false)
   designDecorations DesignDecoration[]
 
   @@unique([businessId, id])

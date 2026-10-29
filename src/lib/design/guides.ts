@@ -23,6 +23,7 @@ export type PlacementGuide = {
 export const DEFAULT_GUIDES: PlacementGuide[] = [
   { name: "Left / right chest", keywords: ["left chest", "right chest", "chest"], maxWidthIn: 4, maxHeightIn: 4, align: "top" },
   { name: "Pocket", keywords: ["pocket"], maxWidthIn: 3.5, maxHeightIn: 3.5, align: "top" },
+  { name: "Hoodie pouch", keywords: ["pouch pocket", "pouch"], maxWidthIn: 7, maxHeightIn: 6, align: "center" },
   { name: "Full front", keywords: ["full front", "front"], maxWidthIn: 12, maxHeightIn: 14, align: "top" },
   { name: "Upper back / yoke", keywords: ["upper back", "yoke", "nameplate", "neck"], maxWidthIn: 12, maxHeightIn: 4, align: "top" },
   { name: "Full back", keywords: ["full back", "back"], maxWidthIn: 12, maxHeightIn: 14, align: "top" },

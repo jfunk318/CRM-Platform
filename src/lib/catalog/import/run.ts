@@ -236,7 +236,7 @@ export async function runCatalogImport(businessId: string, importId: string) {
                 productId,
                 name,
                 sortOrder: i,
-                areas: { create: areas.filter((a) => a.view === name).map((a) => ({ name: a.name, widthIn: a.w, heightIn: a.h, x: a.box[0], y: a.box[1], w: a.box[2], h: a.box[3] })) },
+                areas: { create: areas.filter((a) => a.view === name).map((a) => ({ name: a.name, widthIn: a.w, heightIn: a.h, x: a.box[0], y: a.box[1], w: a.box[2], h: a.box[3], autoPlaced: true })) },
               },
               include: { images: true, areas: true },
             });
