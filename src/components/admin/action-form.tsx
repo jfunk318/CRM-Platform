@@ -13,15 +13,19 @@ type Props = {
   danger?: boolean;
   /** Clear the inputs after a successful save (for "add new" forms). */
   resetOnSuccess?: boolean;
+  /** Told after each successful save, with its message. */
+  onSaved?: (message: string) => void;
 };
 
 /** A form bound to an admin server action, with saved/error feedback. */
-export function ActionForm({ action, children, submitLabel = "Save", className, confirm, danger, resetOnSuccess }: Props) {
+export function ActionForm({ action, children, submitLabel = "Save", className, confirm, danger, resetOnSuccess, onSaved }: Props) {
   const [state, formAction, pending] = useActionState(action, {});
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (resetOnSuccess && state.ok) formRef.current?.reset();
+    if (state.ok) onSaved?.(state.ok);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per result, not per render of the callback
   }, [state, resetOnSuccess]);
 
   return (

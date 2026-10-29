@@ -212,8 +212,49 @@ the customer's artwork:
   color, invert. Colors are consolidated to at most 8 (closest shades
   merge); "Limit to N colors" flattens the art to N solid inks. Edits run in the browser (`src/lib/design/raster.ts`); the
   original upload is kept, so edits can be changed later.
-- **Pricing:** the placed width and height fill in, and for screen printing
-  the detected ink colors.
+- **Live pricing:** the item's price (each and total, this decoration's
+  price per piece and its setup fees) updates as artwork is placed, resized,
+  recolored or moved to another location, in the designer and in the item
+  editor (as quantities change), priced exactly as saving would
+  (`/admin/api/price-preview`, `previewPrices` in `src/lib/orders/pricing.ts`):
+  - *DTF* (and other area-priced methods): by the artwork's printed square
+    inches, per location.
+  - *Embroidery:* by stitch count, estimated from the size: the stitched
+    share of the artwork (its non-transparent pixels) × width × height × the
+    method's stitches per square inch (Decoration methods, default 1,800),
+    to the nearest 100. Typing a real count (from the digitized file) keeps
+    it; "Estimate from the size" goes back.
+  - *Screen printing:* by the detected ink colors (or a typed count) and
+    each location separately, with its screens as setup.
+  Without quantities yet, it's priced as a typical run (12, or the method's
+  minimum) and says so.
+- **Placement guides** (Catalog → Placement guides): standard sizes per
+  kind of location, e.g. left chest up to 4″ × 4″ at the top, full front and
+  back up to 12″ × 14″, sleeve 3.5″, hat front 4.5″ × 2.25″ in the middle.
+  New artwork starts at the guide's size (as big as the guide and the print
+  area allow, keeping its shape, centered across); "Standard … size" puts it
+  back, "Fill the area" uses the whole print area (`src/lib/design/guides.ts`).
+
+**The same decoration on many items:**
+
+- **+ Add several items with the same decoration** (on a quote/order):
+  choose the products and colors (quantities optional), design the
+  decoration once on the first, then tick every location it goes on. It's
+  placed on each product's matching print area (same name, else the same
+  area name, else an area under the same guide), sized either *the same
+  print size on every item* (one set of screens / one digitized file;
+  shrunk only where it can't fit, and noted) or *scaled to fit each
+  product*. Each item shows its mockup, sizes, stitch estimates and live
+  price; pick a different area or skip a location per item, or
+  **Fine-tune** one item in the designer. **Add N items** saves them.
+- **Update artwork on several items:** tick existing items (the rest aren't
+  touched), then either put new artwork on them (replacing what's at the
+  chosen locations, adding it where there's nothing) or adjust the
+  decoration they have at one location: resize, move, change the method, or
+  swap the artwork, applied to all of them, optionally keeping each item's
+  own artwork. Each item shows its price now and after.
+- Every item gets its own copy: editing one later (or fine-tuning it here)
+  never changes another (`src/lib/design/apply.ts`).
 - **Mockups** (photo + artwork) show on the item, on the customer's quote or
   order link, and when creating a proof you can tick "Include mockups" to
   have them rendered into proof images (`src/lib/design/mockups.ts`, sharp).

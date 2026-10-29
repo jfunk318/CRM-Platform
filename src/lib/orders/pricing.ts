@@ -24,8 +24,9 @@ type DesignDecorationRow = OrderForPricing["lines"][number]["design"]["decoratio
  * can share one quantity for the price break when the method allows it,
  * e.g. the same print on 12 navy and 12 black shirts prices as 24.
  */
-function sameDesignKey(d: DesignDecorationRow): string {
-  return [d.methodId, d.location.toLowerCase(), d.colors ?? "", d.stitches ?? "", d.widthIn ?? "", d.heightIn ?? ""].join("|");
+function sameDesignKey(d: Pick<DesignDecorationRow, "methodId" | "location" | "colors" | "stitches"> & { widthIn?: { toString(): string } | number | null; heightIn?: { toString(): string } | number | null }): string {
+  const n = (v: { toString(): string } | number | null | undefined) => (v === null || v === undefined ? "" : String(Number(v.toString())));
+  return [d.methodId, d.location.toLowerCase(), d.colors ?? "", d.stitches ?? "", n(d.widthIn), n(d.heightIn)].join("|");
 }
 
 function lineQty(line: OrderForPricing["lines"][number]): number {
@@ -205,4 +206,101 @@ function shareScreenFees(
       h.price.fees[h.feeIndex] = { ...fee, amount: new Prisma.Decimal(0), description: `${fee.description} (shared with another item)` };
     }
   }
+}
+
+// ─── Live prices while designing ────────────────────────────────────────────
+
+export type PreviewLine = {
+  /** The caller's name for the line, echoed back. */
+  key: string;
+  /** An existing line this replaces (left out of the order's other lines). */
+  lineId?: string | null;
+  productId: string;
+  colorId: string;
+  /** sizeId → quantity; empty prices a typical run (see `assumedQty`). */
+  quantities: Record<string, number>;
+  decorations: DecorationRequest[];
+};
+
+export type LinePreview = {
+  key: string;
+  qty: number;
+  /** No quantities were entered, so it's priced at this many of the first size. */
+  assumedQty: boolean;
+  total: string;
+  /** Total ÷ pieces, fees included. */
+  each: string;
+  decorationUnit: string;
+  decorations: { location: string; unitPrice: string }[];
+  fees: { location: string; description: string; amount: string }[];
+  issues: PricingIssue[];
+};
+
+/**
+ * Price lines as they'd be saved, for live prices in the designer and the
+ * bulk tools: the order's pricing group, and quantities combined with the
+ * order's other lines where the method allows (screens shared across items
+ * aren't split here, so setup fees show in full).
+ */
+export async function previewPrices(db: BusinessDb, o: { orderId?: string | null; lines: PreviewLine[] }): Promise<LinePreview[]> {
+  const order = o.orderId ? await db.order.findUnique({ where: { id: o.orderId }, include: orderForPricing }) : null;
+  const combinable = new Set((await db.decorationMethod.findMany({ where: { combineSameDesignQty: true }, select: { id: true } })).map((m) => m.id));
+  const replaced = new Set(o.lines.flatMap((l) => (l.lineId ? [l.lineId] : [])));
+
+  // Pieces each line prices for: what was entered, or a typical run.
+  const runs = await Promise.all(
+    o.lines.map(async (l) => {
+      const entered = Object.values(l.quantities).reduce((n, q) => n + (q > 0 ? q : 0), 0);
+      if (entered > 0) return { quantities: l.quantities, qty: entered, assumed: false };
+      const first = await db.productVariant.findFirst({ where: { productId: l.productId, colorId: l.colorId, active: true }, orderBy: { size: { sortOrder: "asc" } } });
+      const methods = await db.decorationMethod.findMany({ where: { id: { in: l.decorations.map((d) => d.methodId) } }, select: { minQty: true } });
+      const qty = Math.max(12, ...methods.map((m) => m.minQty));
+      return { quantities: first ? { [first.sizeId]: qty } : {}, qty, assumed: true };
+    }),
+  );
+
+  const combined = new Map<string, number>();
+  const count = (d: Parameters<typeof sameDesignKey>[0], qty: number) => {
+    if (!combinable.has(d.methodId)) return;
+    const k = sameDesignKey(d);
+    combined.set(k, (combined.get(k) ?? 0) + qty);
+  };
+  for (const line of order?.lines ?? []) {
+    if (replaced.has(line.id)) continue;
+    for (const d of line.design.decorations) count(d, lineQty(line));
+  }
+  o.lines.forEach((l, i) => l.decorations.forEach((d) => count({ ...d, colors: d.colors ?? null, stitches: d.stitches ?? null }, runs[i].qty)));
+
+  const pricingGroupId = order ? pricingGroupFor(order) : null;
+  return Promise.all(
+    o.lines.map(async (l, i): Promise<LinePreview> => {
+      const run = runs[i];
+      const base = { key: l.key, qty: run.qty, assumedQty: run.assumed };
+      try {
+        const input = await loadLineItemInput(db, {
+          productId: l.productId,
+          colorId: l.colorId,
+          quantities: run.quantities,
+          pricingGroupId,
+          decorations: l.decorations.map((d) => ({
+            ...d,
+            pricingQty: combinable.has(d.methodId) ? combined.get(sameDesignKey({ ...d, colors: d.colors ?? null, stitches: d.stitches ?? null })) : undefined,
+          })),
+        });
+        const price = priceLineItem(input);
+        return {
+          ...base,
+          total: price.total.toFixed(2),
+          each: run.qty ? price.total.dividedBy(run.qty).toFixed(2) : "0.00",
+          decorationUnit: price.decorations.reduce((a, d) => a.plus(d.unitPrice), new Prisma.Decimal(0)).toFixed(2),
+          decorations: price.decorations.map((d) => ({ location: d.location, unitPrice: d.unitPrice.toFixed(2) })),
+          fees: price.fees.map((f) => ({ location: f.location, description: f.description, amount: f.amount.toFixed(2) })),
+          issues: price.issues,
+        };
+      } catch (e) {
+        if (!(e instanceof LineRequestError)) throw e;
+        return { ...base, total: "0.00", each: "0.00", decorationUnit: "0.00", decorations: [], fees: [], issues: [{ severity: "error", code: "LINE", message: e.message }] };
+      }
+    }),
+  );
 }

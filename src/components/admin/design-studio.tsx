@@ -8,13 +8,25 @@ import { cropPreview, downscale, loadArt, rasterPreview, rasterToPng, resizeToPn
 import { PRINT_DPI, sizedSvg, suitsVector, targetWidthPx, traceToSvg } from "@/lib/design/enhance";
 import { type AreaBox, clampPlacement, dpiRating, effectiveDpi, fitPlacement, type Placement, photoRect, printSize } from "@/lib/design/placement";
 import { applyEdits, type ArtEdits, MAX_PALETTE, palette, type Raster, removeBackground, trim } from "@/lib/design/raster";
+import { bestFit, coverageOf, DEFAULT_GUIDES, DEFAULT_STITCH_DENSITY, estimateStitches, guideFor, type PlacementGuide } from "@/lib/design/guides";
+import { decorationForPrice, PriceSummary, quantitiesForPrice, useLivePrices } from "./live-price";
 
 export type StudioArea = AreaBox & { id: string; label: string; viewId: string };
 export type StudioView = { id: string; name: string; photos: Record<string, string> };
 export type StudioColor = { id: string; name: string; hex: string | null; image?: string | null };
 /** Another decoration's placed artwork on the same item, shown for context. */
 export type StudioOther = { areaId: string; src: string; art: ArtworkValue };
-export type StudioMethod = { id: string; name: string; pricingModel: string; minQty: number; minDpi: number | null; perfectDpi: number | null; maxColors: number | null };
+export type StudioMethod = { id: string; name: string; pricingModel: string; minQty: number; minDpi: number | null; perfectDpi: number | null; maxColors: number | null; stitchDensity?: number };
+/** The item around the decoration, for live prices. */
+export type StudioPricing = {
+  orderId: string | null;
+  lineId?: string | null;
+  productId: string;
+  quantities: Record<string, string>;
+  otherDecorations: DecorationValue[];
+  /** The decoration will replace whatever is at its location (the bulk tools), so that's left out of the price. */
+  replacesLocation?: boolean;
+};
 
 /** One decoration on a quote/order item, as the item editor and the designer hold it. */
 export type DecorationValue = {
@@ -33,6 +45,8 @@ export type DecorationValue = {
   needsArtwork: boolean;
   needsDigitizing: boolean;
   reuseScreens: boolean;
+  /** Stitches were typed in (e.g. from the digitized file) rather than estimated from the size. */
+  stitchesSet?: boolean;
 };
 
 export const blankDecoration = (): DecorationValue => ({
@@ -92,6 +106,10 @@ export function DesignStudio({
   onSave,
   onRemove,
   onClose,
+  guides = DEFAULT_GUIDES,
+  pricing,
+  saveLabel,
+  banner,
 }: {
   /** The decoration being edited, or null to add one. */
   decoration: DecorationValue | null;
@@ -112,6 +130,13 @@ export function DesignStudio({
   /** Remove the decoration (editing only). */
   onRemove?: () => void;
   onClose: () => void;
+  /** Placement guidelines for sizing new artwork. */
+  guides?: PlacementGuide[];
+  /** Show the item's live price while designing. */
+  pricing?: StudioPricing;
+  saveLabel?: string;
+  /** A note across the top (e.g. "This decoration goes on 6 items"). */
+  banner?: React.ReactNode;
 }) {
   // What the designer opened with; artwork in it is reloaded from its original.
   const [start] = useState<DecorationValue>(() => decoration ?? { ...blankDecoration(), methodId: methods[0]?.id ?? "", areaId: areas[0]?.id ?? "", location: areas[0]?.label ?? "" });
@@ -130,8 +155,9 @@ export function DesignStudio({
     needsDigitizing: start.needsDigitizing,
     reuseScreens: start.reuseScreens,
   });
-  // Ink colors follow the artwork until typed over.
+  // Ink colors follow the artwork until typed over; so do embroidery stitches.
   const [colorsTyped, setColorsTyped] = useState(false);
+  const [stitchesTyped, setStitchesTyped] = useState(!!start.stitchesSet);
 
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [edits, setEdits] = useState<ArtEdits>(initial?.edits ?? {});
@@ -239,7 +265,7 @@ export function DesignStudio({
     const inks = edits.oneColor ? 1 : palette(result, { maxColors: limit }).length;
     // The finished art's size in original pixels, for the resolution check.
     const k = loaded.full.width / loaded.work.width / loaded.scale;
-    return { colors: palColors, inks, preview: rasterPreview(result, PREVIEW_PX), art: { widthPx: Math.round(result.width * k), heightPx: Math.round(result.height * k) } };
+    return { colors: palColors, inks, coverage: coverageOf(result), preview: rasterPreview(result, PREVIEW_PX), art: { widthPx: Math.round(result.width * k), heightPx: Math.round(result.height * k) } };
   }, [loaded, edits]);
 
   // Keep the art inside the area when its shape changes (e.g. after trimming) or the area does.
@@ -251,6 +277,10 @@ export function DesignStudio({
   const dpi = enhance ? Math.max(rawDpi, PRINT_DPI) : rawDpi;
   const rating = enhance?.method === "resize" ? "ok" : dpiRating(dpi, method ?? {});
   const inkCount = colorsTyped || !view ? details.colors : String(view.inks);
+  // Embroidery: stitches follow the stitched area until a real count is typed in.
+  const guide = area ? guideFor(area.label, guides) : null;
+  const sizeIn = size ?? (Number(details.widthIn) > 0 && Number(details.heightIn) > 0 ? { widthIn: Number(details.widthIn), heightIn: Number(details.heightIn) } : null);
+  const stitchCount = stitchesTyped || !perStitch || !sizeIn ? details.stitches : String(estimateStitches(sizeIn.widthIn, sizeIn.heightIn, view?.coverage ?? initial?.coverage, method?.stitchDensity ?? DEFAULT_STITCH_DENSITY));
   // Which edits a traced vector was made from (it's redone if they change).
   const editsKey = JSON.stringify({ ...edits, enhance: undefined });
   const tracedNow = traced?.key === editsKey ? traced : null;
@@ -295,7 +325,7 @@ export function DesignStudio({
       const startEdits: ArtEdits = opaqueCorner && !vector ? { removeBg: { tolerance: 12 }, trim: true } : { trim: true };
       setEdits(startEdits);
       const first = applyEdits(work, startEdits);
-      setPlace(fitPlacement(area, { widthPx: first.width, heightPx: first.height }));
+      setPlace(bestFit(area, { widthPx: first.width, heightPx: first.height }, guides));
       setArtChanged(true);
       setPicking(false);
     } catch (e) {
@@ -402,7 +432,7 @@ export function DesignStudio({
           // Record how it was brought up to print resolution (and where the vector file is).
           if (enhance) savedEdits = { ...edits, enhance: { method: enhance.method, fromDpi: Math.round(rawDpi), ...(json.vectorFileId ? { vectorFileId: json.vectorFileId } : {}) } };
         }
-        artwork = { artworkFileId, sourceFileId, edits: savedEdits, widthPx, heightPx, ...placed };
+        artwork = { artworkFileId, sourceFileId, edits: savedEdits, widthPx, heightPx, ...placed, coverage: view.coverage };
         artworkUrl = staffFileUrl(artworkFileId);
         widthIn = String(round2(size.widthIn));
         heightIn = String(round2(size.heightIn));
@@ -418,6 +448,8 @@ export function DesignStudio({
           widthIn,
           heightIn,
           colors: perColor ? inkCount : details.colors,
+          stitches: perStitch ? stitchCount : details.stitches,
+          stitchesSet: perStitch && stitchesTyped,
           needsArtwork: artwork ? false : details.needsArtwork,
         },
         itemColorId,
@@ -454,6 +486,37 @@ export function DesignStudio({
   const artSrc = enhance?.method === "vector" && tracedSrc ? tracedSrc : view?.preview;
   const currentLayer = view && rect && artSrc ? [{ src: artSrc, left: rect.left, top: rect.top, width: rect.width, rotation: placed!.rotation }] : [];
   const setDetail = (patch: Partial<typeof details>) => setDetails((d) => ({ ...d, ...patch }));
+  // Moving the artwork to another location sizes it for that location.
+  const chooseArea = (id: string) => {
+    setAreaId(id);
+    const next = areas.find((a) => a.id === id);
+    if (next && view) setPlace(bestFit(next, view.art, guides));
+  };
+
+  // Live price of the whole item with this decoration as it stands.
+  const location = area ? area.label : otherName.trim() || "Decoration";
+  const current = method
+    ? decorationForPrice({
+        methodId,
+        location,
+        colors: perColor ? inkCount : details.colors,
+        stitches: perStitch ? stitchCount : details.stitches,
+        widthIn: sizeIn ? String(round2(sizeIn.widthIn)) : details.widthIn,
+        heightIn: sizeIn ? String(round2(sizeIn.heightIn)) : details.heightIn,
+        needsArtwork: loaded ? false : details.needsArtwork,
+        needsDigitizing: details.needsDigitizing,
+        reuseScreens: details.reuseScreens,
+      })
+    : null;
+  const { prices, loading: pricing_loading } = useLivePrices(
+    pricing?.orderId,
+    pricing && current
+      ? [{ key: "line", lineId: pricing.lineId, productId: pricing.productId, colorId: itemColorId, quantities: quantitiesForPrice(pricing.quantities), decorations: [
+            ...pricing.otherDecorations.filter((d) => d.methodId && !(pricing.replacesLocation && d.location.trim().toLowerCase() === location.trim().toLowerCase())).map(decorationForPrice),
+            current,
+          ] }]
+      : null,
+  );
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-2 sm:p-6" role="dialog" aria-modal aria-label="Decoration" data-testid="design-studio">
@@ -470,6 +533,7 @@ export function DesignStudio({
           </div>
           <button type="button" className="text-gray-400 hover:text-gray-700" onClick={onClose} aria-label="Close">✕</button>
         </div>
+        {banner && <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">{banner}</div>}
 
         <div className="grid gap-5 p-4 md:grid-cols-[minmax(0,1fr)_340px]">
           <div>
@@ -505,7 +569,7 @@ export function DesignStudio({
                     key={a.id}
                     type="button"
                     className={`rounded-full border px-2.5 py-0.5 text-xs ${a.id === area?.id ? "border-amber-500 bg-amber-50 text-amber-900" : "border-gray-200 hover:border-amber-400"}`}
-                    onClick={() => setAreaId(a.id)}
+                    onClick={() => chooseArea(a.id)}
                   >
                     {a.label.split(" / ").pop()} <span className="text-gray-400">{a.widthIn}″×{a.heightIn}″</span>
                   </button>
@@ -524,7 +588,7 @@ export function DesignStudio({
                       key={v.id}
                       type="button"
                       className={`w-20 rounded border p-0.5 text-center text-[11px] ${here ? "border-amber-500 ring-1 ring-amber-500" : "border-gray-200 hover:border-amber-400"} disabled:cursor-not-allowed disabled:opacity-50`}
-                      onClick={() => target && setAreaId(target.id)}
+                      onClick={() => target && chooseArea(target.id)}
                       disabled={!target}
                       title={target ? `Decorate the ${v.name.toLowerCase()}` : `${v.name} has no print area (add one under the product's Views & Decoration Areas)`}
                       aria-pressed={here}
@@ -575,6 +639,12 @@ export function DesignStudio({
           </div>
 
           <div className="space-y-5 text-sm">
+            {pricing && (
+              <section className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2" data-testid="studio-price">
+                <div className="mb-0.5 text-[11px] font-semibold tracking-wide text-gray-500 uppercase">Item price</div>
+                <PriceSummary price={prices.get("line")} loading={pricing_loading} focus={location} />
+              </section>
+            )}
             <section className="space-y-2" data-testid="decoration-details">
               <div className="grid gap-2">
                 <div>
@@ -586,7 +656,7 @@ export function DesignStudio({
                 </div>
                 <div>
                   <label className="label" htmlFor="st-area">Location</label>
-                  <select className="input" id="st-area" value={areaId} onChange={(e) => setAreaId(e.target.value)}>
+                  <select className="input" id="st-area" value={areaId} onChange={(e) => chooseArea(e.target.value)}>
                     {areas.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
                     <option value={OTHER}>Other location…</option>
                   </select>
@@ -615,7 +685,21 @@ export function DesignStudio({
                 {perStitch && (
                   <div>
                     <label className="label" htmlFor="st-stitches">Stitches</label>
-                    <input className="input" id="st-stitches" inputMode="numeric" value={details.stitches} onChange={(e) => setDetail({ stitches: e.target.value })} />
+                    <input
+                      className="input"
+                      id="st-stitches"
+                      inputMode="numeric"
+                      value={stitchCount}
+                      onChange={(e) => {
+                        setStitchesTyped(true);
+                        setDetail({ stitches: e.target.value });
+                      }}
+                    />
+                    {!stitchesTyped && sizeIn ? (
+                      <p className="mt-0.5 text-[11px] text-gray-500" data-testid="stitch-estimate">Estimated from the size</p>
+                    ) : stitchesTyped ? (
+                      <button type="button" className="mt-0.5 text-[11px] text-amber-700 hover:underline" onClick={() => setStitchesTyped(false)}>Estimate from the size</button>
+                    ) : null}
                   </div>
                 )}
                 <div className={perColor || perStitch ? "" : "col-span-2"}>
@@ -739,7 +823,12 @@ export function DesignStudio({
                     <span className="text-gray-600">× {round2(size.heightIn)} in</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <button type="button" className="btn-secondary px-2 py-1 text-xs" onClick={() => setPlace(fitPlacement(area, view.art))}>Fit to area</button>
+                    <button type="button" className="btn-secondary px-2 py-1 text-xs" onClick={() => setPlace(bestFit(area, view.art, guides))} title={guide ? `${guide.name}: up to ${guide.maxWidthIn}″ × ${guide.maxHeightIn}″` : "As big as the print area allows"}>
+                      {guide ? `Standard ${guide.name.toLowerCase()} size` : "Fit to area"}
+                    </button>
+                    {guide && (
+                      <button type="button" className="btn-secondary px-2 py-1 text-xs" onClick={() => setPlace(fitPlacement(area, view.art))}>Fill the area</button>
+                    )}
                     <button type="button" className="btn-secondary px-2 py-1 text-xs" onClick={() => setPlace(clampPlacement(area, { ...placed, x: (1 - placed.w) / 2 }, view.art))}>Center across</button>
                   </div>
                   <label className="flex items-center gap-2 text-xs text-gray-600">
@@ -899,7 +988,7 @@ export function DesignStudio({
 
             <div className="flex flex-wrap gap-2 border-t border-gray-200 pt-4">
               <button type="button" className="btn" disabled={!!busy || !method} onClick={save}>
-                {decoration ? "Save decoration" : "Add decoration"}
+                {saveLabel ?? (decoration ? "Save decoration" : "Add decoration")}
               </button>
               <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
               {onRemove && (

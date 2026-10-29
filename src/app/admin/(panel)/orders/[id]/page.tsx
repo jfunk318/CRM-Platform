@@ -7,6 +7,7 @@ import { orderRef } from "@/lib/orders/numbers";
 import type { Fee, PricingIssue } from "@/lib/pricing";
 import { ActionForm } from "@/components/admin/action-form";
 import { LineEditor, type LineValue } from "@/components/admin/line-editor";
+import { BulkDecorate } from "@/components/admin/bulk-decorate";
 import { ProductThumb } from "@/components/admin/product-thumb";
 import { colorThumbnails } from "@/lib/catalog/thumbnails";
 import { artworkOf, enhanceLabel, staffFileUrl } from "@/lib/design/artwork";
@@ -139,6 +140,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       needsArtwork: d.needsArtwork,
       needsDigitizing: d.needsDigitizing,
       reuseScreens: d.reuseScreens,
+      stitchesSet: d.stitchesSet,
     })),
   });
 
@@ -349,7 +351,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                           <ActionForm action={updateLineAction} submitLabel="Save item">
                             <input type="hidden" name="orderId" value={order.id} />
                             <input type="hidden" name="lineId" value={line.id} />
-                            <LineEditor product={line.design.product} initial={lineValue(line)} artOwner={artOwner} />
+                            <LineEditor product={line.design.product} initial={lineValue(line)} artOwner={artOwner} pricing={{ orderId: order.id, lineId: line.id }} />
                           </ActionForm>
                         </div>
                       </details>
@@ -363,13 +365,40 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               );
             })}
             {editable && (
+              <details className="card">
+                <summary className="cursor-pointer font-medium text-amber-700">+ Add several items with the same decoration</summary>
+                <div className="mt-3">
+                  <BulkDecorate mode="add" orderId={order.id} artOwner={artOwner} />
+                </div>
+              </details>
+            )}
+            {editable && order.lines.length > 0 && (
+              <details className="card">
+                <summary className="cursor-pointer font-medium text-amber-700">Update artwork on several items</summary>
+                <div className="mt-3">
+                  <BulkDecorate
+                    mode="update"
+                    orderId={order.id}
+                    artOwner={artOwner}
+                    lines={order.lines.map((line) => ({
+                      lineId: line.id,
+                      label: `${line.design.product.name} · ${line.design.color.name} · ${line.sizes.reduce((n, s) => n + s.qty, 0)} pcs`,
+                      product: line.design.product,
+                      total: line.total.toFixed(2),
+                      value: lineValue(line),
+                    }))}
+                  />
+                </div>
+              </details>
+            )}
+            {editable && (
               <details className="card" open={order.lines.length === 0}>
                 <summary className="cursor-pointer font-medium text-amber-700">+ Add item</summary>
                 <div className="mt-3">
                   {/* Keyed on the line count so the editor starts fresh after each add. */}
                   <ActionForm key={order.lines.length} action={addLineAction} submitLabel="Add item">
                     <input type="hidden" name="orderId" value={order.id} />
-                    <LineEditor artOwner={artOwner} />
+                    <LineEditor artOwner={artOwner} pricing={{ orderId: order.id }} />
                   </ActionForm>
                 </div>
               </details>

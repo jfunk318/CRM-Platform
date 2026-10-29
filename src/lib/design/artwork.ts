@@ -21,6 +21,8 @@ export type ArtworkValue = {
   y: number;
   w: number;
   rotation: number;
+  /** Share of the artwork that's ink or thread (0–1); missing on older artwork. */
+  coverage?: number | null;
 };
 
 /** A decoration row's artwork, or null if none is placed. */
@@ -34,6 +36,7 @@ export function artworkOf(d: {
   placeY: number | null;
   placeW: number | null;
   rotation: number;
+  artCoverage?: number | null;
 }): ArtworkValue | null {
   if (!d.artworkFileId || !d.artWidthPx || !d.artHeightPx || d.placeX === null || d.placeY === null || !d.placeW) return null;
   return {
@@ -46,6 +49,7 @@ export function artworkOf(d: {
     y: d.placeY,
     w: d.placeW,
     rotation: d.rotation,
+    coverage: d.artCoverage ?? null,
   };
 }
 

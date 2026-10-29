@@ -8,6 +8,7 @@ import { photoRect } from "@/lib/design/placement";
 import { type DecorationValue, DesignStudio } from "./design-studio";
 import { ProductPicker, type PickedProduct } from "./product-picker";
 import { ProductThumb } from "./product-thumb";
+import { decorationForPrice, PriceSummary, quantitiesForPrice, useLivePrices } from "./live-price";
 
 export type { DecorationValue } from "./design-studio";
 
@@ -33,7 +34,10 @@ export function LineEditor({
   initial,
   sizeMode = "quantity",
   artOwner,
+  pricing,
 }: {
+  /** Live prices for a quote/order item: the order, and the line being edited (if any). */
+  pricing?: { orderId: string; lineId?: string | null };
   /** Whose artwork library the design studio shows (the order's customer, the store's owner). */
   artOwner?: ArtOwnerIds & { name: string };
   /** The product of `initial`, so its name shows before its options load. */
@@ -67,6 +71,12 @@ export function LineEditor({
   }, [value.productId]);
 
   const [studio, setStudio] = useState<number | "new" | null>(null);
+  const { prices, loading: priceLoading } = useLivePrices(
+    pricing?.orderId,
+    pricing && options && value.colorId
+      ? [{ key: "line", lineId: pricing.lineId, productId: value.productId, colorId: value.colorId, quantities: quantitiesForPrice(value.quantities), decorations: value.decorations.filter((d) => d.methodId).map(decorationForPrice) }]
+      : null,
+  );
 
   const color = options?.colors.find((c) => c.id === value.colorId);
   const totalQty = Object.values(value.quantities).reduce((n, q) => n + (Number(q) || 0), 0);
@@ -198,6 +208,7 @@ export function LineEditor({
                   <input type="hidden" name="d_art" value={d.needsArtwork ? "on" : ""} />
                   <input type="hidden" name="d_dig" value={d.needsDigitizing ? "on" : ""} />
                   <input type="hidden" name="d_reuse" value={d.reuseScreens ? "on" : ""} />
+                  <input type="hidden" name="d_stitches_set" value={d.stitchesSet ? "on" : ""} />
                   <input type="hidden" name="d_artwork" value={d.artwork ? JSON.stringify(d.artwork) : ""} />
                   {d.artwork && d.artworkUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -225,6 +236,12 @@ export function LineEditor({
             </button>
             {options.methods.length === 0 && <p className="text-xs text-gray-500">No decoration methods are offered for this product.</p>}
           </div>
+
+          {pricing && (
+            <div className="rounded-md bg-gray-50 px-3 py-2" data-testid="line-price">
+              <PriceSummary price={prices.get("line")} loading={priceLoading} />
+            </div>
+          )}
 
           {sizeMode === "quantity" && (
             <details className="rounded-md border border-gray-200 p-2" open={!!value.roster}>
@@ -266,6 +283,12 @@ export function LineEditor({
           // The item's other placed artwork, shown on the views for context.
           others={value.decorations.flatMap((d, j) => (j !== studio && d.artwork && d.artworkUrl && areaOf(d) ? [{ areaId: d.areaId, src: d.artworkUrl, art: d.artwork }] : []))}
           productName={options.name}
+          guides={options.guides}
+          pricing={
+            pricing
+              ? { orderId: pricing.orderId, lineId: pricing.lineId, productId: value.productId, quantities: value.quantities, otherDecorations: value.decorations.filter((_, j) => j !== studio) }
+              : undefined
+          }
           owner={artOwner ?? null}
           ownerName={artOwner?.name}
           onClose={() => setStudio(null)}

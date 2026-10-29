@@ -96,6 +96,7 @@ export async function saveMethod(_: ActionResult, form: FormData): Promise<Actio
           minDpi: optionalInt(field(form, "minDpi"), "Minimum DPI"),
           perfectDpi: optionalInt(field(form, "perfectDpi"), "Ideal DPI"),
           productionLeadDays: int(field(form, "productionLeadDays") || "0", "Lead days"),
+          ...(field(form, "stitchDensity") ? { stitchDensity: Math.min(10000, Math.max(100, int(field(form, "stitchDensity"), "Stitches per square inch"))) } : {}),
           screenSetupFee: decimal(field(form, "screenSetupFee") || "0", "Screen setup fee"),
           chargeWhiteBaseScreen: checkbox(form, "chargeWhiteBaseScreen"),
           useWhiteBaseOnDark: checkbox(form, "useWhiteBaseOnDark"),

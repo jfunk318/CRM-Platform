@@ -24,6 +24,7 @@ const NAV: NavItem[] = [
   { href: "/admin/categories", label: "Categories", roles: ["SALES"], group: "Catalog" },
   { href: "/admin/methods", label: "Decoration methods", roles: ["SALES", "PRODUCTION"], group: "Catalog" },
   { href: "/admin/pricing", label: "Pricing", roles: ["SALES"], group: "Catalog" },
+  { href: "/admin/placement-guides", label: "Placement guides", roles: ["ADMIN"], group: "Catalog" },
   { href: "/admin/price-check", label: "Price check", roles: ["SALES"], group: "Catalog" },
   { href: "/admin/settings", label: "Shop & tax", roles: ["ADMIN"], group: "Settings" },
   { href: "/admin/order-statuses", label: "Order statuses", roles: ["ADMIN"], group: "Settings" },

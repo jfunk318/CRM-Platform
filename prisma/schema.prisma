@@ -154,6 +154,8 @@ model Business {
   automationRules        AutomationRule[]
   automationEvents       AutomationEvent[]
   automationRuns         AutomationRun[]
+  // Placement guidelines for artwork sizing (null = the standard set).
+  placementGuides        Json?
 }
 
 // People who run the platform itself (not staff of a business).
@@ -537,6 +539,8 @@ model DecorationMethod {
   digitizingFeePerInch  Boolean                 @default(false)
   proofingFee           Decimal                 @default(0) @db.Decimal(10, 2)
   combineSameDesignQty  Boolean                 @default(false)
+  // Embroidery: stitches per square inch of stitched artwork, for estimates.
+  stitchDensity         Int                     @default(1800)
   // Design-tool capabilities (text, images, team names, effects, palettes…).
   capabilities          Json                    @default("{}")
   priceTables           DecorationPriceTable[]
@@ -1020,6 +1024,10 @@ model DesignDecoration {
   placeY          Float?
   placeW          Float?
   rotation        Float            @default(0) // degrees, clockwise
+  // Share of the artwork that's ink/thread (not transparent), 0–1: drives stitch estimates.
+  artCoverage     Float?
+  // Stitches typed in (from a digitized file) rather than estimated from the size.
+  stitchesSet     Boolean          @default(false)
 }
 
 // ─── Quotes & orders ────────────────────────────────────────────────────────

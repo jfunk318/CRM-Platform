@@ -25,6 +25,8 @@ export interface DecorationSpec {
   needsArtwork?: boolean;
   needsDigitizing?: boolean;
   reuseScreens?: boolean;
+  /** The stitch count was typed in, not estimated from the size. */
+  stitchesSet?: boolean;
   notes?: string | null;
   artwork?: ArtworkSpec | null;
 }
@@ -40,6 +42,8 @@ export interface ArtworkSpec {
   y: number;
   w: number;
   rotation: number;
+  /** Share of the artwork that's ink or thread (0–1), for stitch estimates. */
+  coverage?: number | null;
 }
 
 export interface LineSpec {
@@ -219,6 +223,7 @@ export const decorationData = (d: DecorationSpec, i: number) => ({
   needsArtwork: d.needsArtwork ?? false,
   needsDigitizing: d.needsDigitizing ?? false,
   reuseScreens: d.reuseScreens ?? false,
+  stitchesSet: d.stitchesSet ?? false,
   notes: d.notes ?? null,
   sortOrder: i,
   artworkFileId: d.artwork?.artworkFileId ?? null,
@@ -230,6 +235,7 @@ export const decorationData = (d: DecorationSpec, i: number) => ({
   placeY: d.artwork?.y ?? null,
   placeW: d.artwork?.w ?? null,
   rotation: d.artwork?.rotation ?? 0,
+  artCoverage: d.artwork?.coverage ?? null,
 });
 
 /** The traced vector file recorded when artwork was enhanced for print. */

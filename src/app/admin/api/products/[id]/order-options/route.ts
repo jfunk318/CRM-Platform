@@ -3,6 +3,7 @@ import { forBusiness } from "@/lib/db";
 import { getCurrentStaff } from "@/lib/auth/session";
 import { getRequestBusiness } from "@/lib/business";
 import { hasAnyRole } from "@/lib/auth/roles";
+import { guidesFrom, type PlacementGuide } from "@/lib/design/guides";
 
 export type OrderOptions = {
   id: string;
@@ -10,11 +11,13 @@ export type OrderOptions = {
   styleCode: string;
   colors: { id: string; name: string; hex: string | null; image: string | null; sizeIds: string[] }[];
   sizes: { id: string; code: string }[];
-  methods: { id: string; name: string; pricingModel: string; minQty: number; maxColors: number | null; minDpi: number | null; perfectDpi: number | null }[];
+  methods: { id: string; name: string; pricingModel: string; minQty: number; maxColors: number | null; minDpi: number | null; perfectDpi: number | null; stitchDensity: number }[];
   /** Print areas, with their box on the view's photo (fractions of the photo). */
   areas: { id: string; label: string; viewId: string; widthIn: number; heightIn: number; x: number; y: number; w: number; h: number }[];
   /** Each view's photo per color id. */
   views: { id: string; name: string; photos: Record<string, string> }[];
+  /** The business's placement guidelines (sizes for left chest, full front…). */
+  guides: PlacementGuide[];
 };
 
 /** What the order line editor needs to configure one product. */
@@ -64,6 +67,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         maxColors: m.maxColors,
         minDpi: m.minDpi,
         perfectDpi: m.perfectDpi,
+        stitchDensity: m.stitchDensity,
       })),
     areas: p.views.flatMap((v) =>
       v.areas.map((a) => ({
@@ -79,6 +83,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       })),
     ),
     views: p.views.map((v) => ({ id: v.id, name: v.name, photos: Object.fromEntries(v.images.map((i) => [i.colorId, i.url])) })),
+    guides: guidesFrom(business.placementGuides),
   };
   return NextResponse.json(body);
 }

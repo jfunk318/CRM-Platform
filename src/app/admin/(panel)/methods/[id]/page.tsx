@@ -161,6 +161,12 @@ export default async function MethodPage({
               <Field label="Ideal DPI" name="perfectDpi" defaultValue={m.perfectDpi?.toString() ?? ""} />
               <Field label="Production lead days" name="productionLeadDays" defaultValue={String(m.productionLeadDays)} />
             </div>
+            {m.pricingModel === "PER_STITCH" && (
+              <div className="max-w-xs">
+                <Field label="Stitches per square inch" name="stitchDensity" defaultValue={String(m.stitchDensity)} />
+                <p className="mt-1 text-xs text-gray-500">For estimates: the stitched part of the artwork × its size × this. Typed-in counts (from the digitized file) win.</p>
+              </div>
+            )}
 
             <h3 className="mt-2 text-sm font-semibold">Fees (per job, $)</h3>
             <div className="grid gap-3 sm:grid-cols-4">

@@ -162,6 +162,12 @@ phases 1–3 need real product data.
   email, task, assign, status, Slack and note actions with placeholders;
   recipes; a run log; loop protection). Still to do: QuickBooks Online,
   more Slack, supplier live catalogs and ordering, the public API.
+- **Bulk design and live pricing (done):** the same decoration on many
+  products at once (placed and sized per product by placement guides, same
+  size or scaled to fit, per-item fine-tuning), bulk updates to chosen items
+  (replace, or adjust the existing decoration), stitch estimates from the
+  artwork's size and coverage, and live prices while designing (DTF by size,
+  embroidery by stitches, screen print by colors and locations).
 - **Design studio (done):** artwork placed on quote/order items and store
   items: upload (PNG/JPG/GIF/WebP/SVG), drag and size within the print
   area on the product photo, DPI check against each method, background

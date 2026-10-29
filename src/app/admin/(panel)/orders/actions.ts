@@ -11,7 +11,7 @@ import { addOrderFiles, FILE_KIND_LABELS, removeOrderFile } from "@/lib/files/or
 import { cancelProof, createProof, ensurePublicToken, sendProof, sendQuote } from "@/lib/orders/customer-flow";
 import { issueInvoice, recordPayment, sendInvoice, setDeposit } from "@/lib/orders/payments";
 import { type ActionResult, checkbox, decimal, FormError, optionalText, runAction, text } from "@/lib/admin/form";
-import { parseLine } from "@/lib/admin/line-form";
+import { parseLine, parseLineJson } from "@/lib/admin/line-form";
 import {
   addLine,
   addNote,
@@ -61,6 +61,52 @@ export async function updateLineAction(_: ActionResult, form: FormData): Promise
     await updateLine(db, text(form, "lineId"), parseLine(form), staff.id);
     refresh(orderId);
   });
+}
+
+/** Several items at once (the same decoration on many products), as JSON from the bulk tool. */
+export async function addLinesAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const staff = await requireStaff(["SALES"]);
+  const orderId = text(form, "orderId");
+  return run(async () => {
+    const lines = bulkLines(form).map((l, i) => parseLineJson(l, `Item ${i + 1}`));
+    if (lines.length === 0) throw new FormError("Add at least one item");
+    for (const spec of lines) await addLine(staff.db, orderId, spec, staff.id);
+    refresh(orderId);
+    return `${lines.length} item${lines.length === 1 ? "" : "s"} added`;
+  });
+}
+
+/**
+ * New artwork or changes for several existing items, as JSON from the bulk
+ * tool: each item is saved on its own (items not sent are untouched).
+ */
+export async function updateLinesAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const staff = await requireStaff(["SALES"]);
+  const orderId = text(form, "orderId");
+  return run(async () => {
+    const lines = bulkLines(form).map((l, i) => {
+      const lineId = typeof (l as { lineId?: unknown }).lineId === "string" ? (l as { lineId: string }).lineId : "";
+      if (!lineId) throw new FormError(`Item ${i + 1}: which item is this?`);
+      return { lineId, spec: parseLineJson(l, `Item ${i + 1}`) };
+    });
+    if (lines.length === 0) throw new FormError("Choose at least one item");
+    // Only this order's items.
+    const mine = await staff.db.orderLine.count({ where: { orderId, id: { in: lines.map((l) => l.lineId) } } });
+    if (mine !== new Set(lines.map((l) => l.lineId)).size) throw new FormError("Some of those items aren't on this order any more; reload the page");
+    for (const l of lines) await updateLine(staff.db, l.lineId, l.spec, staff.id);
+    refresh(orderId);
+    return `${lines.length} item${lines.length === 1 ? "" : "s"} updated`;
+  });
+}
+
+function bulkLines(form: FormData): unknown[] {
+  try {
+    const v = JSON.parse(String(form.get("lines") ?? "[]"));
+    if (!Array.isArray(v) || v.length > 60) throw new Error();
+    return v;
+  } catch {
+    throw new FormError("The items didn't come through; try again");
+  }
 }
 
 export async function removeLineAction(_: ActionResult, form: FormData): Promise<ActionResult> {
