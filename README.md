@@ -45,7 +45,7 @@ Handy commands:
   when the database is first set up).
 - `npm run sync-specs`: print areas for every imported SanMar product from
   its Company Casuals decoration spec sheet (`-- PC54 PC78H` for some styles;
-  sheets are kept in `.cache/` for re-runs, `-- --refresh` fetches them
+  sheets and photo measurements are kept in `.cache/` for re-runs, `-- --refresh` fetches them
   again). Run it after importing new styles.
 - `npm run fix-size-order`: put every product's sizes smallest to largest
   (for products imported before sizes were sorted).
@@ -286,6 +286,9 @@ measurements: a style's chest fills ~40% of the photo, left chest is the
 wearer's left (the right of a front photo) 3.75" off center and 3.5" below
 the collar, bottoms 2" above the hem, and on hooded styles the front and
 back locations drop below the hood (`src/lib/catalog/garment-specs.ts`).
+The sync also reads each style's front photo for where the collar sits
+(`src/lib/catalog/photo-geometry.ts`), so models framed lower, like youth
+styles, get their areas moved down to match.
 Areas adjusted by hand in the product editor are never moved again.
 
 ## Production, purchasing and shipping

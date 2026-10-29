@@ -49,22 +49,22 @@ describe("placing spec locations on the photos", () => {
 
   it("puts the chests on the wearer's left and right, 3.75\" off center and 3.5\" below the collar, at life size", () => {
     // Left chest: the right-hand side of a front photo.
-    expect(box("Left Chest")).toMatchObject({ view: "Front", widthIn: 4, heightIn: 4, box: [0.54, 0.327, 0.08, 0.08] });
-    expect(box("Right Chest").box).toEqual([0.39, 0.327, 0.08, 0.08]);
-    // Their centers match the shop's guide: ~58% and ~43% across, ~37% down.
+    expect(box("Left Chest")).toMatchObject({ view: "Front", widthIn: 4, heightIn: 4, box: [0.538, 0.324, 0.076, 0.076] });
+    expect(box("Right Chest").box).toEqual([0.396, 0.324, 0.076, 0.076]);
+    // Their centers match the shop's guide: ~58% and ~43% across, ~36% down.
     const center = (b: number[]) => [b[0] + b[2] / 2, b[1] + b[3] / 2];
-    expect(center(box("Left Chest").box)[0]).toBeCloseTo(0.58, 2);
-    expect(center(box("Right Chest").box)[0]).toBeCloseTo(0.43, 2);
-    expect(center(box("Left Chest").box)[1]).toBeCloseTo(0.367, 2);
+    expect(center(box("Left Chest").box)[0]).toBeCloseTo(0.576, 2);
+    expect(center(box("Right Chest").box)[0]).toBeCloseTo(0.434, 2);
+    expect(center(box("Left Chest").box)[1]).toBeCloseTo(0.362, 2);
   });
 
   it("sizes full front and back from the spec, bottoms above the hem, sleeves past the chest", () => {
-    expect(box("Full Front")).toMatchObject({ widthIn: 12, heightIn: 18, box: [0.385, 0.317, 0.24, 0.36] });
+    expect(box("Full Front")).toMatchObject({ widthIn: 12, heightIn: 18, box: [0.391, 0.314, 0.228, 0.342] });
     expect(box("Full Back")).toMatchObject({ view: "Back", widthIn: 14, heightIn: 20 });
-    expect(box("Upper Back").box[1]).toBeCloseTo(0.26, 3);
+    expect(box("Upper Back").box[1]).toBeCloseTo(0.259, 3);
     // Hem at 28" below the collar; bottoms end 2" above it.
     const lb = box("Left Bottom").box;
-    expect(lb[1] + lb[3]).toBeCloseTo(0.257 + 28 * 0.02 - 2 * 0.02, 3);
+    expect(lb[1] + lb[3]).toBeCloseTo(0.257 + 28 * 0.019 - 2 * 0.019, 3);
     expect(box("Left Sleeve").box[0]).toBeGreaterThan(box("Left Chest").box[0]);
     expect(box("Right Sleeve").box[0]).toBeLessThan(box("Right Chest").box[0]);
     expect(areas.every((a) => a.box.every((v) => v >= 0 && v <= 1))).toBe(true);
@@ -79,16 +79,28 @@ describe("placing spec locations on the photos", () => {
     const plain = planAreas({ locations, chestIn: 22, bodyLengthIn: 28 });
     const hood = planAreas({ locations: [...locations, { code: "FH", name: "Front Hood", widthIn: 4, heightIn: 3 }], chestIn: 22, bodyLengthIn: 28 });
     const top = (list: typeof plain, name: string) => list.find((a) => a.name === name)!.box[1];
-    // A 22" chest: 0.4 ÷ 22 of the frame per inch; 2" lower in front, 5" at the back.
-    expect(top(hood, "Left Chest") - top(plain, "Left Chest")).toBeCloseTo((2 * 0.4) / 22, 2);
-    expect(top(hood, "Upper Back") - top(plain, "Upper Back")).toBeCloseTo((5 * 0.4) / 22, 2);
+    // 2" lower in front, 5" at the back, at 1.9% of the frame per inch.
+    expect(top(hood, "Left Chest") - top(plain, "Left Chest")).toBeCloseTo(2 * 0.019, 3);
+    expect(top(hood, "Upper Back") - top(plain, "Upper Back")).toBeCloseTo(5 * 0.019, 3);
     expect(top(hood, "Pouch Pocket")).toBe(top(plain, "Pouch Pocket"));
   });
 
-  it("scales to the style's own chest, so youth logos aren't drawn too small", () => {
+  it("draws every style at the photos' one scale, so a 4\" logo is the same size on youth and adult", () => {
     const lc = [{ code: "LC", name: "Left Chest", widthIn: 4, heightIn: 4 }];
-    expect(planAreas({ locations: lc, chestIn: 16, bodyLengthIn: 22 })[0].box[2]).toBeCloseTo(0.1, 3);
-    expect(planAreas({ locations: lc, chestIn: 20, bodyLengthIn: 29 })[0].box[2]).toBeCloseTo(0.08, 3);
+    expect(planAreas({ locations: lc, chestIn: 16, bodyLengthIn: 22 })[0].box[2]).toBeCloseTo(0.076, 3);
+    expect(planAreas({ locations: lc, chestIn: 20, bodyLengthIn: 29 })[0].box[2]).toBeCloseTo(0.076, 3);
+  });
+
+  it("follows the photo's measured collar line, front and back, and ignores a misread", () => {
+    const spec = { locations: parseDecorationSpec(fixture("pc54-decoration.txt")), chestIn: 16, bodyLengthIn: 22 };
+    const at = (collar: number | null, name: string) => planAreas(spec, { collar }).find((a) => a.name === name)!.box[1];
+    // A youth model's collar ~0.35 down instead of 0.257: everything moves down with it.
+    expect(at(0.35, "Left Chest") - at(null, "Left Chest")).toBeCloseTo(0.093, 3);
+    expect(at(0.35, "Full Back") - at(null, "Full Back")).toBeCloseTo(0.093, 3);
+    expect(at(0.7, "Left Chest")).toBe(at(null, "Left Chest"));
+    // Not a garment: nothing to line up with.
+    const blanket = { locations: [{ code: "FC", name: "Full Front", widthIn: 12, heightIn: 12 }], chestIn: null, bodyLengthIn: null };
+    expect(planAreas(blanket, { collar: 0.17 })).toEqual(planAreas(blanket));
   });
 
   it("leaves out locations it can't place (hood sides, wrists, hat panels)", () => {

@@ -3,9 +3,9 @@
 // measurements, turned into print areas placed at life size on the model
 // photos.
 //
-// On the model photos a garment's chest fills about 40% of the square frame
-// (so ~2% per inch for a 20" chest), centered across, with the front collar
-// ~26% down. Positions follow from measurements: left chest 3.75" off
+// SanMar shoots every garment at the same scale: an inch is ~1.9% of the
+// square frame (collar to hem measured across adult, youth and ladies'
+// styles), centered across, with the front collar ~26% down on an adult. Positions follow from measurements: left chest 3.75" off
 // the center line and 3.5" below the collar, bottoms 2" above the hem, and
 // so on. "Left" is the wearer's left: the right-hand side of a front photo.
 
@@ -97,12 +97,8 @@ async function defaultGet(url: string): Promise<string> {
 
 // ─── Placing the locations on the photos ────────────────────────────────
 
-/**
- * The garment's chest fills about 40% of the frame on the model photos
- * (adults and youth alike), so a style's scale comes from its own chest
- * measurement: 2% per inch for a 20" chest, a little more for youth.
- */
-const CHEST_SHARE = 0.4;
+/** One inch as a share of the photo frame, the same for every style. */
+const INCH = 0.019;
 const CENTER = 0.505;
 const COLLAR_FRONT = 0.257;
 const COLLAR_BACK = 0.24;
@@ -136,16 +132,29 @@ export const PLACED_CODES = Object.keys(TEMPLATES);
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const round = (v: number) => Math.round(v * 1000) / 1000;
 
-/** Print areas for a garment's spec, positioned on its photos. */
-export function planAreas(spec: Pick<GarmentSpec, "locations" | "chestIn" | "bodyLengthIn">): PlannedArea[] {
+/** How far a measured front collar may move positions (more means a misread). */
+const MAX_SHIFT = 0.12;
+
+/**
+ * Print areas for a garment's spec, positioned on its photos. With the
+ * front photo's measured collar line (see photo-geometry), positions follow
+ * the model's own framing: a youth model's collar sits lower than an
+ * adult's, and the back photo is framed like the front.
+ */
+export function planAreas(spec: Pick<GarmentSpec, "locations" | "chestIn" | "bodyLengthIn">, photo: { collar?: number | null } = {}): PlannedArea[] {
   const chest = spec.chestIn && spec.chestIn > 8 ? spec.chestIn : 20;
-  const inch = CHEST_SHARE / chest;
+  const inch = INCH;
   const body = spec.bodyLengthIn ?? chest * 1.45;
   const hooded = spec.locations.some((l) => HOOD_CODES.includes(l.code));
+  // On a hoodie the measured line is the bottom of the hood opening, which
+  // is where the drop already puts things.
+  const expected = COLLAR_FRONT + (hooded ? HOOD_DROP_IN.Front * inch : 0);
+  // Only garments have a collar (a blanket or bag has no chest or length measurement).
+  const shift = (spec.chestIn || spec.bodyLengthIn) && photo.collar != null && Math.abs(photo.collar - expected) <= MAX_SHIFT ? photo.collar - expected : 0;
   return spec.locations.flatMap((loc): PlannedArea[] => {
     const t = TEMPLATES[loc.code];
     if (!t) return [];
-    const collar = t.view === "Front" ? COLLAR_FRONT : COLLAR_BACK;
+    const collar = (t.view === "Front" ? COLLAR_FRONT : COLLAR_BACK) + shift;
     // Body length runs from the shoulder, about an inch above the collar.
     const hem = collar + (body - 1) * inch;
     const w = Math.min(loc.widthIn * inch, 0.9);

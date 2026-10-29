@@ -11,18 +11,48 @@
 // again; it pauses between styles to go easy on the site.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { PrismaClient } from "@prisma/client";
+import sharp from "sharp";
 import { applyPlannedAreas, fetchGarmentSpec, type GarmentSpec, PLACED_CODES, planAreas } from "../src/lib/catalog/garment-specs";
+import { measureCollar } from "../src/lib/catalog/photo-geometry";
 
 const prisma = new PrismaClient();
 const PAUSE_MS = 400;
 // Spec sheets fetched before, by style (not committed).
 const CACHE = ".cache/garment-specs.json";
+// Collar lines measured on the front photos, by style.
+const PHOTO_CACHE = ".cache/garment-photos.json";
 
-function loadCache(): Record<string, GarmentSpec | null> {
+function load<T>(file: string): Record<string, T> {
   try {
-    return JSON.parse(readFileSync(CACHE, "utf8"));
+    return JSON.parse(readFileSync(file, "utf8"));
   } catch {
     return {};
+  }
+}
+
+function save(file: string, data: unknown) {
+  mkdirSync(".cache", { recursive: true });
+  writeFileSync(file, JSON.stringify(data));
+}
+
+/** The collar line on a product's front photo, as shown in the square frame (null if it doesn't read). */
+async function frontCollar(productId: string): Promise<number | null> {
+  const front = await prisma.productView.findFirst({ where: { productId, name: { equals: "Front", mode: "insensitive" } }, include: { images: { take: 1 } } });
+  const url = front?.images[0]?.url;
+  if (!url) return null;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+    if (!res.ok) return null;
+    const S = 300;
+    const { data, info } = await sharp(Buffer.from(await res.arrayBuffer()))
+      .resize(S, S, { fit: "contain", background: "#ffffff" })
+      .flatten({ background: "#ffffff" })
+      .removeAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    return measureCollar({ data, width: info.width, height: info.height, channels: info.channels });
+  } catch {
+    return null;
   }
 }
 
@@ -30,7 +60,8 @@ async function main() {
   const args = process.argv.slice(2);
   const refresh = args.includes("--refresh");
   const only = args.filter((a) => !a.startsWith("--")).map((s) => s.toUpperCase());
-  const cache = refresh ? {} : loadCache();
+  const cache = refresh ? {} : load<GarmentSpec | null>(CACHE);
+  const photos = refresh ? {} : load<number | null>(PHOTO_CACHE);
   const products = await prisma.product.findMany({
     where: { externalSource: "sanmar", ...(only.length ? { styleCode: { in: only, mode: "insensitive" } } : {}) },
     select: { id: true, styleCode: true, name: true },
@@ -61,8 +92,7 @@ async function main() {
       // Fetch errors aren't remembered, so the next run tries again.
       if (spec || !fetchFailed) {
         cache[style] = spec;
-        mkdirSync(".cache", { recursive: true });
-        writeFileSync(CACHE, JSON.stringify(cache));
+        save(CACHE, cache);
       }
       await new Promise((r) => setTimeout(r, PAUSE_MS));
     }
@@ -70,7 +100,11 @@ async function main() {
       totals.missing++;
       continue;
     }
-    const planned = planAreas(spec);
+    if (!(style in photos)) {
+      photos[style] = await frontCollar(p.id);
+      save(PHOTO_CACHE, photos);
+    }
+    const planned = planAreas(spec, { collar: photos[style] });
     const r = await applyPlannedAreas(prisma, p.id, planned);
     totals.added += r.added;
     totals.updated += r.updated;
