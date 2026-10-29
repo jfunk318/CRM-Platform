@@ -93,10 +93,14 @@ function defaultAreas(categories: string[]): Defaults["areas"] {
     ];
   }
   if (has(/bag/i)) return [{ view: "Front", name: "Front", w: 10, h: 10, box: [0.25, 0.3, 0.5, 0.4] }];
+  // Sized for supplier model photos, where the chest is about 20″ across
+  // (≈2% of the frame per inch), so artwork previews close to life size.
+  // Left chest is the wearer's left: the right-hand side of a front photo.
   return [
-    { view: "Front", name: "Full Front", w: 12, h: 14, box: [0.3, 0.22, 0.4, 0.45] },
-    { view: "Front", name: "Left Chest", w: 4, h: 4, box: [0.56, 0.24, 0.12, 0.12] },
-    { view: "Back", name: "Full Back", w: 12, h: 14, box: [0.3, 0.2, 0.4, 0.45] },
+    { view: "Front", name: "Full Front", w: 12, h: 14, box: [0.383, 0.32, 0.24, 0.28] },
+    { view: "Front", name: "Left Chest", w: 4, h: 4, box: [0.542, 0.33, 0.08, 0.08] },
+    { view: "Front", name: "Right Chest", w: 4, h: 4, box: [0.389, 0.33, 0.08, 0.08] },
+    { view: "Back", name: "Full Back", w: 12, h: 14, box: [0.383, 0.29, 0.24, 0.28] },
   ];
 }
 

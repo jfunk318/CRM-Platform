@@ -51,7 +51,7 @@ describe("catalog import", () => {
     expect(p.sizes.map((s) => s.code)).toEqual(["S", "M"]);
     expect(p.variants.map((v) => v.wholesaleCost.toFixed(2))).toEqual(["3.50", "3.50", "3.50", "3.50"]);
     expect(p.variants.find((v) => v.sku === "PC54-JET-BLACK-S")?.supplierSku).toBe("PC54 JET BLACK S");
-    expect(p.views.map((v) => [v.name, v.areas.map((a) => a.name), v.images.length])).toEqual([["Front", ["Full Front", "Left Chest"], 2], ["Back", ["Full Back"], 2]]);
+    expect(p.views.map((v) => [v.name, v.areas.map((a) => a.name), v.images.length])).toEqual([["Front", ["Full Front", "Left Chest", "Right Chest"], 2], ["Back", ["Full Back"], 2]]);
     expect(p.categories.map((c) => c.category.name).sort()).toEqual(["T-Shirts", "Youth"]);
     const adopted = await t.db.product.findUniqueOrThrow({ where: { id: t.product.id }, include: { variants: true } });
     expect(adopted).toMatchObject({ externalSource: "sanmar", externalId: "PC61", name: "Tee", supplierId });
