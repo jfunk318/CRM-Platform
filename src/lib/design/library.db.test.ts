@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { addOrderFiles, removeOrderFile } from "@/lib/files/order-files";
 import { createOrder } from "@/lib/orders/service";
 import { makeTestBusiness } from "@/test/fixtures";
-import { libraryFor, removeFromLibrary, touchArtwork, uploadToLibrary } from "./library";
+import { forgetArtwork, libraryFor, removeFromLibrary, touchArtwork, uploadToLibrary } from "./library";
 
 let t: Awaited<ReturnType<typeof makeTestBusiness>>;
 const file = (name: string) => new File([new Uint8Array([137, 80, 78, 71, 1, 2, 3, name.length])], name, { type: "application/octet-stream" });
@@ -77,5 +77,36 @@ describe("artwork library", () => {
     const solo = await t.db.artworkAsset.findFirstOrThrow({ where: { name: "solo.png" } });
     await removeFromLibrary(t.db, solo.id);
     expect(await t.db.storedFile.count({ where: { id: solo.fileId } })).toBe(0);
+  });
+
+  it("removing artwork from an order's files stops offering it, copies included, even if another order lists it", async () => {
+    const kim = (await t.db.customer.create({ data: { businessId: t.business.id, firstName: "Kim" } })).id;
+    const owner = { customerId: kim, companyId: null };
+    const a = await createOrder(t.db, { type: "QUOTE", customerId: kim, staffId: t.staff.id });
+    const b = await createOrder(t.db, { type: "QUOTE", customerId: kim, staffId: t.staff.id });
+    await addOrderFiles(t.db, a, [file("mascot.png")], "ARTWORK", t.staff.id);
+    await addOrderFiles(t.db, b, [file("mascot.png")], "ARTWORK", t.staff.id); // the same image again
+    expect(await names(owner)).toEqual(["mascot.png"]);
+    const link = await t.db.orderFile.findFirstOrThrow({ where: { orderId: a } });
+    await removeOrderFile(t.db, link.id, t.staff.id);
+    expect(await names(owner)).toEqual([]);
+    // The other quote keeps its file.
+    expect(await t.db.orderFile.count({ where: { orderId: b } })).toBe(1);
+    expect(await t.db.storedFile.count({ where: { id: link.fileId } })).toBe(0);
+  });
+
+  it("deleting from the library keeps files that designs still use", async () => {
+    const lee = (await t.db.customer.create({ data: { businessId: t.business.id, firstName: "Lee" } })).id;
+    const owner = { customerId: lee, companyId: null };
+    const [saved] = await Promise.all([uploadToLibrary(t.db, owner, [file("badge.png")], t.staff.id)]);
+    expect(saved).toBe(1);
+    const asset = await t.db.artworkAsset.findFirstOrThrow({ where: { name: "badge.png" } });
+    const design = await t.db.design.create({
+      data: { businessId: t.business.id, name: "d", productId: t.product.id, colorId: t.product.colors[0].id, decorations: { create: { methodId: t.method.id, location: "Front", artworkFileId: asset.fileId } } },
+    });
+    expect(await forgetArtwork(t.db, owner, asset.fileId)).toBe(1);
+    expect(await names(owner)).toEqual([]);
+    expect(await t.db.storedFile.count({ where: { id: asset.fileId } })).toBe(1);
+    await t.db.design.delete({ where: { id: design.id } });
   });
 });

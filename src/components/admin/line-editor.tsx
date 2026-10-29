@@ -71,15 +71,17 @@ export function LineEditor({
   }, [value.productId]);
 
   const [studio, setStudio] = useState<number | "new" | null>(null);
+  const color = options?.colors.find((c) => c.id === value.colorId);
   const { prices, loading: priceLoading } = useLivePrices(
     pricing?.orderId,
     pricing && options && value.colorId
-      ? [{ key: "line", lineId: pricing.lineId, productId: value.productId, colorId: value.colorId, quantities: quantitiesForPrice(value.quantities), decorations: value.decorations.filter((d) => d.methodId).map(decorationForPrice) }]
+      ? [{ key: "line", lineId: pricing.lineId, productId: value.productId, colorId: value.colorId, quantities: quantitiesForPrice(Object.fromEntries(Object.entries(value.quantities).filter(([id]) => color?.sizeIds.includes(id)))), decorations: value.decorations.filter((d) => d.methodId).map(decorationForPrice) }]
       : null,
   );
 
-  const color = options?.colors.find((c) => c.id === value.colorId);
-  const totalQty = Object.values(value.quantities).reduce((n, q) => n + (Number(q) || 0), 0);
+  // Pieces only count in sizes the chosen color comes in.
+  const totalQty = Object.entries(value.quantities).reduce((n, [id, q]) => n + (color?.sizeIds.includes(id) ? Number(q) || 0 : 0), 0);
+  const dropped = options && color ? options.sizes.filter((s) => Number(value.quantities[s.id]) > 0 && !color.sizeIds.includes(s.id)).map((s) => s.code) : [];
 
   // Mockups: each view's photo in the chosen color with every placed artwork on it.
   const areaOf = (d: DecorationValue) => options?.areas.find((a) => a.id === d.areaId);
@@ -143,41 +145,6 @@ export function LineEditor({
 
       {options && (
         <>
-          <div>
-            <div className="label">
-              {sizeMode === "select" ? "Sizes to sell" : <>Quantities {totalQty > 0 && <span className="text-gray-400">({totalQty} total)</span>}</>}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {options.sizes.map((s) => {
-                if (sizeMode === "select") {
-                  const offered = color?.sizeIds.includes(s.id);
-                  return (
-                    <label key={s.id} className={`flex items-center gap-1 rounded border px-2 py-1 text-sm ${offered ? "border-gray-200" : "border-gray-100 text-gray-300 line-through"}`}>
-                      <input type="checkbox" name={`size_${s.id}`} defaultChecked={offered} disabled={!offered} /> {s.code}
-                    </label>
-                  );
-                }
-                const offered = color?.sizeIds.includes(s.id);
-                return (
-                  <div key={s.id} className="w-16">
-                    <label className={`text-xs ${offered ? "text-gray-600" : "text-gray-300 line-through"}`} htmlFor={`le-q-${s.id}`}>
-                      {s.code}
-                    </label>
-                    <input
-                      className="input"
-                      id={`le-q-${s.id}`}
-                      name={`qty_${s.id}`}
-                      inputMode="numeric"
-                      disabled={!offered}
-                      value={offered ? (value.quantities[s.id] ?? "") : ""}
-                      onChange={(e) => setValue((v) => ({ ...v, quantities: { ...v.quantities, [s.id]: e.target.value } }))}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
           <div className="space-y-2">
             <div className="label">Decorations</div>
             {value.decorations.length === 0 && <p className="text-sm text-gray-500">None. The item is sold blank.</p>}
@@ -237,6 +204,41 @@ export function LineEditor({
             {options.methods.length === 0 && <p className="text-xs text-gray-500">No decoration methods are offered for this product.</p>}
           </div>
 
+          {/* How many: one compact row of the sizes this color comes in, smallest to largest. */}
+          <div data-testid="line-sizes">
+            <div className="mb-1 flex items-baseline gap-2">
+              <span className="text-sm font-medium text-gray-700">{sizeMode === "select" ? "Sizes to sell" : "Quantities"}</span>
+              {sizeMode === "quantity" && totalQty > 0 && <span className="text-xs text-gray-500">{totalQty} piece{totalQty === 1 ? "" : "s"}</span>}
+              {color && <span className="text-xs text-gray-400">· sizes {color.name} comes in</span>}
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {options.sizes
+                .filter((s) => color?.sizeIds.includes(s.id))
+                .map((s) =>
+                  sizeMode === "select" ? (
+                    <label key={s.id} className="flex items-center gap-1 rounded border border-gray-200 px-2 py-1 text-sm">
+                      <input type="checkbox" name={`size_${s.id}`} defaultChecked /> {s.code}
+                    </label>
+                  ) : (
+                    <label key={s.id} className={`flex w-12 flex-col overflow-hidden rounded border text-center ${Number(value.quantities[s.id]) > 0 ? "border-amber-400" : "border-gray-200"}`}>
+                      <span className="bg-gray-50 py-0.5 text-[11px] font-medium text-gray-600">{s.code}</span>
+                      <input
+                        className="w-full px-1 py-1 text-center text-sm outline-none focus:bg-amber-50"
+                        name={`qty_${s.id}`}
+                        inputMode="numeric"
+                        aria-label={`Quantity ${s.code}`}
+                        value={value.quantities[s.id] ?? ""}
+                        onChange={(e) => setValue((v) => ({ ...v, quantities: { ...v.quantities, [s.id]: e.target.value.replace(/[^\d]/g, "") } }))}
+                      />
+                    </label>
+                  ),
+                )}
+            </div>
+            {sizeMode === "quantity" && dropped.length > 0 && (
+              <p className="mt-1 text-xs text-amber-800">{color?.name} doesn&apos;t come in {dropped.join(", ")}; those quantities won&apos;t be saved.</p>
+            )}
+          </div>
+
           {pricing && (
             <div className="rounded-md bg-gray-50 px-3 py-2" data-testid="line-price">
               <PriceSummary price={prices.get("line")} loading={priceLoading} />
@@ -284,6 +286,7 @@ export function LineEditor({
           others={value.decorations.flatMap((d, j) => (j !== studio && d.artwork && d.artworkUrl && areaOf(d) ? [{ areaId: d.areaId, src: d.artworkUrl, art: d.artwork }] : []))}
           productName={options.name}
           guides={options.guides}
+          orderId={pricing?.orderId}
           pricing={
             pricing
               ? { orderId: pricing.orderId, lineId: pricing.lineId, productId: value.productId, quantities: value.quantities, otherDecorations: value.decorations.filter((_, j) => j !== studio) }

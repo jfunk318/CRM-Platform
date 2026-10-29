@@ -4,6 +4,7 @@ import { getCurrentStaff } from "@/lib/auth/session";
 import { getRequestBusiness } from "@/lib/business";
 import { hasAnyRole } from "@/lib/auth/roles";
 import { guidesFrom, type PlacementGuide } from "@/lib/design/guides";
+import { sizeRank } from "@/lib/catalog/sizes";
 
 export type OrderOptions = {
   id: string;
@@ -54,7 +55,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       image: p.views.map((v) => v.images.find((i) => i.colorId === c.id)?.url).find(Boolean) ?? null,
       sizeIds: p.variants.filter((v) => v.colorId === c.id).map((v) => v.sizeId),
     })),
-    sizes: p.sizes.map((s) => ({ id: s.id, code: s.code })),
+    // Smallest to largest, whatever order they were imported in.
+    sizes: p.sizes.map((s) => ({ id: s.id, code: s.code })).sort((a, b) => sizeRank(a.code) - sizeRank(b.code)),
     methods: p.productType.decorationMethods
       .map((d) => d.method)
       .filter((m) => m.active && p.methodRules.find((r) => r.methodId === m.id)?.enabled !== false)

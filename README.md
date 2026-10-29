@@ -37,6 +37,16 @@ Then:
 one business, plain http://localhost:3000/admin opens it too (or set
 `DEV_BUSINESS_SLUG`).
 
+
+Handy commands:
+
+- `npm run set-password -- you@example.com "new password"`: set a staff or
+  platform login's password (the `SEED_*` values in `.env` are only used
+  when the database is first set up).
+- `npm run fix-size-order`: put every product's sizes smallest to largest
+  (for products imported before sizes were sorted).
+- After pulling changes, run `npx prisma migrate dev`; if a save fails with
+  "the database is behind the app", that's the fix.
 ## How businesses are kept apart
 
 Every business table has a `businessId`, and:
@@ -191,8 +201,11 @@ the customer's artwork:
   of the product's colors; "Use … for this item" changes the item's color.
   Swatch colors come from the color name (`colorHex` in the SanMar
   importer); unknown names show striped and re-importing fills them in.
-- Removing a file from an order's Files also takes it out of the customer's
-  artwork library (unless another order still lists it).
+- Removing artwork from an order's Files, or deleting it from the designer's
+  gallery (✕ on a tile), takes it out of the customer's artwork library
+  (copies of the same image too) so it's no longer offered; deleting in the
+  gallery also takes it off that quote's Files. Items already designed with
+  it keep it, and the file is only erased once nothing uses it.
 - **Resolution check:** DPI at the placed size against the method's minimum
   and ideal (Decoration methods), with a warning when it's too low.
 - **Enhance for print:** below 300 DPI, "✨ Enhance for print" compares a

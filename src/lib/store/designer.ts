@@ -5,6 +5,7 @@ import type { BusinessDb, BusinessTx } from "@/lib/db";
 import { DEFAULT_STITCH_DENSITY, estimateStitches, guidesFrom, type PlacementGuide } from "@/lib/design/guides";
 import { dpiRating, effectiveDpi, printSize } from "@/lib/design/placement";
 import { fileStore } from "@/lib/files/storage";
+import { sizeRank } from "@/lib/catalog/sizes";
 import { OrderError, type DecorationSpec } from "@/lib/orders/service";
 import { basePricesFor } from "./items";
 import { itemPrice } from "./settings";
@@ -110,7 +111,7 @@ export async function designerProduct(db: BusinessDb, store: Store, config: Desi
       const sizeIds = p.variants.filter((v) => v.colorId === c.id).map((v) => v.sizeId);
       return sizeIds.length ? [{ id: c.id, name: c.name, hex: c.hex, sizeIds }] : [];
     }),
-    sizes: p.sizes.filter((s) => p.variants.some((v) => v.sizeId === s.id)).map((s) => ({ id: s.id, code: s.code })),
+    sizes: p.sizes.filter((s) => p.variants.some((v) => v.sizeId === s.id)).map((s) => ({ id: s.id, code: s.code })).sort((a, b) => sizeRank(a.code) - sizeRank(b.code)),
     // Only views shoppers can see and print on.
     views: p.views.filter((v) => v.images.length).map((v) => ({ id: v.id, name: v.name, photos: Object.fromEntries(v.images.map((i) => [i.colorId, i.url])) })),
     areas: p.views

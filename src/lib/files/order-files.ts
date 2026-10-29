@@ -2,7 +2,7 @@ import "server-only";
 import type { OrderFileKind, StoredFile } from "@prisma/client";
 import type { BusinessDb } from "@/lib/db";
 import { logEvent, OrderError } from "@/lib/orders/service";
-import { addToLibrary, orderOwner } from "@/lib/design/library";
+import { addToLibrary, forgetArtwork, orderOwner } from "@/lib/design/library";
 import { fileStore, saveUpload } from "./storage";
 
 export const FILE_KIND_LABELS: Record<OrderFileKind, string> = {
@@ -30,20 +30,23 @@ export async function addOrderFiles(db: BusinessDb, orderId: string, files: File
 
 /**
  * Remove a file from an order. It also leaves the customer's artwork library
- * (unless another order still lists it). The stored file is kept if a proof
- * or a placed design still uses it.
+ * (with any copies of the same image), so the designer stops offering it.
+ * The stored file is kept while anything else (another order, a proof, a
+ * placed design) still uses it.
  */
 export async function removeOrderFile(db: BusinessDb, orderFileId: string, staffId: string | null) {
   const link = await db.orderFile.findUniqueOrThrow({ where: { id: orderFileId }, include: { file: true } });
   await db.orderFile.delete({ where: { id: link.id } });
-  const elsewhere = await db.orderFile.count({ where: { fileId: link.fileId } });
-  if (elsewhere === 0) await db.artworkAsset.deleteMany({ where: { fileId: link.fileId } });
-  const { proofFiles, artworkFor, artSourceFor, artworkAssets } = (
-    await db.storedFile.findUniqueOrThrow({ where: { id: link.fileId }, include: { _count: { select: { proofFiles: true, artworkFor: true, artSourceFor: true, artworkAssets: true } } } })
-  )._count;
-  if (elsewhere + proofFiles + artworkFor + artSourceFor + artworkAssets === 0) {
-    await db.storedFile.delete({ where: { id: link.fileId } });
-    await fileStore.remove(link.file.storageKey);
+  // Removed artwork stops being offered in the designer for this customer (copies too).
+  await forgetArtwork(db, await orderOwner(db, link.orderId), link.fileId);
+  // The file itself goes once nothing else uses it.
+  const file = await db.storedFile.findUnique({
+    where: { id: link.fileId },
+    include: { _count: { select: { orderFiles: true, proofFiles: true, artworkFor: true, artSourceFor: true, artworkAssets: true, storeLogos: true, storeHeroes: true, storeItems: true, cartFiles: true, cartImages: true } } },
+  });
+  if (file && Object.values(file._count).every((n) => n === 0)) {
+    await db.storedFile.delete({ where: { id: file.id } });
+    await fileStore.remove(file.storageKey);
   }
   await logEvent(db, db.$businessId, link.orderId, "FILE", `Removed ${link.file.name}`, staffId);
 }

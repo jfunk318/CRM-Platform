@@ -110,6 +110,7 @@ export function DesignStudio({
   pricing,
   saveLabel,
   banner,
+  orderId,
 }: {
   /** The decoration being edited, or null to add one. */
   decoration: DecorationValue | null;
@@ -137,6 +138,8 @@ export function DesignStudio({
   saveLabel?: string;
   /** A note across the top (e.g. "This decoration goes on 6 items"). */
   banner?: React.ReactNode;
+  /** The quote/order being designed for: deleting library artwork also takes it off its files. */
+  orderId?: string | null;
 }) {
   // What the designer opened with; artwork in it is reloaded from its original.
   const [start] = useState<DecorationValue>(() => decoration ?? { ...blankDecoration(), methodId: methods[0]?.id ?? "", areaId: areas[0]?.id ?? "", location: areas[0]?.label ?? "" });
@@ -355,6 +358,15 @@ export function DesignStudio({
       setError(e instanceof Error ? e.message : "That artwork couldn't be opened");
       setBusy(null);
     }
+  };
+
+  /** Delete artwork from the customer's library (and this order's files); designs already using it keep it. */
+  const forget = async (art: LibraryArt) => {
+    if (!window.confirm(`Delete "${art.name}"? It won't be offered here any more${orderId ? " and comes off this quote's files" : ""}. Items already using it keep it.`)) return;
+    const qs = new URLSearchParams({ fileId: art.fileId, customerId: owner?.customerId ?? "", companyId: owner?.companyId ?? "", orderId: orderId ?? "" });
+    const res = await fetch(`/admin/api/artwork?${qs}`, { method: "DELETE" });
+    if (!res.ok && res.status !== 404) return setError((await res.json().catch(() => ({}))).error ?? "That artwork couldn't be deleted");
+    setLibrary((list) => (list ?? []).filter((a) => a.fileId !== art.fileId));
   };
 
   const removeArt = () => {
@@ -765,8 +777,8 @@ export function DesignStudio({
                     {library
                       .filter((a) => !filter || a.name.toLowerCase().includes(filter.toLowerCase()))
                       .map((a) => (
+                        <div key={a.fileId} className="group relative">
                         <button
-                          key={a.fileId}
                           type="button"
                           className={`rounded border p-1 text-left hover:border-amber-500 ${loaded && (loaded.libraryFileId ?? loaded.sourceFileId) === a.fileId ? "border-amber-500 ring-1 ring-amber-500" : "border-gray-200"}`}
                           title={`${a.name} · ${a.owner}`}
@@ -780,6 +792,18 @@ export function DesignStudio({
                           </span>
                           <span className="mt-1 block truncate text-[11px] text-gray-700">{a.name}</span>
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => forget(a)}
+                          disabled={!!busy}
+                          className="absolute top-1 right-1 hidden h-5 w-5 items-center justify-center rounded-full bg-white/90 text-xs text-red-700 shadow ring-1 ring-gray-200 group-hover:flex focus:flex"
+                          aria-label={`Delete ${a.name}`}
+                          title="Delete this artwork"
+                          data-testid="library-delete"
+                        >
+                          ✕
+                        </button>
+                        </div>
                       ))}
                   </div>
                 )}

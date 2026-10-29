@@ -70,13 +70,28 @@ export async function uploadToLibrary(db: BusinessDb, owner: ArtOwner, files: Fi
 export async function removeFromLibrary(db: BusinessDb, assetId: string) {
   const asset = await db.artworkAsset.findUniqueOrThrow({
     where: { id: assetId },
-    include: { file: { include: { _count: { select: { orderFiles: true, proofFiles: true, artworkFor: true, artSourceFor: true, storeLogos: true, storeItems: true } } } } },
+    include: { file: { include: { _count: { select: { orderFiles: true, proofFiles: true, artworkFor: true, artSourceFor: true, storeLogos: true, storeHeroes: true, storeItems: true, cartFiles: true, cartImages: true } } } } },
   });
   await db.artworkAsset.delete({ where: { id: asset.id } });
   if (Object.values(asset.file._count).every((n) => n === 0)) {
     await db.storedFile.delete({ where: { id: asset.fileId } });
     await fileStore.remove(asset.file.storageKey);
   }
+}
+
+/**
+ * Delete an image from a customer's (and their company's) library, with any
+ * other copies of the same image there, so it's no longer offered in the
+ * designer. Files stay while something still uses them (a placed design, an
+ * order's files, a proof). Returns how many library entries went.
+ */
+export async function forgetArtwork(db: BusinessDb, owner: ArtOwner, fileId: string): Promise<number> {
+  const file = await db.storedFile.findUnique({ where: { id: fileId }, select: { sha256: true } });
+  if (!file) return 0;
+  const or = ownerWhere(owner);
+  const assets = await db.artworkAsset.findMany({ where: { OR: [{ fileId }, ...(or.length ? [{ file: { sha256: file.sha256 }, OR: or }] : [])] }, select: { id: true } });
+  for (const a of assets) await removeFromLibrary(db, a.id);
+  return assets.length;
 }
 
 /** Mark library artwork as just used, so it sorts first next time. */

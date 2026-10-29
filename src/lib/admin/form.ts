@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { unstable_rethrow } from "next/navigation";
 
 /** Result returned by admin server actions and shown by <ActionForm>. */
 export type ActionResult = { ok?: string; error?: string };
@@ -74,7 +75,16 @@ export async function runAction(fn: () => Promise<string | void>): Promise<Actio
       // A link to a record that's still in use, or to one that doesn't exist (or belongs to another business).
       if (e.code === "P2003") return { error: "That's still used by other records (such as quotes or orders), or refers to something that doesn't exist" };
       if (e.code === "P2025") return { error: "That record no longer exists. Reload the page." };
+      // A column or table the code expects isn't in the database yet.
+      if (e.code === "P2021" || e.code === "P2022") return { error: OUT_OF_DATE };
     }
-    throw e;
+    if (e instanceof Prisma.PrismaClientValidationError && /Unknown (argument|field)/.test(e.message)) return { error: OUT_OF_DATE };
+    // Redirects and other framework signals pass through.
+    unstable_rethrow(e);
+    // Anything else: say so on the form instead of failing silently; details go to the server log.
+    console.error(e);
+    return { error: "Something went wrong and this wasn't saved. Try again; if it keeps happening, the details are in the terminal running the app." };
   }
 }
+
+const OUT_OF_DATE = "This wasn't saved: the database is behind the app. Run `npx prisma migrate dev`, restart the app, and try again.";

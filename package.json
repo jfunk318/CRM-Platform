@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
-    "set-password": "tsx scripts/set-password.ts"
+    "set-password": "tsx scripts/set-password.ts",
+    "fix-size-order": "tsx scripts/fix-size-order.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",

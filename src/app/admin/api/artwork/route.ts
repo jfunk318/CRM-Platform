@@ -6,7 +6,8 @@ import { hasAnyRole } from "@/lib/auth/roles";
 import { formFiles, saveUpload, UploadError } from "@/lib/files/storage";
 import { extensionOf } from "@/lib/files/types";
 import { PLACEABLE, type LibraryArt } from "@/lib/design/artwork";
-import { addToLibrary, type ArtOwner, libraryFor, touchArtwork } from "@/lib/design/library";
+import { addToLibrary, type ArtOwner, forgetArtwork, libraryFor, touchArtwork } from "@/lib/design/library";
+import { removeOrderFile } from "@/lib/files/order-files";
 
 async function staffDb() {
   const [staff, business] = [await getCurrentStaff(), await getRequestBusiness()];
@@ -70,4 +71,28 @@ export async function POST(req: Request) {
     if (e instanceof UploadError) return NextResponse.json({ error: e.message }, { status: 400 });
     throw e;
   }
+}
+
+/**
+ * Delete artwork from the customer's library (from the designer's gallery):
+ * it's no longer offered, and leaves this order's files if it was there.
+ * Items already designed with it keep it.
+ */
+export async function DELETE(req: Request) {
+  const ctx = await staffDb();
+  if (!ctx) return NextResponse.json({ error: "Not allowed" }, { status: 403 });
+  const { db, staff } = ctx;
+  const params = new URL(req.url).searchParams;
+  const fileId = params.get("fileId") ?? "";
+  const file = fileId ? await db.storedFile.findUnique({ where: { id: fileId }, select: { id: true, sha256: true } }) : null;
+  if (!file) return NextResponse.json({ error: "That artwork is already gone" }, { status: 404 });
+  const owner = await ownerFrom(db, (k) => params.get(k));
+  const orderId = params.get("orderId");
+  if (orderId) {
+    // The same image on this order's files (any copy of it).
+    const links = await db.orderFile.findMany({ where: { orderId, file: { sha256: file.sha256 } }, select: { id: true } });
+    for (const l of links) await removeOrderFile(db, l.id, staff.id);
+  }
+  await forgetArtwork(db, owner, file.id);
+  return NextResponse.json({ ok: true });
 }

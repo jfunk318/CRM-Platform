@@ -451,6 +451,7 @@ export function BulkDecorate({ mode, orderId, artOwner, lines = [] }: { mode: "a
         owner={artOwner}
         ownerName={artOwner.name}
         guides={opts.guides}
+        orderId={orderId}
         pricing={{ orderId, lineId: t.lineId, productId: t.productId, quantities: t.quantities, otherDecorations: around, replacesLocation: true }}
         saveLabel={studio.kind === "tune" ? "Use for this item" : `Place on ${targets.length} item${targets.length === 1 ? "" : "s"} →`}
         banner={

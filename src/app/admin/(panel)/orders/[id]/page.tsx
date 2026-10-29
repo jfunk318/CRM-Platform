@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { sizeRank } from "@/lib/catalog/sizes";
 import { Prisma } from "@prisma/client";
 import { notFound } from "next/navigation";
 import { requireStaff } from "@/lib/auth/session";
@@ -293,23 +294,20 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                     </ul>
                   )}
 
-                  <div className="overflow-x-auto">
-                    <table className="text-sm">
-                      <tbody>
-                        <tr className="text-xs text-gray-500">
-                          <td className="pr-4">Size</td>
-                          {line.sizes.map((s) => <td key={s.id} className="px-2">{s.size.code}</td>)}
-                        </tr>
-                        <tr>
-                          <td className="pr-4 text-xs text-gray-500">Qty</td>
-                          {line.sizes.map((s) => <td key={s.id} className="px-2">{s.qty}</td>)}
-                        </tr>
-                        <tr>
-                          <td className="pr-4 text-xs text-gray-500">Each</td>
-                          {line.sizes.map((s) => <td key={s.id} className="px-2">{money(s.unitPrice)}</td>)}
-                        </tr>
-                      </tbody>
-                    </table>
+                  {/* Sizes in one line, smallest to largest, with the price each where it differs. */}
+                  <div className="flex flex-wrap gap-1 text-sm" data-testid="line-sizes">
+                    {[...line.sizes]
+                      .sort((a, b) => sizeRank(a.size.code) - sizeRank(b.size.code))
+                      .map((s) => (
+                        <span key={s.id} className="rounded border border-gray-200 px-2 py-0.5" title={`${money(s.unitPrice)} each`}>
+                          <span className="text-xs text-gray-500">{s.size.code}</span> <span className="font-medium">{s.qty}</span>
+                        </span>
+                      ))}
+                    <span className="self-center pl-1 text-xs text-gray-500">
+                      {new Set(line.sizes.map((s) => s.unitPrice.toFixed(2))).size === 1
+                        ? `${money(line.sizes[0]?.unitPrice ?? 0)} each`
+                        : `${[...line.sizes].sort((a, b) => sizeRank(a.size.code) - sizeRank(b.size.code)).map((s) => `${s.size.code} ${money(s.unitPrice)}`).join(" · ")} each`}
+                    </span>
                   </div>
 
                   {line.design.decorations.length > 0 ? (
