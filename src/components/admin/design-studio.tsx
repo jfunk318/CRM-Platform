@@ -330,6 +330,7 @@ export function DesignStudio({
       const first = applyEdits(work, startEdits);
       setPlace(bestFit(area, { widthPx: first.width, heightPx: first.height }, guides));
       setArtChanged(true);
+      setColorsTyped(false);
       setPicking(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "That file couldn't be read");
@@ -678,7 +679,8 @@ export function DesignStudio({
                 <input className="input" value={otherName} onChange={(e) => setOtherName(e.target.value)} placeholder="Location name, e.g. Left Sleeve" aria-label="Location name" />
               )}
               <div className="grid grid-cols-2 gap-2">
-                {perColor && (
+                {/* With artwork placed, its colors (the Colors section below) set the count. */}
+                {perColor && !view && (
                   <div>
                     <label className="label" htmlFor="st-colors">Ink colors{method?.maxColors ? ` (max ${method.maxColors})` : ""}</label>
                     <input
@@ -714,10 +716,6 @@ export function DesignStudio({
                     ) : null}
                   </div>
                 )}
-                <div className={perColor || perStitch ? "" : "col-span-2"}>
-                  <label className="label" htmlFor="st-inks">{perStitch ? "Thread colors" : "Ink colors (names)"}</label>
-                  <input className="input" id="st-inks" value={details.inkColors} onChange={(e) => setDetail({ inkColors: e.target.value })} placeholder="White, PMS 186" />
-                </div>
               </div>
               {!loaded && (
                 <div className="grid grid-cols-2 gap-2">
@@ -777,10 +775,10 @@ export function DesignStudio({
                     {library
                       .filter((a) => !filter || a.name.toLowerCase().includes(filter.toLowerCase()))
                       .map((a) => (
-                        <div key={a.fileId} className="group relative">
+                        <div key={a.fileId} className="relative min-w-0">
                         <button
                           type="button"
-                          className={`rounded border p-1 text-left hover:border-amber-500 ${loaded && (loaded.libraryFileId ?? loaded.sourceFileId) === a.fileId ? "border-amber-500 ring-1 ring-amber-500" : "border-gray-200"}`}
+                          className={`block w-full min-w-0 rounded border p-1 text-left hover:border-amber-500 ${loaded && (loaded.libraryFileId ?? loaded.sourceFileId) === a.fileId ? "border-amber-500 ring-1 ring-amber-500" : "border-gray-200"}`}
                           title={`${a.name} · ${a.owner}`}
                           onClick={() => pick(a)}
                           disabled={!!busy}
@@ -796,7 +794,7 @@ export function DesignStudio({
                           type="button"
                           onClick={() => forget(a)}
                           disabled={!!busy}
-                          className="absolute top-1 right-1 hidden h-5 w-5 items-center justify-center rounded-full bg-white/90 text-xs text-red-700 shadow ring-1 ring-gray-200 group-hover:flex focus:flex"
+                          className="absolute top-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-white/90 text-xs text-red-700 shadow ring-1 ring-gray-200 hover:bg-red-50"
                           aria-label={`Delete ${a.name}`}
                           title="Delete this artwork"
                           data-testid="library-delete"
