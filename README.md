@@ -391,6 +391,40 @@ Customers only see artwork through their own link (`/c/<token>/art/…`).
 - The back office only opens on the business's own address, never on a
   store subdomain.
 
+## Online designer (shoppers)
+
+Shoppers can design their own on the main site and any affiliate store
+that turns it on (Design your own in the store's menu, `/design`, and
+"Design yours online" on main-site catalog pages).
+
+- **Who decides what:** the business opens decoration methods to shoppers
+  (Decoration methods → "Shoppers can choose it in the online designer").
+  Each store's **Designer** tab turns the designer on and picks, within
+  that: uploads, text, the store's own artwork (the store customer's
+  artwork library, e.g. team logos), any catalog garment or only the
+  garments the store sells, and which methods. Garments need a print area
+  and a photo.
+- **Designing:** choose a color and a spot (each print area takes one
+  design, any number of spots), then upload an image (a plain background is
+  removed, edges trimmed), type text (7 fonts, color, outline; drawn as a
+  sharp image) or pick a store logo. It starts at the placement guide's size;
+  drag, resize, center. Screen print shows the ink colors, embroidery the
+  stitch estimate, and low-resolution art needs the shopper's OK.
+- **Prices:** live, per size, for the quantity entered (the business's
+  prices at that quantity, setup spread over the pieces, plus the store's
+  markup; an example run before quantities are in). Designs past a price
+  table's end (too many stitches or colors) ask for something smaller.
+- **Cart and checkout:** the design is saved with a mockup picture and each
+  size is a cart line, re-priced together as quantities change. Uploads are
+  kept with the shopper's cart, so only they can use them; everything is
+  re-checked on the server (areas, methods, sizes from the placement,
+  stitches from the artwork itself).
+- **The order:** a line per design at the price paid, the artwork filed on
+  the order and in the customer's library, and a note to check it. Such
+  orders aren't marked approved and get no production jobs until staff
+  create them (`src/lib/store/designer.ts`,
+  `src/components/store/shopper-designer.tsx`).
+
 ## Products
 
 Each product has one page with a section list on the left (General, Colors,

@@ -749,3 +749,32 @@ export async function toggleStoreCodeAction(_: ActionResult, form: FormData): Pr
     refresh();
   });
 }
+
+/** The online designer: on/off and what shoppers may do, within the business's methods. */
+export async function saveDesignerAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  return run(async () => {
+    const store = await storeOf(db, form);
+    const offered = await db.decorationMethod.findMany({ where: { active: true, shopperDesign: true }, select: { id: true } });
+    const picked = form.getAll("methodIds").map(String).filter((id) => offered.some((m) => m.id === id));
+    const upload = checkbox(form, "upload");
+    const textOn = checkbox(form, "text");
+    const library = checkbox(form, "library");
+    const enabled = checkbox(form, "enabled");
+    if (enabled && !upload && !textOn && !library) throw new FormError("Let shoppers upload, add text or use the store's artwork");
+    if (enabled && offered.length === 0) throw new FormError("No decoration method is open to shoppers yet: tick it on a method under Decoration methods");
+    await db.store.update({
+      where: { id: store.id },
+      data: {
+        designerEnabled: enabled,
+        designerUpload: upload,
+        designerText: textOn,
+        designerLibrary: library,
+        designerAnyGarment: checkbox(form, "anyGarment"),
+        // All ticked means "all", so methods the business adds later are included.
+        designerMethodIds: picked.length === offered.length ? [] : picked,
+      },
+    });
+    refresh();
+  });
+}

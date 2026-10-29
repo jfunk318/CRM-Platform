@@ -1,4 +1,5 @@
 import "server-only";
+import { addToLibrary } from "@/lib/design/library";
 import { Prisma, type Business, type Store } from "@prisma/client";
 import type { BusinessDb } from "@/lib/db";
 import { deliveryNote, isValidEmail, sendEmail } from "@/lib/email/mailer";
@@ -180,6 +181,7 @@ async function buildOrder(db: BusinessDb, business: Business, cartId: string, pa
   const full = (await findCartById(db, cartId))!;
   const totals = await cartTotals(db, { business, store: cart.store }, full);
   if (totals.count === 0) throw new OrderError("The cart is empty");
+  const hasOwnDesigns = totals.lines.some((l) => l.available && l.designId);
 
   const order = await db.$transaction(async (tx) => {
     const email = cart.email!.toLowerCase();
@@ -218,18 +220,19 @@ async function buildOrder(db: BusinessDb, business: Business, cartId: string, pa
         shipRegion: pickup ? business.region : cart.shipRegion,
         shipPostalCode: pickup ? business.postalCode : cart.shipPostalCode,
         shipCountry: pickup ? business.country : cart.shipCountry,
-        // Store items are finished designs, so the artwork counts as approved.
-        approvedAt: new Date(),
-        approvedByName: shopperName,
+        // Store items are finished designs, so the artwork counts as approved;
+        // a shopper's own design waits for staff to check the artwork.
+        approvedAt: hasOwnDesigns ? null : new Date(),
+        approvedByName: hasOwnDesigns ? null : shopperName,
         publicToken: newToken(),
       },
     });
     // One line per item, with its sizes, at the price the shopper saw.
     const byItem = new Map<string, typeof totals.lines>();
-    for (const l of totals.lines.filter((l) => l.available)) byItem.set(l.storeItemId, [...(byItem.get(l.storeItemId) ?? []), l]);
+    for (const l of totals.lines.filter((l) => l.available && l.storeItemId)) byItem.set(l.storeItemId!, [...(byItem.get(l.storeItemId!) ?? []), l]);
     let sortOrder = 0;
     for (const [storeItemId, ls] of byItem) {
-      const item = full.items.find((i) => i.storeItemId === storeItemId)!.storeItem;
+      const item = full.items.find((i) => i.storeItemId === storeItemId)!.storeItem!;
       await tx.orderLine.create({
         data: {
           businessId,
@@ -255,6 +258,28 @@ async function buildOrder(db: BusinessDb, business: Business, cartId: string, pa
         },
       });
     }
+    // The shopper's own designs: one line each, its artwork filed on the order and in their library.
+    const byDesign = new Map<string, typeof totals.lines>();
+    for (const l of totals.lines.filter((l) => l.available && l.designId)) byDesign.set(l.designId!, [...(byDesign.get(l.designId!) ?? []), l]);
+    for (const [designId, ls] of byDesign) {
+      const design = await tx.design.update({ where: { id: designId }, data: { customerId: customer.id }, include: { decorations: true } });
+      await tx.orderLine.create({
+        data: {
+          businessId,
+          orderId: o.id,
+          designId,
+          fixedPrice: true,
+          notes: "Designed online by the customer",
+          sortOrder: sortOrder++,
+          sizes: { create: ls.map((l) => ({ sizeId: l.sizeId, qty: l.qty, unitPrice: l.unitPrice.toFixed(2), total: l.unitPrice.times(l.qty).toFixed(2) })) },
+        },
+      });
+      const files = await tx.storedFile.findMany({ where: { id: { in: design.decorations.flatMap((d) => [d.sourceFileId ?? d.artworkFileId].filter((x): x is string => !!x)) } } });
+      for (const f of files) {
+        if (!(await tx.orderFile.findFirst({ where: { orderId: o.id, fileId: f.id } }))) await tx.orderFile.create({ data: { businessId, orderId: o.id, fileId: f.id, kind: "ARTWORK", note: "From the online designer" } });
+      }
+      await addToLibrary(tx, { customerId: customer.id, companyId: customer.companyId }, files);
+    }
     if (o.promoCodeId) await tx.promoCode.update({ where: { id: o.promoCodeId }, data: { usedCount: { increment: 1 } } });
     if (cart.giftCodeId && totals.gift.gt(0)) {
       const spent = await tx.giftCode.updateMany({ where: { id: cart.giftCodeId, balance: { gte: totals.gift } }, data: { balance: { decrement: totals.gift } } });
@@ -269,13 +294,15 @@ async function buildOrder(db: BusinessDb, business: Business, cartId: string, pa
     await refreshPaidTotal(tx, o.id);
     await tx.cart.update({ where: { id: cartId }, data: { orderId: o.id, customerId: customer.id } });
     await logEvent(tx, businessId, o.id, "CREATED", `Order ${orderRef(o)} placed online at ${cart.store.name} by ${shopperName} (${email})`, null);
+    if (hasOwnDesigns) await logEvent(tx, businessId, o.id, "NOTE", "Includes a design the customer made online: check the artwork (send a proof if anything needs their OK), then create the production jobs", null);
     await emitAutomation(tx, { trigger: "ONLINE_ORDER", orderId: o.id });
     return o;
   });
 
   await repriceOrder(db, order.id);
   const placed = await db.order.findUniqueOrThrow({ where: { id: order.id }, include: { customer: true, lines: { include: { sizes: { include: { size: true } } } } } });
-  if (!placed.heldForBatch) {
+  // Customer designs start production once staff have checked the artwork.
+  if (!placed.heldForBatch && !hasOwnDesigns) {
     await createProductionJobs(db, order.id, null).catch((e) => {
       if (!(e instanceof OrderError)) throw e;
     });

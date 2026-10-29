@@ -156,6 +156,7 @@ model Business {
   automationRuns         AutomationRun[]
   // Placement guidelines for artwork sizing (null = the standard set).
   placementGuides        Json?
+  cartFiles              CartFile[]
 }
 
 // People who run the platform itself (not staff of a business).
@@ -541,6 +542,8 @@ model DecorationMethod {
   combineSameDesignQty  Boolean                 @default(false)
   // Embroidery: stitches per square inch of stitched artwork, for estimates.
   stitchDensity         Int                     @default(1800)
+  // Shoppers may choose it in the online designer (stores pick from these).
+  shopperDesign         Boolean                 @default(false)
   // Design-tool capabilities (text, images, team names, effects, palettes…).
   capabilities          Json                    @default("{}")
   priceTables           DecorationPriceTable[]
@@ -981,6 +984,7 @@ model Design {
   decorations DesignDecoration[]
   orderLines  OrderLine[]
   storeItems  StoreItem[]
+  cartItems   CartItem[]
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 
@@ -1307,6 +1311,8 @@ model StoredFile {
   artworkFor    DesignDecoration[] @relation("DecorationArtwork")
   artSourceFor  DesignDecoration[] @relation("DecorationArtSource")
   artworkAssets ArtworkAsset[]
+  cartImages    CartItem[]         @relation("CartItemImage")
+  cartFiles     CartFile[]
   createdAt     DateTime           @default(now())
 
   @@unique([businessId, id])
@@ -1797,6 +1803,13 @@ model Store {
   contacts              StoreContact[]
   requests              StoreRequest[]
   visitDays             StoreVisitDay[]
+  // The online designer for shoppers (/design), within what the business allows.
+  designerEnabled       Boolean               @default(false)
+  designerUpload        Boolean               @default(true) // upload their own images
+  designerText          Boolean               @default(true) // add text
+  designerLibrary       Boolean               @default(true) // use the store owner's artwork (team logos)
+  designerAnyGarment    Boolean               @default(false) // any catalog garment, not just the store's
+  designerMethodIds     String[]              @default([]) // empty = every method shoppers may use
   // Make a draft quote for each new request.
   requestQuotes         Boolean               @default(false)
   // Listed in store showcases (owners can opt out later).
@@ -2025,6 +2038,20 @@ enum CartStatus {
   COMPLETED // became an order
 }
 
+// Artwork a shopper uploaded while designing, so only their cart can use it.
+model CartFile {
+  id         String     @id @default(cuid())
+  businessId String
+  business   Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  cartId     String
+  cart       Cart       @relation(fields: [businessId, cartId], references: [businessId, id], onDelete: Cascade)
+  fileId     String
+  file       StoredFile @relation(fields: [businessId, fileId], references: [businessId, id], onDelete: Cascade)
+  createdAt  DateTime   @default(now())
+
+  @@unique([cartId, fileId])
+}
+
 // A shopper's cart, found by the token in their cookie. Checkout details are
 // kept on it until it becomes an order.
 model Cart {
@@ -2060,6 +2087,7 @@ model Cart {
   orderId           String?
   order             Order?          @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: NoAction)
   items             CartItem[]
+  files             CartFile[]
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 
@@ -2067,18 +2095,24 @@ model Cart {
 }
 
 model CartItem {
-  id          String    @id @default(cuid())
+  id          String      @id @default(cuid())
   businessId  String
-  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business    Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
   cartId      String
-  cart        Cart      @relation(fields: [businessId, cartId], references: [businessId, id], onDelete: Cascade)
-  storeItemId String
-  storeItem   StoreItem @relation(fields: [businessId, storeItemId], references: [businessId, id], onDelete: Cascade)
+  cart        Cart        @relation(fields: [businessId, cartId], references: [businessId, id], onDelete: Cascade)
+  // A store item, or a design the shopper made in the online designer.
+  storeItemId String?
+  storeItem   StoreItem?  @relation(fields: [businessId, storeItemId], references: [businessId, id], onDelete: Cascade)
+  designId    String?
+  design      Design?     @relation(fields: [businessId, designId], references: [businessId, id], onDelete: Cascade)
+  // The shopper's design's mockup, for the cart.
+  imageFileId String?
+  image       StoredFile? @relation("CartItemImage", fields: [businessId, imageFileId], references: [businessId, id], onDelete: NoAction)
   sizeId      String
   qty         Int
   // Personalization ("" = none); each name/number is its own cart line.
-  name        String    @default("")
-  number      String    @default("")
+  name        String      @default("")
+  number      String      @default("")
 
   @@unique([cartId, storeItemId, sizeId, name, number])
 }

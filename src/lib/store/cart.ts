@@ -8,6 +8,7 @@ import { type LineItemPrice, priceOrder } from "@/lib/pricing";
 import { loadTaxRates } from "@/lib/pricing/load";
 import { checkPersonalization, offersPersonalization, PersonalizationError, personalizationLabel } from "./personalization";
 import { itemPrice, offeredMethods } from "./settings";
+import { shopperPrices } from "./designer";
 import type { RequestStore } from "./resolve";
 
 const D = (v: Prisma.Decimal.Value) => new Prisma.Decimal(v);
@@ -54,6 +55,8 @@ const cartInclude = {
     orderBy: { id: "asc" },
     include: {
       storeItem: { include: { prices: true, image: true, design: { include: { product: true, color: true } } } },
+      // Designs the shopper made in the online designer.
+      design: { include: { product: true, color: true, decorations: { orderBy: { sortOrder: "asc" } } } },
     },
   },
   promoCode: { include: { stores: true } },
@@ -129,7 +132,9 @@ export async function setCartQty(rs: RequestStore, cartItemId: string, qty: numb
 
 export type CartLine = {
   id: string;
-  storeItemId: string;
+  /** A store item, or (designId) the shopper's own design. */
+  storeItemId: string | null;
+  designId: string | null;
   sizeId: string;
   name: string;
   detail: string; // "Heather Navy · M"
@@ -145,6 +150,8 @@ export type CartLine = {
   unitPrice: Prisma.Decimal;
   total: Prisma.Decimal;
   available: boolean;
+  /** Why it can't be bought as it is. */
+  problem?: string;
 };
 
 export type CartTotals = Awaited<ReturnType<typeof cartTotals>>;
@@ -157,21 +164,24 @@ export type CartTotals = Awaited<ReturnType<typeof cartTotals>>;
 export async function cartTotals(db: BusinessDb | BusinessTx, rs: { business: Business; store: Store }, cart: CartWithItems) {
   const store = await db.store.findUniqueOrThrow({ where: { id: rs.store.id }, include: { deliveryMethods: true, group: true } });
   const sizes = await db.productSize.findMany({ where: { id: { in: cart.items.map((i) => i.sizeId) } } });
-  const lines: CartLine[] = cart.items.map((i) => {
-    const price = i.storeItem.prices.find((p) => p.sizeId === i.sizeId);
-    const base = price ? itemPrice(price, i.storeItem, store) : ZERO;
+  const lines: CartLine[] = cart.items.flatMap((i): CartLine[] => {
+    if (!i.storeItem) return [];
+    const item = i.storeItem;
+    const price = item.prices.find((p) => p.sizeId === i.sizeId);
+    const base = price ? itemPrice(price, item, store) : ZERO;
     // Priced from the item's current options (they may have changed since it was added).
-    const charge = (i.name && i.storeItem.nameMode !== "OFF" ? i.storeItem.namePrice : ZERO).plus(i.number && i.storeItem.numberMode !== "OFF" ? i.storeItem.numberPrice : ZERO);
+    const charge = (i.name && item.nameMode !== "OFF" ? item.namePrice : ZERO).plus(i.number && item.numberMode !== "OFF" ? item.numberPrice : ZERO);
     const unit = base.plus(charge);
-    const available = !!price && i.storeItem.published;
-    return {
+    const available = !!price && item.published;
+    return [{
       id: i.id,
       storeItemId: i.storeItemId,
+      designId: null,
       sizeId: i.sizeId,
-      name: i.storeItem.name,
-      detail: [i.storeItem.design.color.name, sizes.find((s) => s.id === i.sizeId)?.code ?? "?", personalizationLabel(i)].filter(Boolean).join(" · "),
-      imageFileId: i.storeItem.imageFileId,
-      slug: i.storeItem.slug,
+      name: item.name,
+      detail: [item.design.color.name, sizes.find((s) => s.id === i.sizeId)?.code ?? "?", personalizationLabel(i)].filter(Boolean).join(" · "),
+      imageFileId: item.imageFileId,
+      slug: item.slug,
       qty: i.qty,
       personalName: i.name,
       personalNumber: i.number,
@@ -180,8 +190,9 @@ export async function cartTotals(db: BusinessDb | BusinessTx, rs: { business: Bu
       unitPrice: unit,
       total: available ? unit.times(i.qty) : ZERO,
       available,
-    };
+    }];
   });
+  lines.push(...(await designLines(db, store, cart, sizes)));
   const merchandise = lines.reduce((t, l) => t.plus(l.total), ZERO);
 
   let promoError: string | null = null;
@@ -242,4 +253,56 @@ export async function cartTotals(db: BusinessDb | BusinessTx, rs: { business: Bu
     amountDue: total.minus(gift),
     unavailable: lines.filter((l) => !l.available),
   };
+}
+
+/**
+ * The shopper's own designs: priced together per design at the quantity in
+ * the cart (so changing a quantity can change the price per piece).
+ */
+async function designLines(db: BusinessDb | BusinessTx, store: Parameters<typeof shopperPrices>[1], cart: CartWithItems, sizes: { id: string; code: string }[]): Promise<CartLine[]> {
+  const byDesign = new Map<string, CartWithItems["items"]>();
+  for (const i of cart.items) if (i.design && i.designId) byDesign.set(i.designId, [...(byDesign.get(i.designId) ?? []), i]);
+  const out: CartLine[] = [];
+  for (const items of byDesign.values()) {
+    const design = items[0].design!;
+    const methods = await db.decorationMethod.findMany({ where: { id: { in: design.decorations.map((d) => d.methodId) } }, select: { minQty: true } });
+    let unit = new Map<string, Prisma.Decimal>();
+    let problem: string | undefined;
+    try {
+      ({ unit } = await shopperPrices(db as BusinessDb, store, {
+        productId: design.productId,
+        colorId: design.colorId,
+        quantities: Object.fromEntries(items.map((i) => [i.sizeId, i.qty])),
+        minQty: Math.max(1, ...methods.map((m) => m.minQty)),
+        decorations: design.decorations.map((d) => ({ methodId: d.methodId, location: d.location, colors: d.colors, stitches: d.stitches, widthIn: d.widthIn?.toNumber() ?? null, heightIn: d.heightIn?.toNumber() ?? null })),
+      }));
+    } catch (e) {
+      if (!(e instanceof OrderError)) throw e;
+      problem = e.message;
+    }
+    for (const i of items) {
+      const price = unit.get(i.sizeId);
+      const available = !!price && !problem;
+      out.push({
+        id: i.id,
+        storeItemId: null,
+        designId: design.id,
+        sizeId: i.sizeId,
+        name: design.product.name,
+        detail: [design.color.name, sizes.find((s) => s.id === i.sizeId)?.code ?? "?", "your design"].join(" · "),
+        imageFileId: i.imageFileId,
+        slug: design.product.slug,
+        qty: i.qty,
+        personalName: "",
+        personalNumber: "",
+        charge: ZERO,
+        basePrice: price ?? ZERO,
+        unitPrice: price ?? ZERO,
+        total: available ? price!.times(i.qty) : ZERO,
+        available,
+        problem,
+      });
+    }
+  }
+  return out;
 }

@@ -5,14 +5,14 @@ import type { Theme } from "@/lib/store/themes";
 
 type NavPage = Pick<StorePage, "id" | "slug" | "title"> & { children: Pick<StorePage, "id" | "slug" | "title">[] };
 
-type HeaderProps = { style: Theme["header"]; store: Store; pages: NavPage[]; cartCount: number; signedIn: boolean; accounts: boolean; hasItems: boolean };
+type HeaderProps = { style: Theme["header"]; store: Store; pages: NavPage[]; cartCount: number; signedIn: boolean; accounts: boolean; hasItems: boolean; designer?: boolean };
 
 /**
  * Header: logo or name, navigation with dropdowns, search, account and cart.
  * Themes pick a plain bar, a bold bar in the accent color, or a centered
  * logo with the menu underneath.
  */
-export function StoreHeader({ style, store, pages, cartCount, signedIn, accounts, hasItems }: HeaderProps) {
+export function StoreHeader({ style, store, pages, cartCount, signedIn, accounts, hasItems, designer = false }: HeaderProps) {
   const logo = (
     <Link href="/" className={`flex items-center gap-2 font-bold ${style === "centered" ? "text-3xl" : "text-xl"} st-heading`} data-testid="store-logo">
       {store.logoFileId ? (
@@ -23,7 +23,7 @@ export function StoreHeader({ style, store, pages, cartCount, signedIn, accounts
       )}
     </Link>
   );
-  const nav = <Nav store={store} pages={pages} hasItems={hasItems} style={style} />;
+  const nav = <Nav store={store} pages={pages} hasItems={hasItems} style={style} designer={designer} />;
   const search = (
     <form action="/search" className="hidden sm:block">
       <input
@@ -76,7 +76,7 @@ export function StoreHeader({ style, store, pages, cartCount, signedIn, accounts
   );
 }
 
-function Nav({ store, pages, hasItems, style }: { store: Store; pages: NavPage[]; hasItems: boolean; style: Theme["header"] }) {
+function Nav({ store, pages, hasItems, style, designer }: { store: Store; pages: NavPage[]; hasItems: boolean; style: Theme["header"]; designer: boolean }) {
   // The blank catalog and quote requests are the business's own services, on its main site only.
   const main = store.kind === "ROOT";
   const href = (slug: string) => (slug === "home" ? "/" : `/${slug}`);
@@ -84,6 +84,7 @@ function Nav({ store, pages, hasItems, style }: { store: Store; pages: NavPage[]
   return (
     <nav className={`flex flex-wrap items-center gap-x-6 gap-y-1 text-sm font-medium ${style === "centered" ? "justify-center gap-x-8" : ""}`} aria-label="Main">
       {hasItems && <Link href="/shop" className={link}>Shop</Link>}
+      {designer && <Link href="/design" className={link}>Design your own</Link>}
       {main && <Link href="/catalog" className={link}>Catalog</Link>}
       {pages.map((p) =>
         p.children.length ? (

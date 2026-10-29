@@ -1,4 +1,5 @@
 import { getRequestStore } from "@/lib/store/resolve";
+import { designerConfig } from "@/lib/store/designer";
 import { getShopper } from "@/lib/store/accounts";
 import { hasStoreAccess } from "@/lib/store/access";
 import { currentCart } from "@/lib/store/cart";
@@ -15,7 +16,7 @@ export default async function StoreLayout({ children }: { children: React.ReactN
   // The platform's own address has no store; its pages render on their own.
   if (!rs) return <>{children}</>;
   const { db, store, business, settings } = rs;
-  const [pages, cart, shopper, itemCount, access] = await Promise.all([
+  const [pages, cart, shopper, itemCount, access, designer] = await Promise.all([
     db.storePage.findMany({
       where: { storeId: store.id, published: true, OR: [{ showInNav: true }, { parent: { showInNav: true } }] },
       orderBy: [{ navOrder: "asc" }, { title: "asc" }],
@@ -25,6 +26,7 @@ export default async function StoreLayout({ children }: { children: React.ReactN
     getShopper(rs),
     db.storeItem.count({ where: { storeId: store.id, published: true } }),
     hasStoreAccess(store),
+    designerConfig(db, store),
   ]);
   const top = pages.filter((p) => p.showInNav && !p.parentId).map((p) => ({ ...p, children: pages.filter((c) => c.parentId === p.id) }));
   const theme = themeOf(store.theme);
@@ -42,6 +44,7 @@ export default async function StoreLayout({ children }: { children: React.ReactN
         signedIn={!!shopper}
         accounts={settings.accountMode !== "GUEST_ONLY"}
         hasItems={itemCount > 0}
+        designer={designer.enabled}
       />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
         {rs.status.state !== "open" ? (

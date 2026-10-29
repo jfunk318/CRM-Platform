@@ -162,6 +162,14 @@ phases 1–3 need real product data.
   email, task, assign, status, Slack and note actions with placeholders;
   recipes; a run log; loop protection). Still to do: QuickBooks Online,
   more Slack, supplier live catalogs and ordering, the public API.
+- **Phase 9, customer designer (first version done):** per-store designer
+  with business-level method limits and store choices (uploads, text,
+  store logos, garments, methods); images, text and logos placed on any
+  print area with guide sizing, live per-size prices, low-resolution
+  consent; designs priced in the cart and checked by staff before
+  production. Not yet: several layers per spot (text plus image), clip-art
+  library, reopening a cart design to edit, names/numbers rosters in the
+  designer, "request a quote" mode.
 - **Bulk design and live pricing (done):** the same decoration on many
   products at once (placed and sized per product by placement guides, same
   size or scaled to fit, per-item fine-tuning), bulk updates to chosen items

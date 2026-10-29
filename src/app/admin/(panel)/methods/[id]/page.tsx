@@ -190,6 +190,7 @@ export default async function MethodPage({
             </div>
 
             <Check name="active" label="Active (offered to customers)" checked={m.active} />
+            <Check name="shopperDesign" label="Shoppers can choose it in the online designer (stores turn the designer on)" checked={m.shopperDesign} />
           </ActionForm>
         </fieldset>
         {!canEditSettings && <p className="mt-2 text-sm text-gray-500">Only admins can change method settings.</p>}

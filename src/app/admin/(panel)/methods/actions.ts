@@ -90,6 +90,7 @@ export async function saveMethod(_: ActionResult, form: FormData): Promise<Actio
           kind: kind(form),
           pricingModel: model,
           active: checkbox(form, "active"),
+          shopperDesign: checkbox(form, "shopperDesign"),
           sortOrder: int(field(form, "sortOrder") || "0", "Sort order"),
           minQty: Math.max(1, int(field(form, "minQty") || "1", "Minimum quantity")),
           maxColors: optionalInt(field(form, "maxColors"), "Max colors"),

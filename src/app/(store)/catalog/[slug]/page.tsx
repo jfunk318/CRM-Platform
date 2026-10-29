@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { designerConfig, designerProduct } from "@/lib/store/designer";
 import { notFound } from "next/navigation";
 import { ProductImage } from "@/components/product-image";
 import { getRequestStore } from "@/lib/store/resolve";
@@ -29,6 +30,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const found = await load((await params).slug);
   if (!found) notFound();
   const { rs, product } = found;
+  const config = await designerConfig(rs.db, rs.store);
+  const designable = config.enabled && !!(await designerProduct(rs.db, rs.store, config, { id: product.id }));
   const from = rs.settings.showPrices ? (await blankFromPrices(rs.db, [product.id])).get(product.id) : undefined;
   const images = product.views.flatMap((v) => v.images.filter((i) => /^https:\/\//.test(i.url)).slice(0, 1));
   return (
@@ -66,6 +69,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <div className="text-sm text-[var(--st-muted)]">Sizes: {product.sizes.map((s) => s.code).join(", ")}</div>
         {product.specSheetUrl && /^https:\/\//.test(product.specSheetUrl) && (
           <a href={product.specSheetUrl} target="_blank" rel="noreferrer" className="text-sm text-[var(--accent)] underline">Spec sheet</a>
+        )}
+        {designable && (
+          <Link href={`/design/${product.slug}`} className="st-btn inline-block" data-testid="design-this">Design yours online</Link>
         )}
         <section className="rounded-lg border border-[var(--st-border)] p-4">
           <h2 className="mb-3 text-lg font-semibold">Get a quote for this</h2>

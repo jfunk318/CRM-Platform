@@ -36,9 +36,9 @@ export default async function CartPage() {
                 {l.imageFileId && <img src={`/media/${l.imageFileId}`} alt="" className="h-full w-full object-cover" />}
               </div>
               <div className="min-w-40 flex-1">
-                <Link href={`/shop/${l.slug}`} className="font-medium hover:underline">{l.name}</Link>
+                <Link href={l.designId ? `/design/${l.slug}` : `/shop/${l.slug}`} className="font-medium hover:underline">{l.name}</Link>
                 <div className="text-sm text-[var(--st-muted)]">{l.detail}{prices && ` · ${money(l.unitPrice)} each`}</div>
-                {!l.available && <div className="text-sm text-red-600">No longer available</div>}
+                {!l.available && <div className="text-sm text-red-600">{l.problem ?? "No longer available"}</div>}
               </div>
               <ActionForm key={`${l.id}-${l.qty}`} action={updateCartAction} submitLabel="Update" className="flex items-center gap-2">
                 <input type="hidden" name="cartItemId" value={l.id} />
