@@ -220,10 +220,10 @@ export function LineEditor({
                       <input type="checkbox" name={`size_${s.id}`} defaultChecked /> {s.code}
                     </label>
                   ) : (
-                    <label key={s.id} className={`flex w-12 flex-col overflow-hidden rounded border text-center ${Number(value.quantities[s.id]) > 0 ? "border-amber-400" : "border-gray-200"}`}>
+                    <label key={s.id} className={`flex w-12 flex-col overflow-hidden rounded border text-center ${Number(value.quantities[s.id]) > 0 ? "border-brand-400" : "border-gray-200"}`}>
                       <span className="bg-gray-50 py-0.5 text-[11px] font-medium text-gray-600">{s.code}</span>
                       <input
-                        className="w-full px-1 py-1 text-center text-sm outline-none focus:bg-amber-50"
+                        className="w-full px-1 py-1 text-center text-sm outline-none focus:bg-brand-50"
                         name={`qty_${s.id}`}
                         inputMode="numeric"
                         aria-label={`Quantity ${s.code}`}
@@ -235,7 +235,7 @@ export function LineEditor({
                 )}
             </div>
             {sizeMode === "quantity" && dropped.length > 0 && (
-              <p className="mt-1 text-xs text-amber-800">{color?.name} doesn&apos;t come in {dropped.join(", ")}; those quantities won&apos;t be saved.</p>
+              <p className="mt-1 text-xs text-warn-800">{color?.name} doesn&apos;t come in {dropped.join(", ")}; those quantities won&apos;t be saved.</p>
             )}
           </div>
 

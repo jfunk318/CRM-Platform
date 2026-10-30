@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { OrderType, Prisma } from "@prisma/client";
+import { NavHint } from "@/components/admin/side-nav";
 import { requireStaff } from "@/lib/auth/session";
 import { OrderTable, orderTableInclude } from "@/components/admin/order-table";
 
@@ -56,8 +57,9 @@ export default async function OrdersPage({
 
   return (
     <div className="space-y-6">
+      <NavHint href={`/admin/orders?type=${type}`} />
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-1 rounded-lg bg-gray-100 p-1">
+        <div className="flex gap-1 rounded-lg bg-gray-200/70 p-1">
           {(["QUOTE", "ORDER"] as const).map((t) => (
             <Link
               key={t}

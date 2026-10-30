@@ -35,7 +35,7 @@ export default async function PurchaseOrderPage({ params }: { params: Promise<{ 
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Link href="/admin/purchasing" className="text-sm text-amber-700 hover:underline">← Purchasing</Link>
+          <Link href="/admin/purchasing" className="text-sm text-brand-700 hover:underline">← Purchasing</Link>
           <h1 className="page-title mt-1 flex items-center gap-3">
             {poRef(po.number)}
             <span className={`rounded-full px-2 py-0.5 text-xs font-normal ${PO_STATUS[po.status].className}`} data-testid="po-status">{PO_STATUS[po.status].label}</span>
@@ -43,7 +43,7 @@ export default async function PurchaseOrderPage({ params }: { params: Promise<{ 
           <p className="text-sm text-gray-600">
             {po.supplier.name}
             {po.supplier.accountNumber && <> · account {po.supplier.accountNumber}</>}
-            {po.supplier.email ? <> · {po.supplier.email}</> : <> · <Link href="/admin/suppliers" className="text-amber-700 hover:underline">add an email for this supplier</Link></>}
+            {po.supplier.email ? <> · {po.supplier.email}</> : <> · <Link href="/admin/suppliers" className="text-brand-700 hover:underline">add an email for this supplier</Link></>}
             {po.supplier.phone && <> · {po.supplier.phone}</>}
           </p>
           <p className="text-xs text-gray-500">
@@ -118,13 +118,13 @@ export default async function PurchaseOrderPage({ params }: { params: Promise<{ 
                   </>
                 )}
                 <td className="text-right">{money(l.unitCost.times(l.qty))}</td>
-                <td className={`text-right ${l.qtyReceived >= l.qty ? "text-green-700" : l.qtyReceived > 0 ? "text-amber-700" : ""}`}>{l.qtyReceived}</td>
+                <td className={`text-right ${l.qtyReceived >= l.qty ? "text-green-700" : l.qtyReceived > 0 ? "text-brand-700" : ""}`}>{l.qtyReceived}</td>
                 <td className="text-xs">
                   {l.allocations.length === 0
                     ? "Stock"
                     : l.allocations.map((a) => (
                         <div key={a.id}>
-                          <Link href={`/admin/orders/${a.orderId}`} className="text-amber-700 hover:underline">{orderRef(a.order)}</Link> × {a.qty}
+                          <Link href={`/admin/orders/${a.orderId}`} className="text-brand-700 hover:underline">{orderRef(a.order)}</Link> × {a.qty}
                         </div>
                       ))}
                   {l.qty > l.allocations.reduce((n, a) => n + a.qty, 0) && l.allocations.length > 0 && (

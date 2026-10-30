@@ -58,7 +58,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <Link href="/admin/production" className="text-sm text-amber-700 hover:underline">← Production</Link>
+          <Link href="/admin/production" className="text-sm text-brand-700 hover:underline">← Production</Link>
           <h1 className="page-title mt-1">Week of {short(start)}</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -72,7 +72,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       </div>
       <p className="text-sm text-gray-500">
         Auto-schedule puts unscheduled jobs on the earliest days with room, rush and earliest due first. Set each
-        method&apos;s daily capacity on its <Link href="/admin/methods" className="text-amber-700 hover:underline">decoration method</Link> page.
+        method&apos;s daily capacity on its <Link href="/admin/methods" className="text-brand-700 hover:underline">decoration method</Link> page.
       </p>
       <CalendarBoard
         days={days.map((d) => ({

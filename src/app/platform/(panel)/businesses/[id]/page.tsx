@@ -29,10 +29,10 @@ export default async function BusinessPage({ params }: { params: Promise<{ id: s
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/platform" className="text-sm text-amber-700 hover:underline">← Businesses</Link>
+        <Link href="/platform" className="text-sm text-brand-700 hover:underline">← Businesses</Link>
         <h1 className="page-title mt-1">{business.name}</h1>
         <p className="text-sm text-gray-600">
-          Back office: <a href={adminUrl} className="font-mono text-amber-700 hover:underline">{adminUrl}</a>
+          Back office: <a href={adminUrl} className="font-mono text-brand-700 hover:underline">{adminUrl}</a>
         </p>
         <p className="text-sm text-gray-500">
           {business._count.products} products · {business._count.customers} customers · {business._count.orders} quotes &amp; orders

@@ -26,7 +26,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
   return (
     <div className="space-y-8">
       <div>
-        <Link href="/admin/customers" className="text-sm text-amber-700 hover:underline">← Customers</Link>
+        <Link href="/admin/customers" className="text-sm text-brand-700 hover:underline">← Customers</Link>
         <h1 className="page-title mt-1">{company.name}</h1>
       </div>
 
@@ -37,7 +37,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
           <ul className="divide-y divide-gray-100">
             {company.customers.map((c) => (
               <li key={c.id} className="flex flex-wrap gap-x-4 px-2 py-2 text-sm">
-                <Link href={`/admin/customers/${c.id}`} className="font-medium text-amber-700 hover:underline">
+                <Link href={`/admin/customers/${c.id}`} className="font-medium text-brand-700 hover:underline">
                   {c.firstName} {c.lastName}
                 </Link>
                 <span className="text-gray-600">{c.email}</span>

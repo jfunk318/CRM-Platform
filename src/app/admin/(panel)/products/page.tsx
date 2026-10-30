@@ -97,7 +97,7 @@ export default async function ProductsPage({
                   </Link>
                 </td>
                 <td>
-                  <Link href={`/admin/products/${p.id}`} className="font-medium text-amber-700 hover:underline">{p.name}</Link>
+                  <Link href={`/admin/products/${p.id}`} className="font-medium text-brand-700 hover:underline">{p.name}</Link>
                   {p.brand && <div className="text-xs text-gray-500">{p.brand}</div>}
                 </td>
                 <td className="font-mono text-xs">{p.styleCode}</td>

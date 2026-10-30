@@ -17,7 +17,7 @@ export default async function ProductMethodsPage({ params }: { params: Promise<{
       intro={
         <>
           <p>The methods offered for {type.name} products. Turn one off, or raise its minimum quantity, for this product only.</p>
-          <p>Which methods a product type offers is set under <Link href="/admin/methods" className="text-amber-700 hover:underline">Decoration methods</Link>.</p>
+          <p>Which methods a product type offers is set under <Link href="/admin/methods" className="text-brand-700 hover:underline">Decoration methods</Link>.</p>
         </>
       }
     >

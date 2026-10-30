@@ -3,7 +3,7 @@ import { LEAD_SOURCES } from "@/lib/crm/leads";
 
 export const STATUS_CLASS: Record<LeadStatus, string> = {
   NEW: "bg-blue-50 text-blue-800",
-  CONTACTED: "bg-amber-50 text-amber-800",
+  CONTACTED: "bg-warn-50 text-warn-800",
   QUALIFIED: "bg-purple-50 text-purple-800",
   CONVERTED: "bg-green-50 text-green-800",
   LOST: "bg-gray-100 text-gray-600",

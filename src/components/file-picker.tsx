@@ -51,7 +51,7 @@ export function FilePicker({
 
   return (
     <div
-      className={`rounded-md border-2 border-dashed px-3 py-3 transition ${over ? "border-amber-500 bg-amber-50" : "border-gray-300 bg-gray-50"}`}
+      className={`rounded-md border-2 border-dashed px-3 py-3 transition ${over ? "border-brand-500 bg-brand-50" : "border-gray-300 bg-gray-50"}`}
       onDragOver={(e) => {
         e.preventDefault();
         setOver(true);

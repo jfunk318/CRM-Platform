@@ -8,11 +8,11 @@ export const metadata = { title: `Platform · ${PLATFORM_NAME}` };
 export default async function PlatformLayout({ children }: { children: React.ReactNode }) {
   const user = await requirePlatformUser();
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-gray-900 text-white">
+    <div className="admin-ui min-h-screen bg-gray-100">
+      <header className="bg-espresso text-white">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-6 px-4 py-3">
           <Link href="/platform" className="font-bold">
-            {PLATFORM_NAME} <span className="text-amber-400">Platform</span>
+            {PLATFORM_NAME} <span className="text-wheat">Platform</span>
           </Link>
           <nav className="flex gap-4 text-sm text-gray-300">
             <Link href="/platform" className="hover:text-white">Businesses</Link>
@@ -21,7 +21,7 @@ export default async function PlatformLayout({ children }: { children: React.Rea
           <div className="ml-auto flex items-center gap-3 text-xs text-gray-400">
             {user.email}
             <form action={platformLogout}>
-              <button className="text-amber-400 hover:underline">Sign out</button>
+              <button className="text-wheat hover:underline">Sign out</button>
             </form>
           </div>
         </div>

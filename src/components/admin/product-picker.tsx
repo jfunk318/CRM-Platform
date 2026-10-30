@@ -123,7 +123,7 @@ export function ProductPicker({
               key={h.id}
               role="option"
               aria-selected={i === active}
-              className={`flex cursor-pointer items-center gap-2 px-2 py-1 ${i === active ? "bg-amber-50" : ""}`}
+              className={`flex cursor-pointer items-center gap-2 px-2 py-1 ${i === active ? "bg-brand-50" : ""}`}
               onMouseEnter={() => setActive(i)}
               // mousedown, not click: it lands before the input's blur closes the list.
               onMouseDown={(e) => {

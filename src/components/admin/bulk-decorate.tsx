@@ -276,7 +276,7 @@ export function BulkDecorate({ mode, orderId, artOwner, lines = [] }: { mode: "a
         <>
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-600">Tick the items to change. Items you don&apos;t tick stay as they are.</p>
-            <button type="button" className="text-xs text-amber-700 hover:underline" onClick={() => setSelected(selected.length === lines.length ? [] : lines.map((l) => l.lineId))}>
+            <button type="button" className="text-xs text-brand-700 hover:underline" onClick={() => setSelected(selected.length === lines.length ? [] : lines.map((l) => l.lineId))}>
               {selected.length === lines.length ? "Clear" : "Select all"}
             </button>
           </div>
@@ -378,7 +378,7 @@ export function BulkDecorate({ mode, orderId, artOwner, lines = [] }: { mode: "a
                       const key = k2(r.target.key, e.loc);
                       return (
                         <li key={e.loc} className="flex flex-wrap items-center gap-x-2">
-                          <span className={e.decoration ? "text-gray-700" : "text-amber-800"}>
+                          <span className={e.decoration ? "text-gray-700" : "text-warn-800"}>
                             {e.decoration ? `${e.decoration.location}: ${e.decoration.widthIn}″ × ${e.decoration.heightIn}″` : e.loc}
                             {e.decoration && e.decoration.stitches && opts?.methods.find((m) => m.id === e.decoration!.methodId)?.pricingModel === "PER_STITCH" ? ` · ~${Number(e.decoration.stitches).toLocaleString()} stitches` : ""}
                             {e.note ? ` (${e.note})` : ""}
@@ -391,7 +391,7 @@ export function BulkDecorate({ mode, orderId, artOwner, lines = [] }: { mode: "a
                             </select>
                           )}
                           {e.decoration && (
-                            <button type="button" className="text-amber-700 hover:underline" onClick={() => setStudio({ kind: "tune", targetKey: r.target.key, loc: e.loc })}>Fine-tune</button>
+                            <button type="button" className="text-brand-700 hover:underline" onClick={() => setStudio({ kind: "tune", targetKey: r.target.key, loc: e.loc })}>Fine-tune</button>
                           )}
                           {tuned[key] && (
                             <button type="button" className="text-gray-500 hover:underline" onClick={() => setTuned((all) => Object.fromEntries(Object.entries(all).filter(([k]) => k !== key)))}>Undo</button>
@@ -419,7 +419,7 @@ export function BulkDecorate({ mode, orderId, artOwner, lines = [] }: { mode: "a
         <div className="flex flex-wrap gap-3 text-sm">
           <button type="button" className="btn-secondary" onClick={() => setStudio({ kind: "design" })}>Change the design</button>
           <button type="button" className="text-gray-600 hover:underline" onClick={() => { setStep("items"); setDesign(null); setTuned({}); setPicks({}); }}>Back to the items</button>
-          {results.length > ready.length && <span className="self-center text-xs text-amber-800">{results.length - ready.length} item{results.length - ready.length === 1 ? "" : "s"} can&apos;t take it and will be left out.</span>}
+          {results.length > ready.length && <span className="self-center text-xs text-warn-800">{results.length - ready.length} item{results.length - ready.length === 1 ? "" : "s"} can&apos;t take it and will be left out.</span>}
         </div>
       </ActionForm>
     </div>

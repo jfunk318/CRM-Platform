@@ -150,7 +150,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       <NavHint href={`/admin/orders?type=${order.type}`} />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Link href={`/admin/orders?type=${order.type}`} className="text-sm text-amber-700 hover:underline">
+          <Link href={`/admin/orders?type=${order.type}`} className="text-sm text-brand-700 hover:underline">
             ← {isQuote ? "Quotes" : "Orders"}
           </Link>
           <h1 className="page-title mt-1 flex items-center gap-3">
@@ -195,7 +195,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           )}
           {order.title && <p className="text-gray-700">{order.title}</p>}
           <p className="text-sm text-gray-600">
-            <Link href={`/admin/customers/${order.customerId}`} className="text-amber-700 hover:underline">
+            <Link href={`/admin/customers/${order.customerId}`} className="text-brand-700 hover:underline">
               {order.customer.firstName} {order.customer.lastName}
             </Link>
             {order.customer.company && <> · {order.customer.company.name}</>}
@@ -204,7 +204,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           </p>
           {order.quote && (
             <p className="text-sm text-gray-500">
-              From quote <Link href={`/admin/orders/${order.quote.id}`} className="text-amber-700 hover:underline">{orderRef(order.quote)}</Link>
+              From quote <Link href={`/admin/orders/${order.quote.id}`} className="text-brand-700 hover:underline">{orderRef(order.quote)}</Link>
             </p>
           )}
         </div>
@@ -240,7 +240,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         </div>
       )}
       {problemLines > 0 && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="alert">
+        <div className="rounded-md border border-warn-300 bg-warn-50 px-3 py-2 text-sm text-warn-900" role="alert">
           {problemLines} item{problemLines === 1 ? " has" : "s have"} pricing problems, so the total isn&apos;t complete. See the
           notes on each item below.
         </div>
@@ -289,7 +289,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                   </div>
 
                   {issues.length > 0 && (
-                    <ul className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                    <ul className="rounded-md bg-warn-50 px-3 py-2 text-sm text-warn-900">
                       {issues.map((i, n) => <li key={n}>{i.location ? `${i.location}: ` : ""}{i.message}</li>)}
                     </ul>
                   )}
@@ -344,7 +344,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                   {editable && (
                     <div className="flex flex-wrap gap-3">
                       <details className="w-full">
-                        <summary className="cursor-pointer text-sm text-amber-700">Edit item</summary>
+                        <summary className="cursor-pointer text-sm text-brand-700">Edit item</summary>
                         <div className="mt-3">
                           <ActionForm action={updateLineAction} submitLabel="Save item">
                             <input type="hidden" name="orderId" value={order.id} />
@@ -364,7 +364,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             })}
             {editable && (
               <details className="card">
-                <summary className="cursor-pointer font-medium text-amber-700">+ Add several items with the same decoration</summary>
+                <summary className="cursor-pointer font-medium text-brand-700">+ Add several items with the same decoration</summary>
                 <div className="mt-3">
                   <BulkDecorate mode="add" orderId={order.id} artOwner={artOwner} />
                 </div>
@@ -372,7 +372,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             )}
             {editable && order.lines.length > 0 && (
               <details className="card">
-                <summary className="cursor-pointer font-medium text-amber-700">Update artwork on several items</summary>
+                <summary className="cursor-pointer font-medium text-brand-700">Update artwork on several items</summary>
                 <div className="mt-3">
                   <BulkDecorate
                     mode="update"
@@ -391,7 +391,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             )}
             {editable && (
               <details className="card" open={order.lines.length === 0}>
-                <summary className="cursor-pointer font-medium text-amber-700">+ Add item</summary>
+                <summary className="cursor-pointer font-medium text-brand-700">+ Add item</summary>
                 <div className="mt-3">
                   {/* Keyed on the line count so the editor starts fresh after each add. */}
                   <ActionForm key={order.lines.length} action={addLineAction} submitLabel="Add item">
@@ -527,7 +527,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             </ActionForm>
             <ol className="space-y-3 text-sm">
               {order.events.map((e) => (
-                <li key={e.id} className={e.type === "NOTE" ? "rounded-md bg-amber-50 p-2" : ""}>
+                <li key={e.id} className={e.type === "NOTE" ? "rounded-md bg-brand-50 p-2" : ""}>
                   <div className="whitespace-pre-wrap">{e.body}</div>
                   <div className="text-xs text-gray-500">{e.staff?.name ?? "System"} · {when(e.createdAt)}</div>
                 </li>

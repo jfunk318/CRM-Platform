@@ -10,7 +10,7 @@ import { DueDateInput } from "./due-date-input";
 export type TaskRow = Prisma.TaskGetPayload<{ include: typeof taskInclude }>;
 type Link_ = { leadId?: string; customerId?: string; orderId?: string };
 
-const DUE_CLASS = { overdue: "text-red-600 font-medium", today: "text-amber-700 font-medium", upcoming: "text-gray-600", someday: "text-gray-400", done: "text-gray-400" } as const;
+const DUE_CLASS = { overdue: "text-red-600 font-medium", today: "text-brand-700 font-medium", upcoming: "text-gray-600", someday: "text-gray-400", done: "text-gray-400" } as const;
 
 /** What a task is about, as a link (left out on that record's own page). */
 function about(t: TaskRow, here: Link_) {
@@ -34,13 +34,13 @@ export function TaskList({ tasks, here = {}, showAssignee = true }: { tasks: Tas
               fields={{ id: t.id, done: t.doneAt ? "0" : "1" }}
               label={t.doneAt ? "☑" : "☐"}
               title={t.doneAt ? "Mark not done" : "Mark done"}
-              className="text-lg leading-5 text-gray-500 hover:text-amber-700"
+              className="text-lg leading-5 text-gray-500 hover:text-brand-700"
             />
             <div className="min-w-0 flex-1">
               <div className={t.doneAt ? "text-gray-400 line-through" : "font-medium"}>{t.title}</div>
               <div className="flex flex-wrap gap-x-2 text-xs">
                 <span className={DUE_CLASS[bucket]}>{t.doneAt ? "Done" : dueLabel(t.dueDate)}</span>
-                {link && <Link href={link.href} className="text-amber-700 hover:underline">{link.label}</Link>}
+                {link && <Link href={link.href} className="text-brand-700 hover:underline">{link.label}</Link>}
                 {showAssignee && <span className="text-gray-500">{t.assignee?.name ?? "Unassigned"}</span>}
               </div>
               {t.notes && <p className="whitespace-pre-wrap text-xs text-gray-600">{t.notes}</p>}
@@ -92,7 +92,7 @@ export function TasksCard({ tasks, link, staff, me }: { tasks: TaskRow[]; link: 
         </details>
       )}
       <details className="border-t border-gray-100 pt-2">
-        <summary className="cursor-pointer text-sm font-medium text-amber-700">+ Add a task</summary>
+        <summary className="cursor-pointer text-sm font-medium text-brand-700">+ Add a task</summary>
         <div className="mt-2">
           <TaskForm link={link} staff={staff} me={me} compact />
         </div>

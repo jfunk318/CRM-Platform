@@ -35,8 +35,8 @@ export default async function StoreDefaultsPage() {
         {key ? (
           <p className="text-sm">
             Connected with key <span className="font-mono">{key}</span>
-            {key.includes("_test_") && <span className="ml-2 rounded bg-amber-100 px-1.5 text-xs text-amber-900">test mode</span>}
-            {business.stripeWebhookSecretEnc ? " · webhook set" : <span className="text-amber-700"> · add the webhook signing secret so payments are confirmed even if a shopper closes their browser</span>}
+            {key.includes("_test_") && <span className="ml-2 rounded bg-warn-100 px-1.5 text-xs text-warn-900">test mode</span>}
+            {business.stripeWebhookSecretEnc ? " · webhook set" : <span className="text-brand-700"> · add the webhook signing secret so payments are confirmed even if a shopper closes their browser</span>}
           </p>
         ) : (
           <p className="text-sm text-gray-600">

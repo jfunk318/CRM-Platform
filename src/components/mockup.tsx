@@ -32,7 +32,7 @@ export function Mockup({
       )}
       {outline && (
         <div
-          className="pointer-events-none absolute border border-dashed border-amber-500/80"
+          className="pointer-events-none absolute border border-dashed border-brand-500/80"
           style={{ left: `${outline.x * 100}%`, top: `${outline.y * 100}%`, width: `${outline.w * 100}%`, height: `${outline.h * 100}%` }}
         />
       )}

@@ -68,7 +68,7 @@ export const blankDecoration = (): DecorationValue => ({
 const PREVIEW_PX = 900;
 const RATING = {
   good: { text: "Great for printing", cls: "bg-green-50 text-green-800" },
-  ok: { text: "OK for printing", cls: "bg-amber-50 text-amber-900" },
+  ok: { text: "OK for printing", cls: "bg-warn-50 text-warn-900" },
   low: { text: "Too low for a sharp print", cls: "bg-red-50 text-red-800" },
 } as const;
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -546,7 +546,7 @@ export function DesignStudio({
           </div>
           <button type="button" className="text-gray-400 hover:text-gray-700" onClick={onClose} aria-label="Close">✕</button>
         </div>
-        {banner && <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">{banner}</div>}
+        {banner && <div className="border-b border-warn-200 bg-warn-50 px-4 py-2 text-sm text-warn-900">{banner}</div>}
 
         <div className="grid gap-5 p-4 md:grid-cols-[minmax(0,1fr)_340px]">
           <div>
@@ -554,13 +554,13 @@ export function DesignStudio({
               <Mockup photoUrl={photoOf(stageViewId)} label={productName} outline={area ?? null} layers={[...otherLayers(stageViewId), ...currentLayer]}>
                 {rect && (
                   <div
-                    className="absolute cursor-move border border-amber-600/70 hover:bg-amber-200/10"
+                    className="absolute cursor-move border border-brand-600/70 hover:bg-brand-200/10"
                     style={{ left: `${rect.left * 100}%`, top: `${rect.top * 100}%`, width: `${rect.width * 100}%`, height: `${rect.height * 100}%`, transform: placed!.rotation ? `rotate(${placed!.rotation}deg)` : undefined, touchAction: "none" }}
                     onPointerDown={drag("move")}
                     data-testid="art-handle"
                   >
                     <span
-                      className="absolute -right-1.5 -bottom-1.5 h-3 w-3 cursor-nwse-resize rounded-sm border border-white bg-amber-600 shadow"
+                      className="absolute -right-1.5 -bottom-1.5 h-3 w-3 cursor-nwse-resize rounded-sm border border-white bg-brand-600 shadow"
                       onPointerDown={drag("resize")}
                       data-testid="art-resize"
                     />
@@ -581,7 +581,7 @@ export function DesignStudio({
                   <button
                     key={a.id}
                     type="button"
-                    className={`rounded-full border px-2.5 py-0.5 text-xs ${a.id === area?.id ? "border-amber-500 bg-amber-50 text-amber-900" : "border-gray-200 hover:border-amber-400"}`}
+                    className={`rounded-full border px-2.5 py-0.5 text-xs ${a.id === area?.id ? "border-warn-500 bg-warn-50 text-warn-900" : "border-gray-200 hover:border-warn-400"}`}
                     onClick={() => chooseArea(a.id)}
                   >
                     {a.label.split(" / ").pop()} <span className="text-gray-400">{a.widthIn}″×{a.heightIn}″</span>
@@ -600,7 +600,7 @@ export function DesignStudio({
                     <button
                       key={v.id}
                       type="button"
-                      className={`w-20 rounded border p-0.5 text-center text-[11px] ${here ? "border-amber-500 ring-1 ring-amber-500" : "border-gray-200 hover:border-amber-400"} disabled:cursor-not-allowed disabled:opacity-50`}
+                      className={`w-20 rounded border p-0.5 text-center text-[11px] ${here ? "border-brand-500 ring-1 ring-brand-500" : "border-gray-200 hover:border-brand-400"} disabled:cursor-not-allowed disabled:opacity-50`}
                       onClick={() => target && chooseArea(target.id)}
                       disabled={!target}
                       title={target ? `Decorate the ${v.name.toLowerCase()}` : `${v.name} has no print area (add one under the product's Views & Decoration Areas)`}
@@ -622,7 +622,7 @@ export function DesignStudio({
                     <button
                       key={c.id}
                       type="button"
-                      className={`h-6 w-6 rounded-full border ${c.id === previewColorId ? "ring-2 ring-amber-500 ring-offset-1" : "border-gray-300 hover:ring-1 hover:ring-amber-400"}`}
+                      className={`h-6 w-6 rounded-full border ${c.id === previewColorId ? "ring-2 ring-brand-500 ring-offset-1" : "border-gray-300 hover:ring-1 hover:ring-brand-400"}`}
                       // Colors without a known swatch are striped, so they don't pass for white.
                       style={{ background: c.hex ?? "repeating-linear-gradient(45deg, #e5e7eb 0 3px, #fff 3px 6px)" }}
                       title={c.name}
@@ -637,7 +637,7 @@ export function DesignStudio({
                   {previewColorId !== itemColorId ? (
                     <>
                       {" "}· item is {itemColor?.name}.{" "}
-                      <button type="button" className="text-amber-700 hover:underline" onClick={() => setItemColorId(previewColorId)}>
+                      <button type="button" className="text-brand-700 hover:underline" onClick={() => setItemColorId(previewColorId)}>
                         Use {previewColor?.name} for this item
                       </button>
                     </>
@@ -712,7 +712,7 @@ export function DesignStudio({
                     {!stitchesTyped && sizeIn ? (
                       <p className="mt-0.5 text-[11px] text-gray-500" data-testid="stitch-estimate">Estimated from the size</p>
                     ) : stitchesTyped ? (
-                      <button type="button" className="mt-0.5 text-[11px] text-amber-700 hover:underline" onClick={() => setStitchesTyped(false)}>Estimate from the size</button>
+                      <button type="button" className="mt-0.5 text-[11px] text-brand-700 hover:underline" onClick={() => setStitchesTyped(false)}>Estimate from the size</button>
                     ) : null}
                   </div>
                 )}
@@ -758,7 +758,7 @@ export function DesignStudio({
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="font-medium">{ownerName ? `${ownerName}'s artwork` : "Saved artwork"}</h3>
                   {loaded && (
-                    <button type="button" className="text-xs text-amber-700 hover:underline" onClick={() => setPicking(false)}>Back to editing</button>
+                    <button type="button" className="text-xs text-brand-700 hover:underline" onClick={() => setPicking(false)}>Back to editing</button>
                   )}
                 </div>
                 {library && library.length > 12 && (
@@ -778,7 +778,7 @@ export function DesignStudio({
                         <div key={a.fileId} className="relative min-w-0">
                         <button
                           type="button"
-                          className={`block w-full min-w-0 rounded border p-1 text-left hover:border-amber-500 ${loaded && (loaded.libraryFileId ?? loaded.sourceFileId) === a.fileId ? "border-amber-500 ring-1 ring-amber-500" : "border-gray-200"}`}
+                          className={`block w-full min-w-0 rounded border p-1 text-left hover:border-brand-500 ${loaded && (loaded.libraryFileId ?? loaded.sourceFileId) === a.fileId ? "border-brand-500 ring-1 ring-brand-500" : "border-gray-200"}`}
                           title={`${a.name} · ${a.owner}`}
                           onClick={() => pick(a)}
                           disabled={!!busy}
@@ -822,7 +822,7 @@ export function DesignStudio({
                 )}
               </div>
             )}
-            {busy && <p className="text-amber-800" role="status">{busy}</p>}
+            {busy && <p className="text-warn-800" role="status">{busy}</p>}
             {error && <p className="rounded bg-red-50 px-2 py-1 text-red-800" role="alert">{error}</p>}
 
             {!picking && view && placed && size && area && (
@@ -862,7 +862,7 @@ export function DesignStudio({
                     <p className={`rounded px-2 py-1 text-xs ${RATING[rating].cls}`} data-testid="dpi">
                       {PRINT_DPI} DPI at this size:{" "}
                       {enhance.method === "vector" ? "traced to vector, sharp at any size" : `enlarged from ${Math.round(rawDpi)} DPI (smoother, but no new detail)`}.{" "}
-                      <button type="button" className="text-amber-700 hover:underline" onClick={() => edit({ enhance: undefined })}>Undo</button>
+                      <button type="button" className="text-brand-700 hover:underline" onClick={() => edit({ enhance: undefined })}>Undo</button>
                     </p>
                   ) : (
                     <p className={`rounded px-2 py-1 text-xs ${RATING[rating].cls}`} data-testid="dpi">
@@ -876,7 +876,7 @@ export function DesignStudio({
                     </button>
                   )}
                   {enhancing && (
-                    <div className="space-y-2 rounded border border-amber-300 bg-amber-50/40 p-2 text-xs" data-testid="enhance-panel">
+                    <div className="space-y-2 rounded border border-brand-300 bg-brand-50/40 p-2 text-xs" data-testid="enhance-panel">
                       <p className="text-gray-700">
                         {enhancing.flat
                           ? "This looks like flat-color art. Tracing it to vector gives sharp edges at any size."
@@ -990,7 +990,7 @@ export function DesignStudio({
                           colors (flattens shading into solid inks)
                         </label>
                         {edits.replace && Object.keys(edits.replace).length > 0 && (
-                          <button type="button" className="text-amber-700 hover:underline" onClick={() => edit({ replace: undefined })}>Undo color changes</button>
+                          <button type="button" className="text-brand-700 hover:underline" onClick={() => edit({ replace: undefined })}>Undo color changes</button>
                         )}
                       </div>
                     </>

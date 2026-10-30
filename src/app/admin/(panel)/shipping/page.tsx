@@ -36,8 +36,8 @@ export default async function ShippingPage({ searchParams }: { searchParams: Pro
         </p>
       </div>
       <nav className="flex gap-2 text-sm">
-        <Link href="/admin/shipping" className={`rounded-full border px-3 py-1 ${!all ? "border-amber-500 bg-amber-50" : "border-gray-200 bg-white"}`}>Ready to go</Link>
-        <Link href="/admin/shipping?all=1" className={`rounded-full border px-3 py-1 ${all ? "border-amber-500 bg-amber-50" : "border-gray-200 bg-white"}`}>All open orders</Link>
+        <Link href="/admin/shipping" className={`rounded-full border px-3 py-1 ${!all ? "border-brand-500 bg-brand-50" : "border-gray-200 bg-white"}`}>Ready to go</Link>
+        <Link href="/admin/shipping?all=1" className={`rounded-full border px-3 py-1 ${all ? "border-brand-500 bg-brand-50" : "border-gray-200 bg-white"}`}>All open orders</Link>
       </nav>
 
       <form action="/admin/print/packing-slips" method="get" target="_blank" className="space-y-3">
@@ -66,11 +66,11 @@ export default async function ShippingPage({ searchParams }: { searchParams: Pro
                     <input type="checkbox" name="id" value={o.id} aria-label={`Packing slip for ${orderRef(o)}`} />
                   </td>
                   <td>
-                    <Link href={`/admin/orders/${o.id}`} className="font-medium text-amber-700 hover:underline">{orderRef(o)}</Link>
+                    <Link href={`/admin/orders/${o.id}`} className="font-medium text-brand-700 hover:underline">{orderRef(o)}</Link>
                     <div className="text-xs text-gray-500">{o.customer.firstName} {o.customer.lastName}</div>
                   </td>
                   <td>{o.deliveryMethod ? `${o.deliveryMethod.name}` : <span className="text-gray-400">Not set</span>}</td>
-                  <td className="text-sm">{o.deliveryMethod?.kind === "PICKUP" ? "—" : [o.shipCity, o.shipRegion].filter(Boolean).join(", ") || <span className="text-amber-700">No address</span>}</td>
+                  <td className="text-sm">{o.deliveryMethod?.kind === "PICKUP" ? "—" : [o.shipCity, o.shipRegion].filter(Boolean).join(", ") || <span className="text-brand-700">No address</span>}</td>
                   <td className="text-right">{progress.remaining}{progress.remaining !== progress.total && <span className="text-xs text-gray-500"> of {progress.total}</span>}</td>
                   <td className={ready ? "text-green-700" : "text-gray-600"}>
                     {o.productionJobs.length ? `${jobsDone}/${o.productionJobs.length} jobs done` : o.status.name}
@@ -96,9 +96,9 @@ export default async function ShippingPage({ searchParams }: { searchParams: Pro
             return (
               <li key={sh.id} className="flex flex-wrap justify-between gap-2 py-1.5">
                 <span>
-                  <Link href={`/admin/orders/${sh.orderId}`} className="text-amber-700 hover:underline">{orderRef(sh.order)}</Link> ·{" "}
+                  <Link href={`/admin/orders/${sh.orderId}`} className="text-brand-700 hover:underline">{orderRef(sh.order)}</Link> ·{" "}
                   {sh.kind === "SHIP" ? `Shipped${sh.carrier ? ` ${carrierName(sh.carrier)}` : ""}` : DELIVERY_KIND_LABELS[sh.kind]} · {sh.items.reduce((n, i) => n + i.qty, 0)} pcs
-                  {sh.trackingNumber && <> · {url ? <a href={url} target="_blank" rel="noreferrer" className="font-mono text-xs text-amber-700 hover:underline">{sh.trackingNumber}</a> : <span className="font-mono text-xs">{sh.trackingNumber}</span>}</>}
+                  {sh.trackingNumber && <> · {url ? <a href={url} target="_blank" rel="noreferrer" className="font-mono text-xs text-brand-700 hover:underline">{sh.trackingNumber}</a> : <span className="font-mono text-xs">{sh.trackingNumber}</span>}</>}
                 </span>
                 <span className="text-xs text-gray-500">{when(sh.shippedAt)}</span>
               </li>

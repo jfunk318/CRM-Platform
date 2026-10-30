@@ -18,7 +18,7 @@ export default async function GroupsPage() {
         <h1 className="page-title">Store groups</h1>
         <p className="text-sm text-gray-500">
           e.g. Schools, Teams, Corporate, Fundraisers. Settings left on &quot;business default&quot; use the{" "}
-          <Link href="/admin/stores/settings" className="text-amber-700 hover:underline">defaults for every store</Link>; stores can override their group.
+          <Link href="/admin/stores/settings" className="text-brand-700 hover:underline">defaults for every store</Link>; stores can override their group.
         </p>
       </div>
       {groups.map((g) => (
@@ -28,7 +28,7 @@ export default async function GroupsPage() {
             <Fields g={g} business={business} />
           </ActionForm>
           <div className="flex items-center gap-3 text-xs text-gray-500">
-            <Link href={`/admin/stores?group=${g.id}`} className="text-amber-700 hover:underline">{g._count.stores} store{g._count.stores === 1 ? "" : "s"}</Link>
+            <Link href={`/admin/stores?group=${g.id}`} className="text-brand-700 hover:underline">{g._count.stores} store{g._count.stores === 1 ? "" : "s"}</Link>
             <ActionButton action={deleteGroupAction} fields={{ id: g.id }} label="Delete group" confirm={`Delete ${g.name}? Its stores stay, without a group.`} className="text-red-700 hover:underline" />
           </div>
         </div>

@@ -28,8 +28,8 @@ export default async function ItemPage({ params }: { params: Promise<{ id: strin
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Link href={`/admin/stores/${id}/items`} className="text-sm text-amber-700 hover:underline">← Items</Link>
-        {item.published && <a href={`${url}/shop/${item.slug}`} target="_blank" className="text-sm text-amber-700 hover:underline">View in the store ↗</a>}
+        <Link href={`/admin/stores/${id}/items`} className="text-sm text-brand-700 hover:underline">← Items</Link>
+        {item.published && <a href={`${url}/shop/${item.slug}`} target="_blank" className="text-sm text-brand-700 hover:underline">View in the store ↗</a>}
       </div>
       <div className="grid gap-6 xl:grid-cols-2">
         <section className="card space-y-3">
@@ -42,7 +42,7 @@ export default async function ItemPage({ params }: { params: Promise<{ id: strin
               <>
                 <br />
                 Published from{" "}
-                <Link href={`/admin/orders/${source.orderId}`} className="text-amber-700 hover:underline">
+                <Link href={`/admin/orders/${source.orderId}`} className="text-brand-700 hover:underline">
                   {source.order.type === "QUOTE" ? "quote" : "order"} {orderRef(source.order)}
                 </Link>
               </>

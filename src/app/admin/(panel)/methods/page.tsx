@@ -35,7 +35,7 @@ export default async function MethodsPage() {
               return (
                 <tr key={m.id} className={m.active ? "" : "text-gray-400"}>
                   <td>
-                    <Link href={`/admin/methods/${m.id}`} className="font-medium text-amber-700 hover:underline">
+                    <Link href={`/admin/methods/${m.id}`} className="font-medium text-brand-700 hover:underline">
                       {m.name}
                     </Link>
                     <div className="text-xs text-gray-500">{m.code}{m.active ? "" : " · inactive"}</div>
@@ -45,7 +45,7 @@ export default async function MethodsPage() {
                   <td>{m.minQty}</td>
                   <td>
                     {placeholder ? (
-                      <span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-900">Needs real prices</span>
+                      <span className="rounded bg-warn-100 px-2 py-0.5 text-xs text-warn-900">Needs real prices</span>
                     ) : (
                       <span className="rounded bg-green-100 px-2 py-0.5 text-xs text-green-800">Set</span>
                     )}

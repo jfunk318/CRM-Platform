@@ -28,7 +28,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
       <h1 className="page-title">Tasks</h1>
       <nav className="flex flex-wrap gap-2 text-sm" aria-label="Whose tasks">
         {(Object.keys(VIEWS) as View[]).map((v) => (
-          <Link key={v} href={v === "mine" ? "/admin/tasks" : `/admin/tasks?view=${v}`} className={`rounded-full border px-3 py-1 ${view === v ? "border-amber-500 bg-amber-50 font-medium" : "border-gray-200 bg-white hover:border-amber-300"}`}>
+          <Link key={v} href={v === "mine" ? "/admin/tasks" : `/admin/tasks?view=${v}`} className={`rounded-full border px-3 py-1 ${view === v ? "border-brand-500 bg-brand-50 font-medium" : "border-gray-200 bg-white hover:border-brand-300"}`}>
             {VIEWS[v]}
           </Link>
         ))}

@@ -27,7 +27,7 @@ export default async function RulePage({ params, searchParams }: { params: Promi
 
   return (
     <div className="space-y-5">
-      <Link href="/admin/automations" className="text-sm text-amber-700 hover:underline">← Automations</Link>
+      <Link href="/admin/automations" className="text-sm text-brand-700 hover:underline">← Automations</Link>
       <h1 className="page-title">{rule ? rule.name : "New rule"}</h1>
       <section className="card">
         <ActionForm action={saveRuleAction} submitLabel={rule ? "Save" : "Create rule"}>

@@ -33,8 +33,8 @@ export function ProductionSection({ order, canEdit }: { order: Order; canEdit: b
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold">Production</h2>
         <div className="flex items-center gap-3 text-sm">
-          <a href={`/admin/print/work-order/${order.id}`} target="_blank" className="text-amber-700 hover:underline">Work order</a>
-          <Link href="/admin/production" className="text-amber-700 hover:underline">Production board</Link>
+          <a href={`/admin/print/work-order/${order.id}`} target="_blank" className="text-brand-700 hover:underline">Work order</a>
+          <Link href="/admin/production" className="text-brand-700 hover:underline">Production board</Link>
         </div>
       </div>
       {order.productionJobs.length === 0 && (
@@ -57,7 +57,7 @@ export function ProductionSection({ order, canEdit }: { order: Order; canEdit: b
                 <ActionButton action={removeJobAction} fields={{ jobId: j.id }} label="Remove job" confirm={`Remove the ${j.method.name} job?`} />
               )}
             </div>
-            {orphan && <p className="text-xs text-amber-700">This method is no longer on the order.</p>}
+            {orphan && <p className="text-xs text-brand-700">This method is no longer on the order.</p>}
             <ol className="mt-2 flex flex-wrap gap-1">
               {j.steps.map((s) =>
                 canEdit ? (
@@ -97,7 +97,7 @@ export function BlanksSection({ status, canEdit: canPurchase }: { status: BlankS
     <section className="card space-y-3" data-testid="blanks-section">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold">Blanks</h2>
-        <span className={`rounded-full px-2 py-0.5 text-xs ${status.ready ? "bg-green-50 text-green-800" : "bg-amber-50 text-amber-900"}`} data-testid="blanks-ready">
+        <span className={`rounded-full px-2 py-0.5 text-xs ${status.ready ? "bg-green-50 text-green-800" : "bg-warn-50 text-warn-900"}`} data-testid="blanks-ready">
           {status.ready ? "All blanks in" : "Waiting on blanks"}
         </span>
       </div>
@@ -128,7 +128,7 @@ export function BlanksSection({ status, canEdit: canPurchase }: { status: BlankS
                         <li key={a.id} className="flex flex-wrap items-center gap-2">
                           {a.source === "PO" && a.poLine ? (
                             <span>
-                              {a.qty} on <Link href={`/admin/purchasing/${a.poLine.purchaseOrderId}`} className="text-amber-700 hover:underline">{poRef(a.poLine.purchaseOrder.number)}</Link>{" "}
+                              {a.qty} on <Link href={`/admin/purchasing/${a.poLine.purchaseOrderId}`} className="text-brand-700 hover:underline">{poRef(a.poLine.purchaseOrder.number)}</Link>{" "}
                               ({a.poLine.purchaseOrder.supplier.name}, {a.poLine.purchaseOrder.status.toLowerCase()})
                             </span>
                           ) : a.source === "STOCK" ? (
@@ -142,8 +142,8 @@ export function BlanksSection({ status, canEdit: canPurchase }: { status: BlankS
                           {a.source === "PO" && <span className="text-xs text-gray-500">{received} received</span>}
                         </li>
                       ))}
-                      {r.short > 0 && <li className="text-amber-700">{r.short} still to order</li>}
-                      {r.covered > r.needed && <li className="text-xs text-amber-700">{r.covered - r.needed} more than needed</li>}
+                      {r.short > 0 && <li className="text-brand-700">{r.short} still to order</li>}
+                      {r.covered > r.needed && <li className="text-xs text-brand-700">{r.covered - r.needed} more than needed</li>}
                       {!r.variant && <li className="text-xs text-red-700">No SKU in the catalog for this size</li>}
                     </ul>
                   </td>
@@ -198,7 +198,7 @@ export function ShippingSection({
     <section className="card space-y-3" data-testid="shipping-section">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold">Shipping</h2>
-        <a href={`/admin/print/packing-slips?ids=${order.id}`} target="_blank" className="text-sm text-amber-700 hover:underline">Packing slip</a>
+        <a href={`/admin/print/packing-slips?ids=${order.id}`} target="_blank" className="text-sm text-brand-700 hover:underline">Packing slip</a>
       </div>
       <p className="text-sm">
         {method ? <>{method.name} <span className="text-gray-500">({DELIVERY_KIND_LABELS[method.kind]})</span></> : <span className="text-gray-500">No delivery method set (see Details)</span>}
@@ -224,7 +224,7 @@ export function ShippingSection({
                   </div>
                   {sh.trackingNumber && (
                     <div className="font-mono text-xs">
-                      {url ? <a href={url} target="_blank" rel="noreferrer" className="text-amber-700 hover:underline">{sh.trackingNumber}</a> : sh.trackingNumber}
+                      {url ? <a href={url} target="_blank" rel="noreferrer" className="text-brand-700 hover:underline">{sh.trackingNumber}</a> : sh.trackingNumber}
                     </div>
                   )}
                   {sh.note && <div className="text-xs text-gray-600">{sh.note}</div>}
@@ -247,7 +247,7 @@ export function ShippingSection({
             </ActionForm>
           )}
           <details className="rounded-md border border-dashed border-gray-300 p-3">
-            <summary className="cursor-pointer text-sm font-medium text-amber-700">+ Record a shipment or pickup</summary>
+            <summary className="cursor-pointer text-sm font-medium text-brand-700">+ Record a shipment or pickup</summary>
             <ActionForm action={createShipmentAction} submitLabel="Record" className="mt-3 space-y-3">
               <input type="hidden" name="orderId" value={order.id} />
               <div className="grid gap-3 sm:grid-cols-2">

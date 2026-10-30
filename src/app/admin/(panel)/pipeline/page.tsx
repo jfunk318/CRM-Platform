@@ -72,8 +72,8 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
       </div>
       <PipelineBoard columns={columns} />
       <p className="text-sm">
-        <Link href="/admin/leads" className="text-amber-700 hover:underline">All leads</Link> ·{" "}
-        <Link href={href({})} className="text-amber-700 hover:underline">Refresh</Link>
+        <Link href="/admin/leads" className="text-brand-700 hover:underline">All leads</Link> ·{" "}
+        <Link href={href({})} className="text-brand-700 hover:underline">Refresh</Link>
       </p>
     </div>
   );

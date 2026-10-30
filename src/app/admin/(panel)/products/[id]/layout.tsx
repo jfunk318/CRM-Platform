@@ -4,7 +4,7 @@ import { productThumbnails } from "@/lib/catalog/thumbnails";
 import { loadProduct } from "./load";
 import { SectionNav } from "./section-nav";
 
-const STATUS_CLASS = { ACTIVE: "", CLOSING_OUT: "bg-amber-100 text-amber-900", DISCONTINUED: "bg-gray-200 text-gray-700" } as const;
+const STATUS_CLASS = { ACTIVE: "", CLOSING_OUT: "bg-warn-100 text-warn-900", DISCONTINUED: "bg-gray-200 text-gray-700" } as const;
 const STATUS_LABEL = { ACTIVE: "", CLOSING_OUT: "Closing out", DISCONTINUED: "Discontinued" } as const;
 
 /** A product's page: photo and section list on the left, the chosen section on the right. */
@@ -16,7 +16,7 @@ export default async function ProductLayout({ children, params }: { children: Re
     <div className="-mx-4 -my-6 md:-mx-8 md:flex md:min-h-screen">
       <aside className="border-b border-gray-200 bg-white md:w-64 md:shrink-0 md:border-r md:border-b-0">
         <div className="px-4 pt-4">
-          <Link href="/admin/products" className="text-sm text-amber-700 hover:underline">← Products</Link>
+          <Link href="/admin/products" className="text-sm text-brand-700 hover:underline">← Products</Link>
         </div>
         <div className="mx-4 mt-2 flex items-center gap-3 md:block">
           <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md bg-gray-100 md:aspect-square md:h-auto md:w-full" data-testid="product-photo">

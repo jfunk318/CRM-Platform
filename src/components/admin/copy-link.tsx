@@ -7,7 +7,7 @@ export function CopyLink({ url, label = "Copy link" }: { url: string; label?: st
   const [copied, setCopied] = useState(false);
   return (
     <span className="inline-flex max-w-full items-center gap-2">
-      <a href={url} target="_blank" rel="noreferrer" className="truncate font-mono text-xs text-amber-700 hover:underline">
+      <a href={url} target="_blank" rel="noreferrer" className="truncate font-mono text-xs text-brand-700 hover:underline">
         {url}
       </a>
       <button

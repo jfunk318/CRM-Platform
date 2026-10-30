@@ -18,7 +18,7 @@ export default async function ImportsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/admin/suppliers" className="text-sm text-amber-700 hover:underline">← Suppliers</Link>
+        <Link href="/admin/suppliers" className="text-sm text-brand-700 hover:underline">← Suppliers</Link>
         <h1 className="page-title mt-1">Import a supplier catalog</h1>
         <p className="text-sm text-gray-500">
           Load products, colors, sizes, your costs and photos from a supplier&apos;s product data file. You choose which brands and categories to bring in
@@ -54,7 +54,7 @@ export default async function ImportsPage() {
             <tbody>
               {imports.map((i) => (
                 <tr key={i.id}>
-                  <td><Link href={`/admin/suppliers/import/${i.id}`} className="text-amber-700 hover:underline">{i.fileName}</Link></td>
+                  <td><Link href={`/admin/suppliers/import/${i.id}`} className="text-brand-700 hover:underline">{i.fileName}</Link></td>
                   <td>{i.supplier.name}</td>
                   <td>{STATUS[i.status]}{i.status === "RUNNING" && ` (${i.progress} of ${i.total})`}</td>
                   <td>{when(i.createdAt)}</td>

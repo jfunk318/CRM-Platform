@@ -507,6 +507,15 @@ toddler), since SanMar's own size index isn't reliable.
 - `STORAGE_DIR` must be on persistent disk, and backed up, until file storage
   moves to S3/R2. Allow 55 MB request bodies at the proxy for uploads.
 
+## Look and colors
+
+The back office's colors live in one place, the top of
+`src/app/globals.css`: plum (`brand-*`) for actions and the current
+selection, ochre (`warn-*`) for notices, an espresso menu with a wheat
+highlight, and, inside the back office (`.admin-ui`), warm stone grays, moss
+greens and rust reds. Change a value there and every admin page follows.
+Store themes have their own colors (Storefront settings).
+
 ## Layout
 
 | Path | What |

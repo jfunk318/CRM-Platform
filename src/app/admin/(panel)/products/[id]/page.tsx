@@ -33,7 +33,7 @@ export default async function ProductGeneralPage({ params }: { params: Promise<{
           )}
           {product.status === "ACTIVE" && (
             <p className="pt-2">
-              <a href={`/catalog/${product.slug}`} target="_blank" className="text-amber-700 hover:underline">View on the main site ↗</a>
+              <a href={`/catalog/${product.slug}`} target="_blank" className="text-brand-700 hover:underline">View on the main site ↗</a>
             </p>
           )}
         </dl>
@@ -73,7 +73,7 @@ export default async function ProductGeneralPage({ params }: { params: Promise<{
       {hasAnyRole(staff.roles, ["ADMIN"]) && (
         <div className="max-w-3xl border-t border-gray-200 pt-4">
           <p className="mb-2 text-xs text-gray-500">
-            Products on quotes, orders or in stores can&apos;t be deleted; set them to Discontinued instead. <Link href={`${base}/designs`} className="text-amber-700 hover:underline">See where it&apos;s used</Link>.
+            Products on quotes, orders or in stores can&apos;t be deleted; set them to Discontinued instead. <Link href={`${base}/designs`} className="text-brand-700 hover:underline">See where it&apos;s used</Link>.
           </p>
           <ActionForm action={deleteProduct} submitLabel="Delete product" danger confirm={`Delete ${product.name} and all its SKUs?`}>
             <input type="hidden" name="id" value={product.id} />
@@ -88,7 +88,7 @@ function Stat({ label, value, href }: { label: string; value: string; href?: str
   return (
     <div className="flex justify-between gap-3">
       <dt className="text-gray-600">{label}</dt>
-      <dd className="font-medium">{href ? <Link href={href} className="text-amber-700 hover:underline">{value}</Link> : value}</dd>
+      <dd className="font-medium">{href ? <Link href={href} className="text-brand-700 hover:underline">{value}</Link> : value}</dd>
     </div>
   );
 }

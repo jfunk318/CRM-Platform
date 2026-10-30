@@ -16,7 +16,7 @@ export default async function OwnerLogin({ searchParams }: { searchParams: Promi
     <div className="mx-auto grid max-w-3xl gap-8 md:grid-cols-2">
       <section className="space-y-3">
         <h1 className="text-2xl font-bold">Manage {rs?.store.name}</h1>
-        {expired && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">That link has expired or was already used. Request a new one below.</p>}
+        {expired && <p className="rounded-md bg-warn-50 px-3 py-2 text-sm text-warn-900">That link has expired or was already used. Request a new one below.</p>}
         <p className="text-sm text-gray-600">Enter the email {rs?.business.name} has for you, and we&apos;ll email a link to sign in.</p>
         <ActionForm action={sendLinkAction} submitLabel="Email me a sign-in link" className="space-y-3">
           <Honeypot />

@@ -1,8 +1,44 @@
 @import "tailwindcss";
 
+/*
+ * The platform's colors, in one place. Change a value here and the whole
+ * back office follows (Tailwind classes like bg-brand-600 read these).
+ *   brand: plum, for actions and the current selection
+ *   warn:  ochre, for notices and things waiting on someone
+ * Inside the back office (.admin-ui) the grays are warm stone, green is
+ * moss and red is rust.
+ */
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #1c1714;
+
+  --brand-50: #f8f1f6;
+  --brand-100: #f0e1ec;
+  --brand-200: #e0c2d8;
+  --brand-300: #c996bb;
+  --brand-400: #a9649a;
+  --brand-500: #8c4680;
+  --brand-600: #6e3361;
+  --brand-700: #5e2a53;
+  --brand-800: #4b2243;
+  --brand-900: #3b1b35;
+  --brand-950: #24101f;
+
+  --warn-50: #fbf5e6;
+  --warn-100: #f6e8c4;
+  --warn-200: #edd38e;
+  --warn-300: #e0b95a;
+  --warn-400: #c99a32;
+  --warn-500: #a87b16;
+  --warn-600: #8a5a00;
+  --warn-700: #734b05;
+  --warn-800: #5e3d08;
+  --warn-900: #4a300a;
+
+  /* The menu's dark ground and its small highlight. */
+  --espresso: #1f1a17;
+  --espresso-raised: #2b2420;
+  --wheat: #d4a957;
 }
 
 @theme inline {
@@ -10,6 +46,66 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
+  --color-brand-950: var(--brand-950);
+  --color-warn-50: var(--warn-50);
+  --color-warn-100: var(--warn-100);
+  --color-warn-200: var(--warn-200);
+  --color-warn-300: var(--warn-300);
+  --color-warn-400: var(--warn-400);
+  --color-warn-500: var(--warn-500);
+  --color-warn-600: var(--warn-600);
+  --color-warn-700: var(--warn-700);
+  --color-warn-800: var(--warn-800);
+  --color-warn-900: var(--warn-900);
+  --color-espresso: var(--espresso);
+  --color-espresso-raised: var(--espresso-raised);
+  --color-wheat: var(--wheat);
+}
+
+/* The back office's warm neutrals, moss greens and rust reds. */
+.admin-ui {
+  --color-gray-50: #faf8f4;
+  --color-gray-100: #f2efe9;
+  --color-gray-200: #e6e1d8;
+  --color-gray-300: #d3cbc1;
+  --color-gray-400: #a0968a;
+  --color-gray-500: #766b5f;
+  --color-gray-600: #675d52;
+  --color-gray-700: #4a4239;
+  --color-gray-800: #3d352d;
+  --color-gray-900: #1c1714;
+  --color-gray-950: #120f0d;
+  --color-green-50: #eff4ec;
+  --color-green-100: #dce8d6;
+  --color-green-200: #bbd3b0;
+  --color-green-300: #92b883;
+  --color-green-400: #6a9a5a;
+  --color-green-500: #4f8043;
+  --color-green-600: #3e6b35;
+  --color-green-700: #33582c;
+  --color-green-800: #2a4724;
+  --color-green-900: #22391e;
+  --color-red-50: #fbefeb;
+  --color-red-100: #f6dcd3;
+  --color-red-200: #edb9a8;
+  --color-red-300: #de8e75;
+  --color-red-400: #c9664a;
+  --color-red-500: #b85136;
+  --color-red-600: #a6402a;
+  --color-red-700: #8a3422;
+  --color-red-800: #6f2a1c;
+  --color-red-900: #5a2318;
+  color: var(--foreground);
 }
 
 body {
@@ -20,34 +116,34 @@ body {
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-1 rounded-md bg-amber-500 px-3 py-1.5 text-sm font-medium text-black hover:bg-amber-400 disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-1 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 disabled:opacity-50;
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-800 hover:bg-gray-50;
+    @apply inline-flex items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-800 transition-colors hover:border-gray-300 hover:bg-gray-50;
   }
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-1 rounded-md border border-red-300 bg-white px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50;
+    @apply inline-flex items-center justify-center gap-1 rounded-lg border border-red-200 bg-white px-3.5 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50;
   }
   .input {
-    @apply block w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none;
+    @apply block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none;
   }
   .label {
     @apply mb-1 block text-xs font-medium text-gray-600;
   }
   .card {
-    @apply rounded-lg border border-gray-200 bg-white p-4 shadow-sm;
+    @apply rounded-xl border border-gray-200 bg-white p-5;
   }
   .table {
     @apply w-full text-left text-sm;
   }
   .table th {
-    @apply border-b border-gray-200 px-2 py-2 text-xs font-semibold tracking-wide text-gray-500 uppercase;
+    @apply border-b border-gray-200 bg-gray-50 px-3 py-2.5 text-xs font-medium text-gray-500;
   }
   .table td {
-    @apply border-b border-gray-100 px-2 py-2 align-middle;
+    @apply border-b border-gray-100 px-3 py-2.5 align-middle;
   }
   .page-title {
-    @apply text-xl font-semibold text-gray-900;
+    @apply text-2xl font-bold tracking-tight text-gray-900;
   }
 }
 

@@ -248,11 +248,11 @@ export function RuleEditor({
         </div>
       </fieldset>
 
-      <div className="rounded-md bg-amber-50 p-3 text-xs text-amber-900" data-testid="rule-placeholders">
+      <div className="rounded-md bg-warn-50 p-3 text-xs text-warn-900" data-testid="rule-placeholders">
         <div className="mb-1 font-medium">Placeholders{focus ? " (click to add to the field you were in)" : " (click a message field, then a placeholder to add it)"}</div>
         <div className="flex flex-wrap gap-1.5">
           {PLACEHOLDERS_FOR[about].map((k) => (
-            <button key={k} type="button" onClick={() => insert(k)} className="rounded border border-amber-200 bg-white px-1.5 py-0.5 font-mono" title={`e.g. ${PLACEHOLDERS[k]}`}>
+            <button key={k} type="button" onClick={() => insert(k)} className="rounded border border-brand-200 bg-white px-1.5 py-0.5 font-mono" title={`e.g. ${PLACEHOLDERS[k]}`}>
               {`{{${k}}}`}
             </button>
           ))}

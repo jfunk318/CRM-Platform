@@ -60,7 +60,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
 
       <nav className="flex flex-wrap gap-2 text-sm" aria-label="Lead status">
         {(Object.keys(VIEWS) as View[]).map((v) => (
-          <Link key={v} href={href({ view: v })} className={`rounded-full border px-3 py-1 ${view === v ? "border-amber-500 bg-amber-50 font-medium" : "border-gray-200 bg-white hover:border-amber-300"}`}>
+          <Link key={v} href={href({ view: v })} className={`rounded-full border px-3 py-1 ${view === v ? "border-brand-500 bg-brand-50 font-medium" : "border-gray-200 bg-white hover:border-brand-300"}`}>
             {VIEWS[v]}
             <span className="ml-1 text-gray-500">{v === "open" ? openCount : v === "all" ? Object.values(summary.counts).reduce((a, b) => a + b, 0) : summary.counts[v as LeadStatus]}</span>
           </Link>
@@ -101,7 +101,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
             {leads.map((l) => (
               <tr key={l.id}>
                 <td>
-                  <Link href={`/admin/leads/${l.id}`} className="font-medium text-amber-700 hover:underline">{l.firstName} {l.lastName}</Link>
+                  <Link href={`/admin/leads/${l.id}`} className="font-medium text-brand-700 hover:underline">{l.firstName} {l.lastName}</Link>
                   <div className="text-xs text-gray-500">{[l.title, l.organization].filter(Boolean).join(", ")}</div>
                 </td>
                 <td className="max-w-64 truncate text-sm text-gray-700" title={l.interest ?? ""}>{l.interest?.split("\n")[0] ?? ""}</td>
@@ -117,7 +117,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
       </div>
 
       <details className="card">
-        <summary className="cursor-pointer font-medium text-amber-700">+ Add a lead</summary>
+        <summary className="cursor-pointer font-medium text-brand-700">+ Add a lead</summary>
         <ActionForm action={createLeadAction} submitLabel="Add lead" className="mt-3 space-y-3">
           <LeadFields staff={staffList} defaultOwnerId={staff.id} />
           <label className="flex items-center gap-2 text-sm text-gray-600"><input type="checkbox" name="addAnyway" /> Add anyway if they&apos;re already on file</label>

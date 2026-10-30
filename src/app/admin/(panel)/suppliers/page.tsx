@@ -27,8 +27,8 @@ export default async function SuppliersPage() {
           connections for SanMar and S&amp;S come with the integrations phase; until then products are entered by hand.
         </p>
       </div>
-      <Link href="/admin/suppliers/import" className="card block border-dashed hover:border-amber-300">
-        <div className="font-medium text-amber-700">Import a supplier catalog file →</div>
+      <Link href="/admin/suppliers/import" className="card block border-dashed hover:border-brand-300">
+        <div className="font-medium text-brand-700">Import a supplier catalog file →</div>
         <div className="text-sm text-gray-500">Load SanMar&apos;s product data (products, colors, sizes, your costs and photos).</div>
       </Link>
       {suppliers.map((s) => (
@@ -40,7 +40,7 @@ export default async function SuppliersPage() {
               <label className="flex items-center gap-2">
                 <input type="checkbox" name="active" defaultChecked={s.active} /> Active
               </label>
-              <Link href={`/admin/products?supplier=${s.id}`} className="text-xs text-amber-700 hover:underline">
+              <Link href={`/admin/products?supplier=${s.id}`} className="text-xs text-brand-700 hover:underline">
                 {s._count.products} product(s)
               </Link>
             </div>

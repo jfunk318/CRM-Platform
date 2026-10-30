@@ -23,7 +23,7 @@ export function DueDateInput({ id, defaultValue = "" }: { id: string; defaultVal
       <input className="input" id={id} name="dueDate" type="date" value={value} onChange={(e) => setValue(e.target.value)} />
       <div className="flex flex-wrap gap-1">
         {PRESETS.map((p) => (
-          <button key={p.label} type="button" className={`rounded border px-1.5 py-0.5 text-[11px] ${value === iso(p.days) ? "border-amber-500 bg-amber-50" : "border-gray-200 hover:border-amber-300"}`} onClick={() => setValue(iso(p.days))}>
+          <button key={p.label} type="button" className={`rounded border px-1.5 py-0.5 text-[11px] ${value === iso(p.days) ? "border-brand-500 bg-brand-50" : "border-gray-200 hover:border-brand-300"}`} onClick={() => setValue(iso(p.days))}>
             {p.label}
           </button>
         ))}

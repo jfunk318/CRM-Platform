@@ -23,7 +23,7 @@ export default async function PagesPage({ params }: { params: Promise<{ id: stri
             {sorted.map((p) => (
               <tr key={p.id}>
                 <td>
-                  <Link href={`/admin/stores/${store.id}/pages/${p.id}`} className="font-medium text-amber-700 hover:underline">{p.title}</Link>
+                  <Link href={`/admin/stores/${store.id}/pages/${p.id}`} className="font-medium text-brand-700 hover:underline">{p.title}</Link>
                   {p.parent && <span className="text-xs text-gray-500"> in {p.parent.title}</span>}
                 </td>
                 <td className="font-mono text-xs">{p.slug === "home" ? "/" : `/${p.slug}`}</td>

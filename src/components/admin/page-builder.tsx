@@ -49,7 +49,7 @@ export function PageBuilder({ initial, groups }: { initial: string; groups: stri
         <span className="label mb-0">Content</span>
         <button
           type="button"
-          className="text-xs text-amber-700 hover:underline"
+          className="text-xs text-brand-700 hover:underline"
           onClick={() => {
             if (source === null) setSource(joinBlocks(blocks));
             else {
@@ -96,7 +96,7 @@ export function PageBuilder({ initial, groups }: { initial: string; groups: stri
                   setDragging(null);
                   setOver(null);
                 }}
-                className={`rounded-md border bg-white ${over === i && dragging !== i ? "border-amber-500 ring-2 ring-amber-200" : "border-gray-200"} ${dragging === i ? "opacity-50" : ""}`}
+                className={`rounded-md border bg-white ${over === i && dragging !== i ? "border-brand-500 ring-2 ring-brand-200" : "border-gray-200"} ${dragging === i ? "opacity-50" : ""}`}
                 data-testid="page-block"
               >
                 <div className="flex items-center gap-2 border-b border-gray-100 px-2 py-1.5 text-xs">

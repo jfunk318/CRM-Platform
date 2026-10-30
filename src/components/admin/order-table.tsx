@@ -54,7 +54,7 @@ export function OrderTable({ orders, empty = "Nothing here yet." }: { orders: Ro
           {orders.map((o) => (
             <tr key={o.id}>
               <td>
-                <Link href={`/admin/orders/${o.id}`} className="font-medium text-amber-700 hover:underline">
+                <Link href={`/admin/orders/${o.id}`} className="font-medium text-brand-700 hover:underline">
                   {orderRef(o)}
                 </Link>
                 <SourceTag source={o.source} />

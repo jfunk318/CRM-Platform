@@ -22,7 +22,7 @@ export default async function DesignerSettingsPage({ params }: { params: Promise
           </p>
         </div>
         {methods.length === 0 ? (
-          <p className="rounded bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          <p className="rounded bg-warn-50 px-3 py-2 text-sm text-warn-900">
             No decoration method is open to shoppers yet. Under <Link href="/admin/methods" className="underline">Decoration methods</Link>, tick
             &ldquo;Shoppers can choose it in the online designer&rdquo; on the methods you&apos;ll take online.
           </p>
@@ -61,7 +61,7 @@ export default async function DesignerSettingsPage({ params }: { params: Promise
         <section className="card space-y-2">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Garments shoppers can choose ({garments.length})</h2>
-            <a href={`${url}/design`} target="_blank" className="text-sm text-amber-700 hover:underline">Open the designer ↗</a>
+            <a href={`${url}/design`} target="_blank" className="text-sm text-brand-700 hover:underline">Open the designer ↗</a>
           </div>
           {garments.length === 0 ? (
             <p className="text-sm text-gray-600">None yet: garments need a print area and a photo (Products → Views &amp; decoration areas) and a method above{config.anyGarment ? "" : ", and this store has to sell them"}.</p>

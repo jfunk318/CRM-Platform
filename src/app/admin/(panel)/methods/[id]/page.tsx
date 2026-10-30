@@ -67,7 +67,7 @@ export default async function MethodPage({
   return (
     <div className="space-y-8">
       <div>
-        <Link href="/admin/methods" className="text-sm text-amber-700 hover:underline">← Decoration methods</Link>
+        <Link href="/admin/methods" className="text-sm text-brand-700 hover:underline">← Decoration methods</Link>
         <h1 className="page-title mt-1">{m.name}</h1>
       </div>
 
@@ -82,7 +82,7 @@ export default async function MethodPage({
         <nav className="flex flex-wrap gap-2 text-sm">
           <Link
             href={`/admin/methods/${m.id}`}
-            className={`rounded-full border px-3 py-1 ${!selectedGroup ? "border-amber-500 bg-amber-50" : "border-gray-200"}`}
+            className={`rounded-full border px-3 py-1 ${!selectedGroup ? "border-brand-500 bg-brand-50" : "border-gray-200"}`}
           >
             Default prices
           </Link>
@@ -92,7 +92,7 @@ export default async function MethodPage({
               <Link
                 key={g.id}
                 href={`/admin/methods/${m.id}?group=${g.id}`}
-                className={`rounded-full border px-3 py-1 ${selectedGroup?.id === g.id ? "border-amber-500 bg-amber-50" : "border-gray-200"}`}
+                className={`rounded-full border px-3 py-1 ${selectedGroup?.id === g.id ? "border-brand-500 bg-brand-50" : "border-gray-200"}`}
               >
                 {g.name}{has ? "" : " (uses default)"}
               </Link>
@@ -100,7 +100,7 @@ export default async function MethodPage({
           })}
         </nav>
         {table?.isPlaceholder && (
-          <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          <p className="rounded-md bg-warn-50 px-3 py-2 text-sm text-warn-900">
             These are placeholder prices. Replace them with your real prices and save.
           </p>
         )}

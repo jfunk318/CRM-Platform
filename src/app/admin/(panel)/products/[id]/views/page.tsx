@@ -97,7 +97,7 @@ export default async function ProductViewsPage({ params, searchParams }: { param
                   {view.areas.map((a) => (
                     <div
                       key={a.id}
-                      className="absolute border-2 border-dashed border-amber-500 bg-amber-200/20 text-[10px] leading-tight text-amber-900"
+                      className="absolute border-2 border-dashed border-warn-500 bg-warn-200/20 text-[10px] leading-tight text-warn-900"
                       style={{ left: `${a.x * 100}%`, top: `${a.y * 100}%`, width: `${a.w * 100}%`, height: `${a.h * 100}%` }}
                     >
                       {a.name}

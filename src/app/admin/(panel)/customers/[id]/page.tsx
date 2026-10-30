@@ -42,7 +42,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <Link href="/admin/customers" className="text-sm text-amber-700 hover:underline">← Customers</Link>
+          <Link href="/admin/customers" className="text-sm text-brand-700 hover:underline">← Customers</Link>
           <h1 className="page-title mt-1">{customer.firstName} {customer.lastName}</h1>
           {customer.company && (
             <Link href={`/admin/companies/${customer.company.id}`} className="text-sm text-gray-600 hover:underline">
@@ -50,7 +50,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
             </Link>
           )}
           {customer.leads.map((l) => (
-            <Link key={l.id} href={`/admin/leads/${l.id}`} className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700 hover:bg-amber-50" data-testid="customer-lead">
+            <Link key={l.id} href={`/admin/leads/${l.id}`} className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700 hover:bg-brand-50" data-testid="customer-lead">
               {l.status === "CONVERTED" ? "From a lead" : "Open lead"}{l.source ? ` · ${l.source}` : ""}
             </Link>
           ))}

@@ -48,8 +48,8 @@ export function ImportChooser({ id, styles, previous }: { id: string; styles: St
           <h2 className="font-semibold">Brands <span className="text-sm font-normal text-gray-500">({pickedBrands.size} of {brands.length})</span></h2>
           <div className="flex items-center gap-3 text-sm">
             <input className="input w-44" value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)} placeholder="Find a brand" aria-label="Find a brand" />
-            <button type="button" className="text-amber-700 hover:underline" onClick={() => setBrands(new Set(brands.map(([b]) => b)))}>All</button>
-            <button type="button" className="text-amber-700 hover:underline" onClick={() => setBrands(new Set())}>None</button>
+            <button type="button" className="text-brand-700 hover:underline" onClick={() => setBrands(new Set(brands.map(([b]) => b)))}>All</button>
+            <button type="button" className="text-brand-700 hover:underline" onClick={() => setBrands(new Set())}>None</button>
           </div>
         </div>
         <div className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-3 lg:grid-cols-4" data-testid="brands">

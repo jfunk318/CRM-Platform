@@ -105,7 +105,7 @@ export default async function CommissionPage({ params }: { params: Promise<{ id:
             <tbody>
               {s.orders.map((o) => (
                 <tr key={o.id}>
-                  <td><Link href={`/admin/orders/${o.id}`} className="text-amber-700 hover:underline">{orderRef(o)}</Link></td>
+                  <td><Link href={`/admin/orders/${o.id}`} className="text-brand-700 hover:underline">{orderRef(o)}</Link></td>
                   <td>{o.placedAt ? day(o.placedAt) : "—"}</td>
                   <td>{o.customer.firstName} {o.customer.lastName}</td>
                   <td className="text-right">{money(o.total)}</td>
@@ -128,7 +128,7 @@ export default async function CommissionPage({ params }: { params: Promise<{ id:
 
 function Stat({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
-    <div className={`card ${strong ? "border-amber-300" : ""}`}>
+    <div className={`card ${strong ? "border-brand-300" : ""}`}>
       <div className="text-2xl font-semibold">{value}</div>
       <div className="text-sm text-gray-500">{label}</div>
     </div>

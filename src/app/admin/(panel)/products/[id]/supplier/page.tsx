@@ -45,7 +45,7 @@ export default async function ProductSupplierPage({ params }: { params: Promise<
           {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </Select>
         <Field label="Spec sheet link" name="specSheetUrl" value={product.specSheetUrl ?? ""} placeholder="https://…" />
-        {product.specSheetUrl && <a href={product.specSheetUrl} target="_blank" className="text-sm text-amber-700 hover:underline">Open the spec sheet ↗</a>}
+        {product.specSheetUrl && <a href={product.specSheetUrl} target="_blank" className="text-sm text-brand-700 hover:underline">Open the spec sheet ↗</a>}
       </ActionForm>
 
       <div className="border-t border-gray-200 pt-5">
@@ -60,7 +60,7 @@ export default async function ProductSupplierPage({ params }: { params: Promise<
             <tbody>
               {pos.map(({ po, qty, received }) => (
                 <tr key={po.id}>
-                  <td><Link href={`/admin/purchasing/${po.id}`} className="text-amber-700 hover:underline">{poRef(po.number)}</Link></td>
+                  <td><Link href={`/admin/purchasing/${po.id}`} className="text-brand-700 hover:underline">{poRef(po.number)}</Link></td>
                   <td>{PO_STATUS[po.status]}</td>
                   <td className="text-right">{qty}</td>
                   <td className="text-right">{received}</td>

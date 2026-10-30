@@ -71,7 +71,7 @@ export default async function GiftCodesPage() {
               {g.uses.map((u, i) => (
                 <span key={u.id}>
                   {i > 0 && ", "}
-                  <Link href={`/admin/orders/${u.orderId}`} className="text-amber-700 hover:underline">{orderRef(u.order)}</Link> ({money(u.amount)}{u.order.store ? `, ${u.order.store.name}` : ""})
+                  <Link href={`/admin/orders/${u.orderId}`} className="text-brand-700 hover:underline">{orderRef(u.order)}</Link> ({money(u.amount)}{u.order.store ? `, ${u.order.store.name}` : ""})
                 </span>
               ))}
             </p>

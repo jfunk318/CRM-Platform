@@ -70,7 +70,7 @@ export function CalendarBoard({ days, jobs, capacities }: { days: CalendarDay[];
           const jobId = e.dataTransfer.getData("text/plain");
           if (jobId) move(jobId, key);
         }}
-        className={`min-h-40 space-y-2 rounded-lg border p-2 ${over === id ? "border-amber-400 bg-amber-50" : "border-gray-200 bg-white"}`}
+        className={`min-h-40 space-y-2 rounded-lg border p-2 ${over === id ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white"}`}
       >
         <div className="text-sm font-semibold">{title}</div>
         {sub}
@@ -83,7 +83,7 @@ export function CalendarBoard({ days, jobs, capacities }: { days: CalendarDay[];
             data-testid="cal-job"
           >
             <div className="flex justify-between gap-1">
-              <a href={`/admin/orders/${j.orderId}`} className="font-semibold text-amber-700 hover:underline">{j.ref}</a>
+              <a href={`/admin/orders/${j.orderId}`} className="font-semibold text-brand-700 hover:underline">{j.ref}</a>
               <span className="font-semibold">{j.pieces} pcs</span>
             </div>
             <div>{j.method}</div>
@@ -124,7 +124,7 @@ export function CalendarBoard({ days, jobs, capacities }: { days: CalendarDay[];
             .filter((c) => c.used > 0);
           return column(
             d.key,
-            <span className={d.isToday ? "text-amber-700" : ""}>{d.label}{d.isToday ? " · today" : ""}</span>,
+            <span className={d.isToday ? "text-brand-700" : ""}>{d.label}{d.isToday ? " · today" : ""}</span>,
             load.length > 0 && (
               <ul className="space-y-0.5 text-[11px]">
                 {load.map((c) => (

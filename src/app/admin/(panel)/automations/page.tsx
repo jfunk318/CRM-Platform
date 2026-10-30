@@ -41,7 +41,7 @@ export default async function AutomationsPage() {
           <ul className="grid gap-2 sm:grid-cols-2">
             {Object.entries(RECIPES).map(([key, r]) => (
               <li key={key}>
-                <Link href={`/admin/automations/new?recipe=${key}`} className="block rounded-md border border-gray-200 p-3 hover:border-amber-400">
+                <Link href={`/admin/automations/new?recipe=${key}`} className="block rounded-md border border-gray-200 p-3 hover:border-brand-400">
                   <div className="font-medium">{r.name}</div>
                   <div className="text-xs text-gray-500">{TRIGGERS[r.trigger].label} → {r.actions.map((a) => ACTION_LABELS[a.type].toLowerCase()).join(", ")}</div>
                 </Link>
@@ -61,7 +61,7 @@ export default async function AutomationsPage() {
                 const last = r.runs[0];
                 return (
                   <tr key={r.id} className={r.active ? "" : "text-gray-400"}>
-                    <td><Link href={`/admin/automations/${r.id}`} className="font-medium text-amber-700 hover:underline">{r.name}</Link></td>
+                    <td><Link href={`/admin/automations/${r.id}`} className="font-medium text-brand-700 hover:underline">{r.name}</Link></td>
                     <td>{TRIGGERS[r.trigger].label}{cond && <div className="text-xs text-gray-500">{cond}</div>}</td>
                     <td className="text-xs">{(r.actions as Action[]).map((a) => ACTION_LABELS[a.type]).join(" → ")}</td>
                     <td className="text-xs">
@@ -94,8 +94,8 @@ export default async function AutomationsPage() {
                   <span className="w-32 shrink-0 text-xs text-gray-500">{when(r.createdAt)}</span>
                   <span className={r.ok ? "text-green-700" : "text-red-600"}>{r.ok ? "✓" : "✕"}</span>
                   <Link href={`/admin/automations/${r.rule.id}`} className="font-medium hover:underline">{r.rule.name}</Link>
-                  {o && <Link href={`/admin/orders/${o.id}`} className="text-amber-700 hover:underline">{orderRef(o)}</Link>}
-                  {r.event.leadId && <Link href={`/admin/leads/${r.event.leadId}`} className="text-amber-700 hover:underline">Lead</Link>}
+                  {o && <Link href={`/admin/orders/${o.id}`} className="text-brand-700 hover:underline">{orderRef(o)}</Link>}
+                  {r.event.leadId && <Link href={`/admin/leads/${r.event.leadId}`} className="text-brand-700 hover:underline">Lead</Link>}
                   <span className="basis-full pl-[8.75rem] text-xs text-gray-600">{r.message}</span>
                 </li>
               );

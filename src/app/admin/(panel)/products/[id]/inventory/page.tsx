@@ -27,7 +27,7 @@ export default async function ProductInventoryPage({ params, searchParams }: { p
         <>
           <p>Each color and size you sell is a SKU. Your SKU code is built from the product code, color and size.</p>
           <p>The supplier code is what goes on purchase orders. Stock is what you keep in-house (blank = not stocked); you&apos;re alerted at or below the reorder level.</p>
-          <p>Add or remove SKUs by setting costs under <Link href={`/admin/products/${product.id}/pricing`} className="text-amber-700 hover:underline">Pricing</Link>.</p>
+          <p>Add or remove SKUs by setting costs under <Link href={`/admin/products/${product.id}/pricing`} className="text-brand-700 hover:underline">Pricing</Link>.</p>
         </>
       }
       aside={

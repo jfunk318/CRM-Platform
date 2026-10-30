@@ -44,8 +44,8 @@ export default async function ProductDesignsPage({ params }: { params: Promise<{
                 <td className="text-sm">{d.decorations.length ? d.decorations.map((x) => `${x.location}: ${x.method.shortName}`).join(", ") : <span className="text-gray-400">Blank</span>}</td>
                 <td className="text-sm">
                   <div className="flex flex-wrap gap-x-2">
-                    {d.orderLines.map((l) => <Link key={l.id} href={`/admin/orders/${l.order.id}`} className="text-amber-700 hover:underline">{orderRef(l.order)}</Link>)}
-                    {d.storeItems.map((i) => <Link key={i.id} href={`/admin/stores/${i.store.id}/items/${i.id}`} className="text-amber-700 hover:underline">{i.store.name}</Link>)}
+                    {d.orderLines.map((l) => <Link key={l.id} href={`/admin/orders/${l.order.id}`} className="text-brand-700 hover:underline">{orderRef(l.order)}</Link>)}
+                    {d.storeItems.map((i) => <Link key={i.id} href={`/admin/stores/${i.store.id}/items/${i.id}`} className="text-brand-700 hover:underline">{i.store.name}</Link>)}
                   </div>
                 </td>
               </tr>

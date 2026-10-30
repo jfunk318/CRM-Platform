@@ -91,15 +91,16 @@ function Menu({ items, label, pathname, search }: { items: SideNavItem[]; label:
       key={i.href}
       href={i.href}
       aria-current={i.href === active ? "page" : undefined}
-      className={`flex items-center rounded px-2 py-1.5 text-sm ${nested ? "pl-5" : ""} ${i.href === active ? "bg-amber-50 font-medium text-amber-900" : "text-gray-700 hover:bg-amber-50"}`}
+      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-sm transition-colors ${i.href === active ? "bg-brand-600 font-semibold text-white" : "text-gray-300 hover:bg-espresso-raised hover:text-white"}`}
     >
+      {nested && <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${i.href === active ? "bg-wheat" : "bg-transparent"}`} aria-hidden="true" />}
       {i.label}
       {i.badge}
     </Link>
   );
 
   return (
-    <nav className="flex flex-col gap-0.5 px-2 pb-3" aria-label={label} data-testid="side-nav">
+    <nav className="flex flex-col gap-0.5 px-3 pb-4" aria-label={label} data-testid="side-nav">
       {loose.map((i) => link(i))}
       {groups.map((g) => {
         const members = items.filter((i) => i.group === g);
@@ -107,14 +108,14 @@ function Menu({ items, label, pathname, search }: { items: SideNavItem[]; label:
         const isOpen = here || open.includes(g);
         const id = `nav-${g.toLowerCase().replace(/\W+/g, "-")}`;
         return (
-          <div key={g} className="mt-1" data-testid="nav-group">
+          <div key={g} className="mt-3" data-testid="nav-group">
             <button
               type="button"
               onClick={() => toggle(g)}
               disabled={here}
               aria-expanded={isOpen}
               aria-controls={id}
-              className="flex w-full items-center justify-between rounded px-2 py-1.5 text-xs font-semibold tracking-wide text-gray-500 uppercase hover:bg-gray-50 hover:text-gray-800 disabled:cursor-default disabled:hover:bg-transparent"
+              className="flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-400 hover:bg-espresso-raised hover:text-white disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-gray-400"
             >
               <span className="flex items-center">
                 {g}

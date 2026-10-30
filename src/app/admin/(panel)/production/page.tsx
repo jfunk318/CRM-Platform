@@ -95,7 +95,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
 
 function Chip({ href, on, children }: { href: string; on: boolean; children: React.ReactNode }) {
   return (
-    <Link href={href} className={`rounded-full border px-3 py-1 ${on ? "border-amber-500 bg-amber-50" : "border-gray-200 bg-white"}`}>
+    <Link href={href} className={`rounded-full border px-3 py-1 ${on ? "border-brand-500 bg-brand-50" : "border-gray-200 bg-white"}`}>
       {children}
     </Link>
   );
@@ -109,7 +109,7 @@ function JobCard({ job, pieces, blanksReady, people, now }: { job: BoardJob; pie
     <div className="card space-y-2 text-sm" data-testid="job">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <Link href={`/admin/orders/${o.id}`} className="font-semibold text-amber-700 hover:underline">{orderRef(o)}</Link>{" "}
+          <Link href={`/admin/orders/${o.id}`} className="font-semibold text-brand-700 hover:underline">{orderRef(o)}</Link>{" "}
           <span className="font-medium">{job.method.name}</span>
           <div className="text-gray-600">{o.customer.firstName} {o.customer.lastName}{o.title ? ` · ${o.title}` : ""}</div>
         </div>
@@ -121,7 +121,7 @@ function JobCard({ job, pieces, blanksReady, people, now }: { job: BoardJob; pie
       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600">
         <span className={late ? "font-medium text-red-600" : ""}>Due {o.dueDate ? day(o.dueDate) : "—"}</span>
         <span>On {job.scheduledFor ? day(job.scheduledFor) : "not scheduled"}</span>
-        <span className={blanksReady ? "text-green-700" : "text-amber-700"}>{blanksReady ? "Blanks in" : "Waiting on blanks"}</span>
+        <span className={blanksReady ? "text-green-700" : "text-brand-700"}>{blanksReady ? "Blanks in" : "Waiting on blanks"}</span>
         <span className={o.proofs.length ? "text-green-700" : "text-gray-500"}>{o.proofs.length ? "Art approved" : "No approved proof"}</span>
       </div>
       <ol className="flex flex-wrap gap-1" aria-label="Steps">
@@ -130,7 +130,7 @@ function JobCard({ job, pieces, blanksReady, people, now }: { job: BoardJob; pie
             <ActionButton
               action={stepAction}
               fields={{ stepId: s.id, done: s.doneAt ? "0" : "1" }}
-              className={`rounded border px-2 py-0.5 text-xs ${s.doneAt ? "border-green-300 bg-green-50 text-green-800" : s.id === next?.id ? "border-amber-400 bg-amber-50" : "border-gray-200 bg-white text-gray-600"}`}
+              className={`rounded border px-2 py-0.5 text-xs ${s.doneAt ? "border-green-300 bg-green-50 text-green-800" : s.id === next?.id ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white text-gray-600"}`}
               label={<>{s.doneAt ? "✓ " : ""}{s.name}</>}
               title={s.doneAt ? "Click to undo" : "Mark done"}
             />
@@ -139,7 +139,7 @@ function JobCard({ job, pieces, blanksReady, people, now }: { job: BoardJob; pie
       </ol>
       <details className="text-xs">
         <summary className="cursor-pointer text-gray-500">
-          {job.assignedTo ? `Assigned to ${job.assignedTo.name}` : "Unassigned"}{job.notes ? ` · ${job.notes}` : ""} · <a href={`/admin/print/work-order/${o.id}`} target="_blank" className="text-amber-700 hover:underline">Work order</a>
+          {job.assignedTo ? `Assigned to ${job.assignedTo.name}` : "Unassigned"}{job.notes ? ` · ${job.notes}` : ""} · <a href={`/admin/print/work-order/${o.id}`} target="_blank" className="text-brand-700 hover:underline">Work order</a>
         </summary>
         <ActionForm action={assignJobAction} className="mt-2 space-y-2">
           <input type="hidden" name="jobId" value={job.id} />

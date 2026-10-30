@@ -31,7 +31,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="space-y-5">
-      <Link href="/admin/leads" className="text-sm text-amber-700 hover:underline">← Leads</Link>
+      <Link href="/admin/leads" className="text-sm text-brand-700 hover:underline">← Leads</Link>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="page-title flex flex-wrap items-center gap-2">
@@ -40,14 +40,14 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           </h1>
           <p className="text-sm text-gray-600">
             {[lead.title, lead.organization].filter(Boolean).join(", ")}
-            {lead.email && <> · <a href={`mailto:${lead.email}`} className="text-amber-700 hover:underline">{lead.email}</a></>}
-            {lead.phone && <> · <a href={`tel:${lead.phone}`} className="text-amber-700 hover:underline">{lead.phone}</a></>}
+            {lead.email && <> · <a href={`mailto:${lead.email}`} className="text-brand-700 hover:underline">{lead.email}</a></>}
+            {lead.phone && <> · <a href={`tel:${lead.phone}`} className="text-brand-700 hover:underline">{lead.phone}</a></>}
           </p>
         </div>
       </div>
 
       {others.length > 0 && (
-        <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900" data-testid="lead-duplicates">
+        <p className="rounded-md bg-warn-50 px-3 py-2 text-sm text-warn-900" data-testid="lead-duplicates">
           Same email or phone as{" "}
           {others.map((o, i) => (
             <span key={o.id}>
@@ -82,7 +82,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
             <h2 className="font-semibold">Timeline</h2>
             <ol className="space-y-3 text-sm" data-testid="lead-timeline">
               {lead.events.map((e) => (
-                <li key={e.id} className={["CALL", "EMAIL", "MEETING"].includes(e.type) ? "rounded-md bg-amber-50 p-2" : ""}>
+                <li key={e.id} className={["CALL", "EMAIL", "MEETING"].includes(e.type) ? "rounded-md bg-brand-50 p-2" : ""}>
                   <div className="text-xs font-medium text-gray-500">{EVENT_LABEL[e.type]}</div>
                   <div className="whitespace-pre-wrap">{e.body}</div>
                   <div className="text-xs text-gray-500">{e.staff?.name ?? "System"} · {when(e.createdAt)}</div>
@@ -98,11 +98,11 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
               <>
                 <h2 className="font-semibold">Converted</h2>
                 <p className="text-sm">
-                  {lead.customer && <Link href={`/admin/customers/${lead.customer.id}`} className="text-amber-700 hover:underline">{lead.customer.firstName} {lead.customer.lastName}</Link>}
+                  {lead.customer && <Link href={`/admin/customers/${lead.customer.id}`} className="text-brand-700 hover:underline">{lead.customer.firstName} {lead.customer.lastName}</Link>}
                   {lead.customer?.company && <> at {lead.customer.company.name}</>}
                   {lead.convertedAt && <span className="text-gray-500"> · {when(lead.convertedAt)}</span>}
                 </p>
-                {lead.quote && <Link href={`/admin/orders/${lead.quote.id}`} className="text-sm text-amber-700 hover:underline">Quote {orderRef(lead.quote)} →</Link>}
+                {lead.quote && <Link href={`/admin/orders/${lead.quote.id}`} className="text-sm text-brand-700 hover:underline">Quote {orderRef(lead.quote)} →</Link>}
               </>
             ) : (
               <>
@@ -114,7 +114,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
                 <ActionForm action={convertLeadAction} submitLabel="Convert" className="space-y-2">
                   <input type="hidden" name="id" value={lead.id} />
                   {lead.quote ? (
-                    <p className="text-sm">Their quote: <Link href={`/admin/orders/${lead.quote.id}`} className="text-amber-700 hover:underline">{orderRef(lead.quote)}</Link></p>
+                    <p className="text-sm">Their quote: <Link href={`/admin/orders/${lead.quote.id}`} className="text-brand-700 hover:underline">{orderRef(lead.quote)}</Link></p>
                   ) : (
                     <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="makeQuote" defaultChecked /> Start a draft quote</label>
                   )}

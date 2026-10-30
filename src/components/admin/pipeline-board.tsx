@@ -21,7 +21,7 @@ export type BoardCard = {
 export type BoardColumn = { stage: string; label: string; cards: BoardCard[]; total: number; leadDrop: boolean };
 
 const money = (n: number) => `$${Math.round(n).toLocaleString()}`;
-const TONE: Record<string, string> = { WON: "border-t-green-500", LOST: "border-t-gray-400", NEW: "border-t-blue-500", CONTACTED: "border-t-amber-500", QUOTING: "border-t-purple-500", SENT: "border-t-sky-500" };
+const TONE: Record<string, string> = { WON: "border-t-green-500", LOST: "border-t-gray-400", NEW: "border-t-blue-500", CONTACTED: "border-t-brand-500", QUOTING: "border-t-purple-500", SENT: "border-t-sky-500" };
 
 /**
  * The pipeline as columns. Lead cards can be dragged to New, Contacted or
@@ -70,7 +70,7 @@ export function PipelineBoard({ columns }: { columns: BoardColumn[] }) {
                 e.preventDefault();
                 drop(col);
               }}
-              className={`flex min-h-40 flex-col rounded-lg border border-t-4 bg-gray-50 ${TONE[col.stage] ?? ""} ${over === col.stage ? "ring-2 ring-amber-300" : canDrop ? "border-dashed border-amber-300" : "border-gray-200"}`}
+              className={`flex min-h-40 flex-col rounded-lg border border-t-4 bg-gray-50 ${TONE[col.stage] ?? ""} ${over === col.stage ? "ring-2 ring-brand-300" : canDrop ? "border-dashed border-brand-300" : "border-gray-200"}`}
               data-testid={`stage-${col.stage}`}
             >
               <header className="flex items-baseline justify-between px-2 py-2">
@@ -96,7 +96,7 @@ export function PipelineBoard({ columns }: { columns: BoardColumn[] }) {
                     data-testid="pipeline-card"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <Link href={c.href} className="line-clamp-2 font-medium text-amber-700 hover:underline" title={c.title}>{c.title}</Link>
+                      <Link href={c.href} className="line-clamp-2 font-medium text-brand-700 hover:underline" title={c.title}>{c.title}</Link>
                       {c.value !== null && <span className="shrink-0 text-xs font-medium">{money(c.value)}</span>}
                     </div>
                     {c.who && <div className="truncate text-xs text-gray-600">{c.who}</div>}

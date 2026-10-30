@@ -37,8 +37,8 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
         </p>
       </div>
       <nav className="flex gap-2 text-sm">
-        <Link href="/admin/inventory" className={`rounded-full border px-3 py-1 ${!low ? "border-amber-500 bg-amber-50" : "border-gray-200 bg-white"}`}>All ({variants.length})</Link>
-        <Link href="/admin/inventory?low=1" className={`rounded-full border px-3 py-1 ${low ? "border-amber-500 bg-amber-50" : "border-gray-200 bg-white"}`}>Low stock ({lowCount})</Link>
+        <Link href="/admin/inventory" className={`rounded-full border px-3 py-1 ${!low ? "border-brand-500 bg-brand-50" : "border-gray-200 bg-white"}`}>All ({variants.length})</Link>
+        <Link href="/admin/inventory?low=1" className={`rounded-full border px-3 py-1 ${low ? "border-brand-500 bg-brand-50" : "border-gray-200 bg-white"}`}>Low stock ({lowCount})</Link>
       </nav>
 
       <section className="card overflow-x-auto p-0">
@@ -59,11 +59,11 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
               </tr>
             )}
             {shown.map((v) => (
-              <tr key={v.id} className={isLow(v) ? "bg-amber-50" : ""}>
+              <tr key={v.id} className={isLow(v) ? "bg-brand-50" : ""}>
                 <td className="font-mono text-xs">{v.sku}</td>
                 <td>
                   {variantLabel(v)}
-                  {isLow(v) && <span className="ml-2 rounded bg-amber-200 px-1 text-xs">Low</span>}
+                  {isLow(v) && <span className="ml-2 rounded bg-brand-200 px-1 text-xs">Low</span>}
                 </td>
                 <td>{v.product.supplier?.name ?? "—"}</td>
                 <td>
@@ -99,8 +99,8 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
               <span>
                 <span className={m.change > 0 ? "text-green-700" : "text-red-700"}>{m.change > 0 ? `+${m.change}` : m.change}</span>{" "}
                 <span className="font-mono text-xs">{m.variant.sku}</span> · {REASONS[m.reason]}
-                {m.order && <> <Link href={`/admin/orders/${m.order.id}`} className="text-amber-700 hover:underline">{orderRef(m.order)}</Link></>}
-                {m.purchaseOrder && <> on <Link href={`/admin/purchasing/${m.purchaseOrder.id}`} className="text-amber-700 hover:underline">{poRef(m.purchaseOrder.number)}</Link></>}
+                {m.order && <> <Link href={`/admin/orders/${m.order.id}`} className="text-brand-700 hover:underline">{orderRef(m.order)}</Link></>}
+                {m.purchaseOrder && <> on <Link href={`/admin/purchasing/${m.purchaseOrder.id}`} className="text-brand-700 hover:underline">{poRef(m.purchaseOrder.number)}</Link></>}
                 {m.note && <span className="text-gray-500"> · {m.note}</span>}
               </span>
               <span className="text-xs text-gray-500">{m.staff?.name ?? "System"} · {when(m.createdAt)}</span>

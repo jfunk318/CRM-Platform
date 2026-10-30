@@ -72,7 +72,7 @@ export default async function StoresDashboard({ searchParams }: { searchParams: 
 
       <nav className="flex flex-wrap gap-2 text-sm" aria-label="Views">
         {(Object.keys(VIEWS) as View[]).map((v) => (
-          <Link key={v} href={href({ view: v === "newest" ? undefined : v })} className={`rounded-full border px-3 py-1 ${view === v ? "border-amber-500 bg-amber-50" : "border-gray-200 bg-white"}`}>{VIEWS[v]}</Link>
+          <Link key={v} href={href({ view: v === "newest" ? undefined : v })} className={`rounded-full border px-3 py-1 ${view === v ? "border-brand-500 bg-brand-50" : "border-gray-200 bg-white"}`}>{VIEWS[v]}</Link>
         ))}
       </nav>
 
@@ -120,7 +120,7 @@ export default async function StoresDashboard({ searchParams }: { searchParams: 
             {stores.map((s) => (
               <tr key={s.id}>
                 <td>
-                  <Link href={`/admin/stores/${s.id}`} className="font-medium text-amber-700 hover:underline">{s.name}</Link>
+                  <Link href={`/admin/stores/${s.id}`} className="font-medium text-brand-700 hover:underline">{s.name}</Link>
                   {requests.get(s.id) && (
                     <Link href={`/admin/stores/${s.id}/requests`} className="ml-1.5 rounded-full bg-red-600 px-1.5 py-0.5 text-[11px] font-semibold text-white" data-testid="store-request-flag">
                       {requests.get(s.id)} new request{requests.get(s.id) === 1 ? "" : "s"}
@@ -145,7 +145,7 @@ export default async function StoresDashboard({ searchParams }: { searchParams: 
       </div>
 
       <details className="card" open={all.length === 0 && !q}>
-        <summary className="cursor-pointer font-medium text-amber-700">+ New affiliate store</summary>
+        <summary className="cursor-pointer font-medium text-brand-700">+ New affiliate store</summary>
         <ActionForm action={createStoreAction} submitLabel="Create store" className="mt-4 grid gap-3 sm:grid-cols-4 sm:items-end">
           <div>
             <label className="label" htmlFor="new-name">Store name</label>

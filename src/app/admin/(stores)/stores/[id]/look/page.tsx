@@ -22,7 +22,7 @@ export default async function LookPage({ params }: { params: Promise<{ id: strin
           <h2 className="font-semibold">Theme</h2>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5" data-testid="theme-picker">
             {(Object.keys(THEMES) as ThemeKey[]).map((key) => (
-              <label key={key} className="block cursor-pointer rounded-lg border-2 border-transparent p-1 has-[:checked]:border-amber-500">
+              <label key={key} className="block cursor-pointer rounded-lg border-2 border-transparent p-1 has-[:checked]:border-brand-500">
                 <input type="radio" name="theme" value={key} defaultChecked={key === current} className="sr-only" />
                 <ThemePreview theme={key} accent={key === current ? store.accentColor : null} name={store.name} />
                 <div className="mt-2 px-1">
@@ -75,7 +75,7 @@ export default async function LookPage({ params }: { params: Promise<{ id: strin
             {[null, ...artsFor(store.theme), "none" as const].map((key) => {
               const shown = key === null ? DEFAULT_ART[current] : key === "none" ? null : key;
               return (
-                <label key={key ?? "theme"} className="block cursor-pointer rounded-lg border-2 border-transparent p-1 has-[:checked]:border-amber-500">
+                <label key={key ?? "theme"} className="block cursor-pointer rounded-lg border-2 border-transparent p-1 has-[:checked]:border-brand-500">
                   <input type="radio" name="heroArt" value={key ?? ""} defaultChecked={(store.heroArt ?? null) === key} className="sr-only" />
                   <div className="relative aspect-[5/2] overflow-hidden rounded border border-gray-200" style={{ background: "var(--st-subtle)" }}>
                     {shown ? <BannerArt art={shown} uid={`pick-${key ?? "theme"}`} /> : <span className="absolute inset-0 grid place-items-center text-xs text-gray-500">Plain</span>}
@@ -124,7 +124,7 @@ export default async function LookPage({ params }: { params: Promise<{ id: strin
       <section className="card space-y-2">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold">Preview</h2>
-          <a href={url} target="_blank" className="text-sm text-amber-700 hover:underline">Open the store ↗</a>
+          <a href={url} target="_blank" className="text-sm text-brand-700 hover:underline">Open the store ↗</a>
         </div>
         <iframe src={url} title="Store preview" className="h-[640px] w-full rounded border border-gray-200" data-testid="look-preview" />
       </section>

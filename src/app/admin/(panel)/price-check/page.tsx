@@ -93,7 +93,7 @@ export default async function PriceCheckPage({ searchParams }: { searchParams: P
         <button className="btn-secondary">Choose</button>
         {!product && !(await db.product.findFirst({ where: { variants: { some: {} } }, select: { id: true } })) && (
           <p className="w-full text-sm text-gray-500">
-            No products with costs yet. <Link href="/admin/products" className="text-amber-700 underline">Add one</Link>.
+            No products with costs yet. <Link href="/admin/products" className="text-brand-700 underline">Add one</Link>.
           </p>
         )}
       </form>
@@ -184,7 +184,7 @@ function Breakdown({ line, totals }: { line: ReturnType<typeof priceLineItem>; t
   return (
     <div className="card space-y-4" data-testid="breakdown">
       {line.issues.length > 0 && (
-        <ul className="space-y-1 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <ul className="space-y-1 rounded-md bg-warn-50 px-3 py-2 text-sm text-warn-900">
           {line.issues.map((i, n) => (
             <li key={n}>{i.location ? `${i.location}: ` : ""}{i.message}</li>
           ))}

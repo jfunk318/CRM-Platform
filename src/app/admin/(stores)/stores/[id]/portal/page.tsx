@@ -16,9 +16,9 @@ export default async function PortalSettings({ params }: { params: Promise<{ id:
         <h2 className="font-semibold">Owner portal</h2>
         <p className="text-sm text-gray-600">
           Store owners sign in at{" "}
-          <a href={`${url}/owner`} target="_blank" className="font-mono text-amber-700 hover:underline">{`${url.replace(/^https?:\/\//, "")}/owner`}</a>{" "}
+          <a href={`${url}/owner`} target="_blank" className="font-mono text-brand-700 hover:underline">{`${url.replace(/^https?:\/\//, "")}/owner`}</a>{" "}
           with an emailed link. The store&apos;s customer
-          {store.customer ? <> (<Link href={`/admin/customers/${store.customer.id}`} className="text-amber-700 hover:underline">{store.customer.firstName} {store.customer.lastName}</Link>)</> : " (none set yet)"} and the contacts here can open it.
+          {store.customer ? <> (<Link href={`/admin/customers/${store.customer.id}`} className="text-brand-700 hover:underline">{store.customer.firstName} {store.customer.lastName}</Link>)</> : " (none set yet)"} and the contacts here can open it.
         </p>
         <ActionForm action={savePortalAction} className="space-y-3">
           <input type="hidden" name="storeId" value={store.id} />
@@ -44,7 +44,7 @@ export default async function PortalSettings({ params }: { params: Promise<{ id:
           {contacts.map((c) => (
             <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
               <span>
-                <Link href={`/admin/customers/${c.customerId}`} className="font-medium text-amber-700 hover:underline">{c.customer.firstName} {c.customer.lastName}</Link>
+                <Link href={`/admin/customers/${c.customerId}`} className="font-medium text-brand-700 hover:underline">{c.customer.firstName} {c.customer.lastName}</Link>
                 {c.title ? ` · ${c.title}` : ""} · {c.customer.email ?? "no email"}
                 {c.canManage ? <span className="ml-1.5 rounded bg-green-50 px-1.5 text-[11px] text-green-800">portal access</span> : null}
               </span>

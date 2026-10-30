@@ -16,7 +16,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
   const parents = await db.storePage.findMany({ where: { storeId: page.storeId, parentId: null, id: { not: page.id }, slug: { not: "home" } }, orderBy: { title: "asc" } });
   return (
     <div className="space-y-5">
-      <Link href={`/admin/stores/${id}/pages`} className="text-sm text-amber-700 hover:underline">← Pages</Link>
+      <Link href={`/admin/stores/${id}/pages`} className="text-sm text-brand-700 hover:underline">← Pages</Link>
       <div className="grid gap-6 xl:grid-cols-2">
         <section className="card">
           <ActionForm action={savePageAction} className="space-y-4">
@@ -52,7 +52,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
               </div>
             )}
             <details>
-              <summary className="cursor-pointer text-sm text-amber-700">Search engines</summary>
+              <summary className="cursor-pointer text-sm text-brand-700">Search engines</summary>
               <div className="mt-2 grid gap-3">
                 <input className="input" name="seoTitle" defaultValue={page.seoTitle ?? ""} placeholder="Title in search results" aria-label="SEO title" />
                 <input className="input" name="seoDescription" defaultValue={page.seoDescription ?? ""} placeholder="Description in search results" aria-label="SEO description" />
@@ -68,7 +68,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
         <section className="card">
           <div className="mb-2 flex items-center justify-between text-sm">
             <span className="font-semibold">Preview (as saved)</span>
-            <a href={home ? url : `${url}/${page.slug}`} target="_blank" className="text-amber-700 hover:underline">Open ↗</a>
+            <a href={home ? url : `${url}/${page.slug}`} target="_blank" className="text-brand-700 hover:underline">Open ↗</a>
           </div>
           <PageBody body={page.body} db={db} currentStoreId={id} />
         </section>

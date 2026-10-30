@@ -79,7 +79,7 @@ export default async function PurchasingPage() {
                           <input type="checkbox" name="key" value={r.key} defaultChecked aria-label={`Order ${r.label} for ${orderRef(order)}`} />
                         </td>
                         <td>
-                          <Link href={`/admin/orders/${order.id}`} className="text-amber-700 hover:underline">{orderRef(order)}</Link>
+                          <Link href={`/admin/orders/${order.id}`} className="text-brand-700 hover:underline">{orderRef(order)}</Link>
                           <div className="text-xs text-gray-500">{order.customer.firstName} {order.customer.lastName}</div>
                         </td>
                         <td>
@@ -104,7 +104,7 @@ export default async function PurchasingPage() {
           </ActionForm>
         )}
         {blocked.length > 0 && (
-          <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          <div className="rounded-md border border-warn-300 bg-warn-50 px-3 py-2 text-sm text-warn-900">
             <div className="font-medium">Can&apos;t be ordered yet</div>
             <ul className="list-disc pl-5">
               {blocked.map(({ order, r }) => (
@@ -137,7 +137,7 @@ export default async function PurchasingPage() {
         <PoTable pos={openPos} empty="No open purchase orders." />
         {recentPos.length > 0 && (
           <details>
-            <summary className="cursor-pointer text-sm text-amber-700">Recently received or cancelled</summary>
+            <summary className="cursor-pointer text-sm text-brand-700">Recently received or cancelled</summary>
             <div className="mt-2">
               <PoTable pos={recentPos} empty="" />
             </div>
@@ -180,7 +180,7 @@ function PoTable({ pos, empty }: { pos: PoRow[]; empty: string }) {
           {pos.map((po) => (
             <tr key={po.id}>
               <td>
-                <Link href={`/admin/purchasing/${po.id}`} className="font-medium text-amber-700 hover:underline">{poRef(po.number)}</Link>
+                <Link href={`/admin/purchasing/${po.id}`} className="font-medium text-brand-700 hover:underline">{poRef(po.number)}</Link>
               </td>
               <td>{po.supplier.name}</td>
               <td>

@@ -24,7 +24,7 @@ export default async function ProductCategoriesPage({ params }: { params: Promis
       intro={
         <>
           <p>Where this product appears when browsing the catalog and filtering products.</p>
-          <p>Add or rename categories under <Link href="/admin/categories" className="text-amber-700 hover:underline">Categories</Link>.</p>
+          <p>Add or rename categories under <Link href="/admin/categories" className="text-brand-700 hover:underline">Categories</Link>.</p>
         </>
       }
       aside={<p className="text-gray-600">In {picked.size} categor{picked.size === 1 ? "y" : "ies"}</p>}

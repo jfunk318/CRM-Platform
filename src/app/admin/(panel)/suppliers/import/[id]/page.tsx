@@ -29,7 +29,7 @@ export default async function ImportPage({ params }: { params: Promise<{ id: str
   return (
     <div className="space-y-5">
       <div>
-        <Link href="/admin/suppliers/import" className="text-sm text-amber-700 hover:underline">← Imports</Link>
+        <Link href="/admin/suppliers/import" className="text-sm text-brand-700 hover:underline">← Imports</Link>
         <h1 className="page-title mt-1">{imp.supplier.name}: {imp.fileName}</h1>
         <p className="text-sm text-gray-600">
           Uploaded {when(imp.createdAt)} · {summary.styles.length.toLocaleString()} styles, {colors.toLocaleString()} colors, {summary.rows.toLocaleString()} SKUs in the file
@@ -41,12 +41,12 @@ export default async function ImportPage({ params }: { params: Promise<{ id: str
           <AutoRefresh />
           <div className="font-semibold">Importing… {imp.progress.toLocaleString()} of {imp.total.toLocaleString()} styles</div>
           <div className="h-3 overflow-hidden rounded-full bg-gray-100">
-            <div className="h-full bg-amber-500 transition-all" style={{ width: `${Math.max(2, pct)}%` }} />
+            <div className="h-full bg-brand-500 transition-all" style={{ width: `${Math.max(2, pct)}%` }} />
           </div>
           <p className="text-xs text-gray-500">You can leave this page; the import keeps going.</p>
         </section>
       )}
-      {stalled && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">This import stopped part-way ({imp.progress} of {imp.total} styles). Start it again below; what was already imported is kept.</p>}
+      {stalled && <p className="rounded-md bg-warn-50 px-3 py-2 text-sm text-warn-900">This import stopped part-way ({imp.progress} of {imp.total} styles). Start it again below; what was already imported is kept.</p>}
       {imp.status === "FAILED" && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">The import stopped: {imp.error}. What was already imported is kept; you can start it again.</p>}
 
       {imp.status === "DONE" && result && (
@@ -59,9 +59,9 @@ export default async function ImportPage({ params }: { params: Promise<{ id: str
             <li>{count(result.sizesAdded, "size")} added</li>
             <li>{count(result.skusAdded, "SKU")} added</li>
             <li>{count(result.skusUpdated, "SKU")} updated</li>
-            {result.rowsSkipped > 0 && <li className="text-amber-700">{result.rowsSkipped} rows skipped (no price)</li>}
+            {result.rowsSkipped > 0 && <li className="text-brand-700">{result.rowsSkipped} rows skipped (no price)</li>}
           </ul>
-          <Link href={`/admin/products?supplier=${imp.supplierId}`} className="inline-block text-sm text-amber-700 hover:underline">See the products →</Link>
+          <Link href={`/admin/products?supplier=${imp.supplierId}`} className="inline-block text-sm text-brand-700 hover:underline">See the products →</Link>
           <p className="text-xs text-gray-500">Want more brands? Choose them below and import again; existing products are updated, not duplicated.</p>
         </section>
       )}

@@ -44,7 +44,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         </p>
       )}
       {placeholderTables > 0 && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <div className="rounded-md border border-warn-300 bg-warn-50 px-3 py-2 text-sm text-warn-900">
           {placeholderTables} decoration price table{placeholderTables === 1 ? " still has" : "s still have"}{" "}
           placeholder prices.{" "}
           <Link href="/admin/methods" className="font-medium underline">
@@ -64,7 +64,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         <section className="card space-y-1" data-testid="dashboard-tasks">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Due today and overdue</h2>
-            <Link href="/admin/tasks" className="text-sm text-amber-700 hover:underline">All tasks →</Link>
+            <Link href="/admin/tasks" className="text-sm text-brand-700 hover:underline">All tasks →</Link>
           </div>
           <TaskList tasks={myTasks} showAssignee={false} />
         </section>
@@ -84,7 +84,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
 function Stat({ label, value, href, warn }: { label: string; value: number; href: string; warn?: boolean }) {
   return (
-    <Link href={href} className="card block hover:border-amber-300">
+    <Link href={href} className="card block hover:border-brand-300">
       <div className={`text-2xl font-semibold ${warn ? "text-red-600" : ""}`}>{value}</div>
       <div className="text-sm text-gray-500">{label}</div>
     </Link>

@@ -31,12 +31,12 @@ export default async function RequestsPage({ params }: { params: Promise<{ id: s
                 {r.subject}
               </h2>
               <p className="text-xs text-gray-500">
-                <Link href={`/admin/customers/${r.customerId}`} className="text-amber-700 hover:underline">{r.customer.firstName} {r.customer.lastName}</Link>
+                <Link href={`/admin/customers/${r.customerId}`} className="text-brand-700 hover:underline">{r.customer.firstName} {r.customer.lastName}</Link>
                 {r.customer.email ? ` · ${r.customer.email}` : ""} · {when(r.createdAt)}
               </p>
             </div>
             {r.quote ? (
-              <Link href={`/admin/orders/${r.quote.id}`} className="text-sm text-amber-700 hover:underline">Quote {orderRef(r.quote)} →</Link>
+              <Link href={`/admin/orders/${r.quote.id}`} className="text-sm text-brand-700 hover:underline">Quote {orderRef(r.quote)} →</Link>
             ) : (
               <ActionForm action={requestQuoteAction} submitLabel="Make a draft quote" className="flex">
                 <input type="hidden" name="id" value={r.id} />

@@ -92,7 +92,7 @@ export function FilesSection({ order, canEdit }: { order: OrderWithSections; can
               </span>
             )}
             <div className="min-w-0 flex-1">
-              <a href={fileUrl(f.file.id)} target="_blank" rel="noreferrer" className="block truncate text-amber-700 hover:underline">
+              <a href={fileUrl(f.file.id)} target="_blank" rel="noreferrer" className="block truncate text-brand-700 hover:underline">
                 {f.file.name}
               </a>
               <div className="text-xs text-gray-500">
@@ -133,7 +133,7 @@ const PROOF_LABELS: Record<ProofStatus, { label: string; cls: string }> = {
   DRAFT: { label: "Draft", cls: "bg-gray-100 text-gray-700" },
   SENT: { label: "Waiting for customer", cls: "bg-blue-100 text-blue-800" },
   APPROVED: { label: "Approved", cls: "bg-green-100 text-green-800" },
-  CHANGES_REQUESTED: { label: "Changes requested", cls: "bg-amber-100 text-amber-900" },
+  CHANGES_REQUESTED: { label: "Changes requested", cls: "bg-warn-100 text-warn-900" },
   CANCELLED: { label: "Cancelled", cls: "bg-gray-100 text-gray-500" },
 };
 
@@ -155,15 +155,15 @@ export function ProofsSection({ order, origin, canEdit, hasArtwork }: { order: O
               <a key={pf.id} href={fileUrl(pf.file.id)} target="_blank" rel="noreferrer" title={pf.file.name} className="block">
                 {isImage(pf.file.name) ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={fileUrl(pf.file.id)} alt={pf.file.name} className={`h-16 w-16 rounded border object-contain ${pf.fromCustomer ? "border-amber-400" : ""}`} />
+                  <img src={fileUrl(pf.file.id)} alt={pf.file.name} className={`h-16 w-16 rounded border object-contain ${pf.fromCustomer ? "border-brand-400" : ""}`} />
                 ) : (
-                  <span className="text-xs text-amber-700 underline">{pf.file.name}</span>
+                  <span className="text-xs text-brand-700 underline">{pf.file.name}</span>
                 )}
               </a>
             ))}
           </div>
           {p.respondedAt && (
-            <p className={p.status === "APPROVED" ? "text-green-800" : "text-amber-900"}>
+            <p className={p.status === "APPROVED" ? "text-green-800" : "text-warn-900"}>
               {p.responderName} on {day(p.respondedAt)}: {p.responseNote || (p.status === "APPROVED" ? "approved" : "")}
             </p>
           )}
@@ -184,7 +184,7 @@ export function ProofsSection({ order, origin, canEdit, hasArtwork }: { order: O
       ))}
       {canEdit && (
         <Disclosure className="rounded-md border border-dashed border-gray-300 p-3" initiallyOpen={order.proofs.length === 0}>
-          <summary className="cursor-pointer text-sm font-medium text-amber-700">+ New proof</summary>
+          <summary className="cursor-pointer text-sm font-medium text-brand-700">+ New proof</summary>
           <ActionForm action={createProofAction} submitLabel="Create proof" resetOnSuccess className="mt-3 space-y-3">
             <input type="hidden" name="orderId" value={order.id} />
             {hasArtwork && (
@@ -272,7 +272,7 @@ export function PaymentsSection({
       {canEdit && (
         <>
           <details className="rounded-md border border-dashed border-gray-300 p-3">
-            <summary className="cursor-pointer font-medium text-amber-700">+ Record payment</summary>
+            <summary className="cursor-pointer font-medium text-brand-700">+ Record payment</summary>
             <ActionForm action={recordPaymentAction} submitLabel="Record" resetOnSuccess className="mt-3 space-y-2">
               <input type="hidden" name="orderId" value={order.id} />
               <div className="grid grid-cols-2 gap-2">

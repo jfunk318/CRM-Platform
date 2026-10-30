@@ -51,12 +51,12 @@ export default async function StoreOverview({ params }: { params: Promise<{ id: 
       <section className="card grid gap-3 text-sm sm:grid-cols-3">
         <div>
           <div className="label">Address</div>
-          <a href={url} target="_blank" className="font-mono text-amber-700 hover:underline">{url.replace(/^https?:\/\//, "")}</a>
+          <a href={url} target="_blank" className="font-mono text-brand-700 hover:underline">{url.replace(/^https?:\/\//, "")}</a>
         </div>
         <div>
           <div className="label">{store.kind === "ROOT" ? "Site" : "Store for"}</div>
           {store.customer ? (
-            <Link href={`/admin/customers/${store.customer.id}`} className="text-amber-700 hover:underline">{store.customer.firstName} {store.customer.lastName}</Link>
+            <Link href={`/admin/customers/${store.customer.id}`} className="text-brand-700 hover:underline">{store.customer.firstName} {store.customer.lastName}</Link>
           ) : (
             <span className="text-gray-500">{store.kind === "ROOT" ? "Your own main site" : "No customer set"}</span>
           )}
@@ -75,7 +75,7 @@ export default async function StoreOverview({ params }: { params: Promise<{ id: 
         </div>
         <div>
           <div className="label">Pages</div>
-          <Link href={`/admin/stores/${store.id}/pages`} className="text-amber-700 hover:underline">{pages} page{pages === 1 ? "" : "s"}</Link>
+          <Link href={`/admin/stores/${store.id}/pages`} className="text-brand-700 hover:underline">{pages} page{pages === 1 ? "" : "s"}</Link>
         </div>
         <div>
           <div className="label">Showcase</div>
@@ -106,7 +106,7 @@ export default async function StoreOverview({ params }: { params: Promise<{ id: 
                   <span>
                     Batch {b.number} · {day(b.createdAt)} · {b._count.orders} order{b._count.orders === 1 ? "" : "s"}
                   </span>
-                  <Link href={`/admin/orders/${b.orderId}`} className="text-amber-700 hover:underline">
+                  <Link href={`/admin/orders/${b.orderId}`} className="text-brand-700 hover:underline">
                     Order {orderRef(b.order)} · {b.order.status.name}
                   </Link>
                 </li>
@@ -130,5 +130,5 @@ function Stat({ label, value, href }: { label: string; value: string; href?: str
       <div className="text-sm text-gray-500">{label}</div>
     </>
   );
-  return href ? <Link href={href} className="card block hover:border-amber-300">{body}</Link> : <div className="card">{body}</div>;
+  return href ? <Link href={href} className="card block hover:border-brand-300">{body}</Link> : <div className="card">{body}</div>;
 }

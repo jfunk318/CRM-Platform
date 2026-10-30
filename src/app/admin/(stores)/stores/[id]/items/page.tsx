@@ -41,8 +41,8 @@ export default async function ItemsPage({ params }: { params: Promise<{ id: stri
               return (
                 <tr key={i.id}>
                   <td>
-                    <Link href={`/admin/stores/${store.id}/items/${i.id}`} className="font-medium text-amber-700 hover:underline">{i.name}</Link>
-                    {i.featured && <span className="ml-1 rounded bg-amber-100 px-1 text-xs">Featured</span>}
+                    <Link href={`/admin/stores/${store.id}/items/${i.id}`} className="font-medium text-brand-700 hover:underline">{i.name}</Link>
+                    {i.featured && <span className="ml-1 rounded bg-brand-100 px-1 text-xs">Featured</span>}
                   </td>
                   <td className="text-sm">{i.design.product.styleCode} · {i.design.color.name}</td>
                   <td className="text-sm">{i.prices.map((p) => p.size.code).join(", ")}</td>
@@ -57,7 +57,7 @@ export default async function ItemsPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <details className="card" open={items.length === 0}>
-        <summary className="cursor-pointer font-medium text-amber-700">+ Add an item</summary>
+        <summary className="cursor-pointer font-medium text-brand-700">+ Add an item</summary>
         <ActionForm action={createItemAction} submitLabel="Create item" className="mt-4 space-y-4">
           <input type="hidden" name="storeId" value={store.id} />
           <div className="grid gap-3 sm:grid-cols-3">

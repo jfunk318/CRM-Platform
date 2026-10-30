@@ -31,8 +31,8 @@ export default async function StoreCodes({ params }: { params: Promise<{ id: str
   return (
     <div className="space-y-6">
       <p className="text-sm text-gray-500">
-        Codes are created on the global <Link href="/admin/stores/promo-codes" className="text-amber-700 hover:underline">Promo codes</Link> and{" "}
-        <Link href="/admin/stores/gift-codes" className="text-amber-700 hover:underline">Gift codes</Link> pages, for every store or chosen ones. Codes for chosen stores can be switched on here.
+        Codes are created on the global <Link href="/admin/stores/promo-codes" className="text-brand-700 hover:underline">Promo codes</Link> and{" "}
+        <Link href="/admin/stores/gift-codes" className="text-brand-700 hover:underline">Gift codes</Link> pages, for every store or chosen ones. Codes for chosen stores can be switched on here.
       </p>
       <section className="card overflow-x-auto p-0">
         <table className="table" data-testid="store-promos">

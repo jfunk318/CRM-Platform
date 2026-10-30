@@ -86,7 +86,7 @@ export default async function StoreSettingsPage({ params }: { params: Promise<{ 
           </div>
 
           <h3 className="text-sm font-semibold">Text around the store</h3>
-          <p className="text-xs text-gray-500">Theme, colors, banner and logo are on the <a href={`/admin/stores/${store.id}/look`} className="text-amber-700 hover:underline">Look</a> tab.</p>
+          <p className="text-xs text-gray-500">Theme, colors, banner and logo are on the <a href={`/admin/stores/${store.id}/look`} className="text-brand-700 hover:underline">Look</a> tab.</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Announcement bar (optional)" name="announcement" value={store.announcement} placeholder="e.g. Orders close Friday" />
             <div className="sm:col-span-2">

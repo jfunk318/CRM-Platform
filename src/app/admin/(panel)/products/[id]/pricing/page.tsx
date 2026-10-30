@@ -32,13 +32,13 @@ export default async function ProductPricingPage({ params }: { params: Promise<{
       intro={
         <>
           <p>Your wholesale cost for each color and size. Leave a cost blank if that combination isn&apos;t offered; a new cost adds the SKU.</p>
-          <p>Under each cost is the blank garment price at the {pricing?.name ?? "default"} markup. Decoration is priced from your <Link href="/admin/methods" className="text-amber-700 hover:underline">decoration methods</Link>.</p>
+          <p>Under each cost is the blank garment price at the {pricing?.name ?? "default"} markup. Decoration is priced from your <Link href="/admin/methods" className="text-brand-700 hover:underline">decoration methods</Link>.</p>
         </>
       }
       aside={
         <>
           <div className="flex justify-between"><span className="text-gray-600">Cost range</span><span className="font-medium">{range}</span></div>
-          <p className="pt-2"><Link href={`/admin/price-check?product=${product.id}`} className="text-amber-700 hover:underline">Price a decorated order →</Link></p>
+          <p className="pt-2"><Link href={`/admin/price-check?product=${product.id}`} className="text-brand-700 hover:underline">Price a decorated order →</Link></p>
         </>
       }
     >

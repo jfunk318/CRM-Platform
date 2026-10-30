@@ -33,7 +33,7 @@ export function SectionNav({ productId }: { productId: string }) {
             href={href}
             aria-current={current ? "page" : undefined}
             className={`shrink-0 whitespace-nowrap rounded px-3 py-1.5 md:rounded-none md:border-l-2 md:px-4 ${
-              current ? "bg-amber-50 font-medium text-amber-900 md:border-amber-500" : "text-gray-700 hover:bg-gray-50 md:border-transparent"
+              current ? "bg-warn-50 font-medium text-warn-900 md:border-warn-500" : "text-gray-700 hover:bg-gray-50 md:border-transparent"
             }`}
           >
             {s.label}

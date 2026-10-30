@@ -38,7 +38,7 @@ export default async function BusinessesPage() {
             {businesses.map((b) => (
               <tr key={b.id}>
                 <td>
-                  <Link href={`/platform/businesses/${b.id}`} className="font-medium text-amber-700 hover:underline">{b.name}</Link>
+                  <Link href={`/platform/businesses/${b.id}`} className="font-medium text-brand-700 hover:underline">{b.name}</Link>
                 </td>
                 <td className="font-mono text-xs">{businessDomain(b)}</td>
                 <td>
