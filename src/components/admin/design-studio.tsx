@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Mockup, type MockupLayer } from "@/components/mockup";
-import { type ArtOwnerIds, type ArtworkValue, type LibraryArt, PLACEABLE, PLACEABLE_ACCEPT, staffFileUrl } from "@/lib/design/artwork";
+import { type ArtOwnerIds, type ArtworkValue, type LibraryArt, PLACEABLE, PLACEABLE_ACCEPT, PLACEABLE_HINT, defaultArea, staffFileUrl } from "@/lib/design/artwork";
+import { extFromType, needsConverting, toPlaceable } from "@/lib/design/convert";
+import { ArtThumb } from "./art-thumb";
 import { cropPreview, downscale, loadArt, rasterPreview, rasterToPng, resizeToPng, svgToPng } from "@/lib/design/canvas";
 import { PRINT_DPI, sizedSvg, suitsVector, targetWidthPx, traceToSvg } from "@/lib/design/enhance";
 import { type AreaBox, clampPlacement, dpiRating, effectiveDpi, fitPlacement, type Placement, photoRect, printSize } from "@/lib/design/placement";
@@ -142,11 +144,12 @@ export function DesignStudio({
   orderId?: string | null;
 }) {
   // What the designer opened with; artwork in it is reloaded from its original.
-  const [start] = useState<DecorationValue>(() => decoration ?? { ...blankDecoration(), methodId: methods[0]?.id ?? "", areaId: areas[0]?.id ?? "", location: areas[0]?.label ?? "" });
+  // New decorations open on Full Front.
+  const [start] = useState<DecorationValue>(() => decoration ?? { ...blankDecoration(), methodId: methods[0]?.id ?? "", areaId: defaultArea(areas)?.id ?? "", location: defaultArea(areas)?.label ?? "" });
   const initial = start.artwork;
 
   const [methodId, setMethodId] = useState(start.methodId || methods[0]?.id || "");
-  const [areaId, setAreaId] = useState<string>(start.areaId || (decoration ? OTHER : (areas[0]?.id ?? OTHER)));
+  const [areaId, setAreaId] = useState<string>(start.areaId || (decoration ? OTHER : (defaultArea(areas)?.id ?? OTHER)));
   const [otherName, setOtherName] = useState(start.areaId ? "" : start.location);
   const [details, setDetails] = useState({
     colors: start.colors,
@@ -227,7 +230,8 @@ export function DesignStudio({
         const res = await fetch(staffFileUrl(initial.sourceFileId ?? initial.artworkFileId));
         if (!res.ok) throw new Error();
         const blob = await res.blob();
-        const art = await loadArt(blob, blob.type.includes("svg"));
+        const ext = extFromType(blob.type);
+        const art = needsConverting(ext) ? await loadArt(await toPlaceable(blob, ext), false) : await loadArt(blob, blob.type.includes("svg"));
         if (cancelled) return;
         setLoaded({
           full: art.raster,
@@ -319,8 +323,11 @@ export function DesignStudio({
     setError(null);
     setBusy("Reading the artwork…");
     try {
-      const vector = o.ext === "svg" || src.type.includes("svg");
-      const art = await loadArt(src, vector);
+      // PDF, Illustrator, Photoshop, EPS and TIFF become a picture for the mockup; the original is kept.
+      const ext = o.ext || extFromType(src.type);
+      const picture = needsConverting(ext) ? await toPlaceable(src, ext) : src;
+      const vector = ext === "svg" || picture.type.includes("svg");
+      const art = await loadArt(picture, vector);
       const work = downscale(art.raster, PREVIEW_PX);
       setLoaded({ full: art.raster, work, scale: art.scale, file: o.file, sourceFileId: o.libraryFileId, libraryFileId: o.libraryFileId, name: o.name.replace(/\.[^.]+$/, "") });
       // A white or solid background is usually wanted gone; start with it removed for non-transparent art.
@@ -343,7 +350,7 @@ export function DesignStudio({
     if (!file) return;
     const ext = file.name.toLowerCase().split(".").pop() ?? "";
     if (!PLACEABLE.includes(ext)) {
-      setError("Choose a PNG, JPG, GIF, WebP or SVG to place it. PDF and Illustrator files can still be attached to the order under Files.");
+      setError(`Choose a ${PLACEABLE_HINT} file to place it. Other files can still be attached to the order under Files.`);
       return;
     }
     await begin(file, { name: file.name, ext, file, libraryFileId: null });
@@ -785,8 +792,7 @@ export function DesignStudio({
                           data-testid="library-art"
                         >
                           <span className="block aspect-square overflow-hidden rounded bg-[repeating-conic-gradient(#e5e7eb_0_25%,#fff_0_50%)] bg-[length:12px_12px]">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={staffFileUrl(a.fileId)} alt="" loading="lazy" className="h-full w-full object-contain" />
+                            <ArtThumb fileId={a.fileId} name={a.name} />
                           </span>
                           <span className="mt-1 block truncate text-[11px] text-gray-700">{a.name}</span>
                         </button>
@@ -809,7 +815,7 @@ export function DesignStudio({
                   📎 Upload new artwork
                 </button>
                 <p className="text-xs text-gray-500">
-                  PNG, JPG, GIF, WebP or SVG.{owner?.customerId || owner?.companyId ? " New uploads are saved to this customer's artwork." : ""}
+                  {PLACEABLE_HINT}.{owner?.customerId || owner?.companyId ? " New uploads are saved to this customer's artwork." : ""}
                 </p>
               </section>
             ) : (

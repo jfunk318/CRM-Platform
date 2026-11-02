@@ -3,7 +3,8 @@ import { removeArtworkAction, uploadArtworkAction } from "@/app/admin/(panel)/cu
 import { ActionButton } from "@/components/admin/action-button";
 import { ActionForm } from "@/components/admin/action-form";
 import { FilePicker } from "@/components/file-picker";
-import { PLACEABLE_ACCEPT, staffFileUrl } from "@/lib/design/artwork";
+import { ArtThumb } from "./art-thumb";
+import { PLACEABLE_ACCEPT, PLACEABLE_HINT, staffFileUrl } from "@/lib/design/artwork";
 import { MAX_UPLOAD_MB } from "@/lib/files/types";
 
 type Asset = Prisma.ArtworkAssetGetPayload<{ include: { file: { select: { id: true; name: true; size: true; sha256: true } }; customer: { select: { firstName: true; lastName: true } } } }>;
@@ -31,8 +32,7 @@ export function ArtworkLibrary({ assets, owner, sharedWith }: { assets: Asset[];
           {assets.map((a) => (
             <figure key={a.id} className="space-y-1 text-xs" data-testid="library-item">
               <a href={staffFileUrl(a.fileId)} target="_blank" rel="noreferrer" className="block aspect-square overflow-hidden rounded border border-gray-200 bg-[repeating-conic-gradient(#e5e7eb_0_25%,#fff_0_50%)] bg-[length:12px_12px]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={staffFileUrl(a.fileId)} alt={a.name} loading="lazy" className="h-full w-full object-contain" />
+                <ArtThumb fileId={a.fileId} name={a.name} alt={a.name} />
               </a>
               <figcaption>
                 <div className="truncate font-medium" title={a.name}>{a.name}</div>
@@ -48,7 +48,7 @@ export function ArtworkLibrary({ assets, owner, sharedWith }: { assets: Asset[];
       <ActionForm action={uploadArtworkAction} submitLabel="Add artwork" resetOnSuccess className="max-w-md space-y-2">
         {owner.customerId && <input type="hidden" name="customerId" value={owner.customerId} />}
         {owner.companyId && <input type="hidden" name="companyId" value={owner.companyId} />}
-        <FilePicker id="library-files" name="files" multiple required accept={PLACEABLE_ACCEPT} maxMb={MAX_UPLOAD_MB} hint="PNG, JPG, GIF, WebP or SVG" />
+        <FilePicker id="library-files" name="files" multiple required accept={PLACEABLE_ACCEPT} maxMb={MAX_UPLOAD_MB} hint={PLACEABLE_HINT} />
       </ActionForm>
     </section>
   );

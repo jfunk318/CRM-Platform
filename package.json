@@ -17,15 +17,18 @@
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",
+    "ag-psd": "^34.1.0",
     "csv-parse": "^5.6.0",
     "decimal.js": "^10.6.0",
     "fflate": "^0.8.2",
     "imagetracerjs": "^1.2.6",
     "next": "15.5.4",
+    "pdfjs-dist": "^6.5.438",
     "prisma": "^6.16.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "server-only": "^0.0.1",
+    "utif": "^3.1.0",
     "zod": "^4.1.11"
   },
   "devDependencies": {
@@ -34,6 +37,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/utif": "^3.0.6",
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
     "tailwindcss": "^4",

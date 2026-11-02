@@ -1,5 +1,7 @@
 "use client";
 
+import { defaultArea } from "@/lib/design/artwork";
+import { canPlace, extOf, needsConverting, toPlaceable } from "@/lib/design/convert";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Mockup, type MockupLayer } from "@/components/mockup";
 import { downscale, loadArt, rasterPreview, rasterToPng } from "@/lib/design/canvas";
@@ -20,7 +22,7 @@ const FONTS: Record<string, string> = {
 };
 const FONTS_URL = `https://fonts.googleapis.com/css2?${Object.values(FONTS).map((f) => `family=${f}`).join("&")}&display=swap`;
 const PREVIEW_PX = 900;
-const UPLOAD_TYPES = "image/png,image/jpeg,image/gif,image/webp,image/svg+xml,.svg";
+const UPLOAD_TYPES = "image/png,image/jpeg,image/gif,image/webp,image/svg+xml,.svg,.pdf,application/pdf,.ai,.eps,.psd,.tif,.tiff";
 
 type TextSpec = { content: string; font: string; color: string; outline: string | null };
 type Art = {
@@ -108,7 +110,8 @@ export function ShopperDesigner({
   showPrices: boolean;
   canBuy: boolean;
 }) {
-  const firstArea = product.areas[0];
+  // Opens on Full Front.
+  const firstArea = defaultArea(product.areas);
   const [colorId, setColorId] = useState(product.colors[0]?.id ?? "");
   const [areaId, setAreaId] = useState(firstArea?.id ?? "");
   const [decos, setDecos] = useState<Record<string, Deco>>({});
@@ -168,8 +171,12 @@ export function ShopperDesigner({
   const fromFile = (file: File | undefined) =>
     file &&
     run("Preparing your artwork…", async () => {
-      const vector = file.type.includes("svg") || file.name.toLowerCase().endsWith(".svg");
-      const loaded = await loadArt(file, vector);
+      const ext = extOf(file.name);
+      if (!canPlace(ext)) throw new Error("Use a PNG, JPG, GIF, WebP, SVG, PDF, AI, EPS, PSD or TIFF file");
+      // PDF, Illustrator, Photoshop, EPS and TIFF become a picture to place; the original is kept for printing.
+      const converted = needsConverting(ext);
+      const vector = !converted && (file.type.includes("svg") || ext === "svg");
+      const loaded = await loadArt(converted ? await toPlaceable(file, ext) : file, vector);
       // A solid background (a white box around a logo) usually isn't wanted.
       const opaque = loaded.raster.data[3] > 200;
       const finished = applyEdits(loaded.raster, opaque && !vector ? { removeBg: { tolerance: 14 }, trim: true } : { trim: true });
@@ -177,7 +184,7 @@ export function ShopperDesigner({
       const png = await rasterToPng(finished);
       const fileId = await upload(png, `${file.name.replace(/\.[^.]+$/, "")}.png`);
       // The original too (not SVGs), so the shop can print from the best copy.
-      const sourceFileId = !vector && /^image\/(png|jpeg|gif|webp)$/.test(file.type) ? await upload(file, file.name).catch(() => null) : null;
+      const sourceFileId = converted || (!vector && /^image\/(png|jpeg|gif|webp)$/.test(file.type)) ? await upload(file, file.name).catch(() => null) : null;
       place({ fileId, sourceFileId, ...describe(finished), widthPx: Math.round(finished.width / loaded.scale), heightPx: Math.round(finished.height / loaded.scale) });
     });
 
@@ -373,7 +380,7 @@ export function ShopperDesigner({
             <div className="space-y-2">
               <input ref={fileInput} type="file" accept={UPLOAD_TYPES} className="sr-only" aria-label="Your artwork" onChange={(e) => fromFile(e.target.files?.[0])} />
               <button type="button" className="st-btn" onClick={() => fileInput.current?.click()} disabled={!!busy}>{deco ? "Upload different artwork" : "Upload your artwork"}</button>
-              <p className="text-xs text-[var(--st-muted)]">PNG, JPG, GIF, WebP or SVG. A plain background around a logo is removed for you.</p>
+              <p className="text-xs text-[var(--st-muted)]">PNG, JPG, SVG, PDF, AI, EPS, PSD or TIFF. A plain background around a logo is removed for you.</p>
             </div>
           )}
           {tab === "text" && can.text && (

@@ -57,7 +57,7 @@ export async function POST(req: Request) {
   // A traced vector version (from "Enhance for print"), kept for production.
   const [vector] = formFiles(form, "vector");
   if (!artwork || extensionOf(artwork.name) !== "png") return NextResponse.json({ error: "The edited artwork must be a PNG" }, { status: 400 });
-  if (source && !PLACEABLE.includes(extensionOf(source.name))) return NextResponse.json({ error: "Upload a PNG, JPG, GIF, WebP or SVG" }, { status: 400 });
+  if (source && !PLACEABLE.includes(extensionOf(source.name))) return NextResponse.json({ error: "Upload a PNG, JPG, SVG, PDF, AI, EPS, PSD or TIFF" }, { status: 400 });
   if (vector && extensionOf(vector.name) !== "svg") return NextResponse.json({ error: "The vector artwork must be an SVG" }, { status: 400 });
   try {
     const art = await saveUpload(db, artwork, staff.id);
