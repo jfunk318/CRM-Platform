@@ -116,7 +116,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
         </table>
       </div>
 
-      <details className="card">
+      <details className="card" id="new-lead">
         <summary className="cursor-pointer font-medium text-brand-700">+ Add a lead</summary>
         <ActionForm action={createLeadAction} submitLabel="Add lead" className="mt-3 space-y-3">
           <LeadFields staff={staffList} defaultOwnerId={staff.id} />

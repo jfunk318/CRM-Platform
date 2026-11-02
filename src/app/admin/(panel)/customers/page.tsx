@@ -96,7 +96,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
         </div>
       )}
 
-      <div className="card">
+      <div className="card" id="new-customer">
         <h2 className="mb-2 font-semibold">Add a customer</h2>
         <ActionForm action={createCustomer} submitLabel="Add customer">
           <div className="grid gap-3 sm:grid-cols-4">

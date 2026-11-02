@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { availableTo, parseLayout, visibleTo } from "./widgets";
+import { availableTo, DEFAULT_LAYOUTS, parseLayout, visibleTo } from "./widgets";
 
 describe("dashboard layouts", () => {
   it("keep known widgets once each, with a valid size", () => {
@@ -16,5 +16,11 @@ describe("dashboard layouts", () => {
     expect(visibleTo(layout, ["ADMIN"])).toHaveLength(3);
     expect(availableTo(["SALES"])).toContain("create-quote");
     expect(availableTo(["SALES"])).not.toContain("sales-snapshot");
+  });
+});
+
+describe("section defaults", () => {
+  it("only use known widgets", () => {
+    for (const layout of Object.values(DEFAULT_LAYOUTS)) expect(parseLayout(layout)).toEqual(layout);
   });
 });

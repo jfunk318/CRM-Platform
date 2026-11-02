@@ -505,22 +505,32 @@ toddler), since SanMar's own size index isn't reliable.
 - `STORAGE_DIR` must be on persistent disk, and backed up, until file storage
   moves to S3/R2. Allow 55 MB request bodies at the proxy for uploads.
 
-## Dashboard
+## Dashboards
 
-The dashboard is made of widgets: Create a quote (find the customer, name the
-job, optionally a webstore quote), quick actions, my tasks, assigned to me,
-the shop floor, sales this month, recent quotes, due this week, store
-requests and setup reminders. Each person only gets widgets their roles
-allow (`src/lib/dashboard/widgets.ts`).
+Sales, Production and Web each open on their own dashboard (Sales is the
+back office's home; Production and Web are the first item in their menus).
+Each is made of widgets, and starts with ones for its work:
+
+- **Sales:** Create a quote (find the customer, name the job, optionally a
+  webstore quote), quick actions, sales this month, my tasks, assigned to
+  me, recent quotes, due this week.
+- **Production:** the shop floor numbers, today's schedule, late jobs, in
+  progress, ready to go out, low stock, shortcuts, due this week.
+- **Web:** online sales, orders, visits and commission owed this month,
+  store requests, shortcuts, stores closing soon, closed stores waiting to
+  batch, the latest online orders.
+
+Any widget can go on any dashboard; each person only gets the ones their
+roles allow (`src/lib/dashboard/widgets.ts`).
 
 - **Customize** opens the editor on the real widgets: drag them into order
   (or use the arrows), make each a third, half or full width, remove them,
-  or add more. **Save as my dashboard** keeps it for you.
+  or add more. **Save as my dashboard** keeps it for you (for that section).
 - **Templates** (admins): save the arrangement under a name for everyone to
-  switch to, and optionally make it everyone's default. Without a choice of
-  their own, people see the default; without a default, the standard one.
-- **Admin → Staff & permissions** sets someone's dashboard to a template
-  and can **lock** it, so they see it and can't change it.
+  switch to, and optionally make it the section's default. Without a choice
+  of their own, people see the default; without one, the standard layout.
+- **Admin → Staff & permissions** sets each person's dashboard per section
+  to a template (or their own) and can **lock** it.
 
 ## Back office sections
 

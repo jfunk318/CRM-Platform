@@ -144,7 +144,7 @@ export default async function StoresDashboard({ searchParams }: { searchParams: 
         </table>
       </div>
 
-      <details className="card" open={all.length === 0 && !q}>
+      <details className="card" id="new-store" open={all.length === 0 && !q}>
         <summary className="cursor-pointer font-medium text-brand-700">+ New affiliate store</summary>
         <ActionForm action={createStoreAction} submitLabel="Create store" className="mt-4 grid gap-3 sm:grid-cols-4 sm:items-end">
           <div>

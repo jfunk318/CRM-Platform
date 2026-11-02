@@ -6,6 +6,7 @@ import type { StaffContext } from "@/lib/auth/session";
 import { PLATFORM_NAME } from "@/lib/platform";
 import { logout } from "@/app/admin/(auth)/login/actions";
 import { LiveRequestBadge } from "./live-request-badge";
+import { HashOpener } from "./hash-opener";
 import { NavProvider, SideNav } from "./side-nav";
 import { dueTaskCount } from "@/lib/crm/tasks";
 
@@ -66,7 +67,10 @@ export async function AdminShell({ staff, children }: { staff: StaffContext; chi
           </div>
           <div className="px-5 pb-4 text-[11px] text-gray-500">Powered by {PLATFORM_NAME}</div>
         </aside>
-        <main className="min-w-0 flex-1 px-4 py-6 md:px-9 md:py-8">{children}</main>
+        <main className="min-w-0 flex-1 px-4 py-6 md:px-9 md:py-8">
+          {children}
+          <HashOpener />
+        </main>
       </div>
     </NavProvider>
   );

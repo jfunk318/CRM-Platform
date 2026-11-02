@@ -158,6 +158,7 @@ model Business {
   placementGuides        Json?
   cartFiles              CartFile[]
   dashboardLayouts       DashboardLayout[]
+  staffDashboards        StaffDashboard[]
 }
 
 // People who run the platform itself (not staff of a business).
@@ -230,11 +231,8 @@ model StaffUser {
   tasksCreated      Task[]              @relation("TaskCreator")
   tasksDone         Task[]              @relation("TaskDoneBy")
   commissionPayouts CommissionPayout[]
-  // The dashboard this person sees (their own or a shared one); empty = the
-  // business default. Locked: set by an admin, and they can't change it.
-  dashboardId       String?
-  dashboard         DashboardLayout?    @relation("StaffDashboard", fields: [businessId, dashboardId], references: [businessId, id], onDelete: NoAction)
-  dashboardLocked   Boolean             @default(false)
+  // The dashboard this person sees in each section (Sales, Production, Web).
+  dashboards        StaffDashboard[]
   dashboardsOwned   DashboardLayout[]   @relation("DashboardOwner")
 
   @@unique([businessId, id])
@@ -2312,19 +2310,38 @@ model CatalogImport {
 // (owner set) or shared with everyone as a template (owner empty). One can be
 // the business's default.
 model DashboardLayout {
-  id         String      @id @default(cuid())
+  id         String           @id @default(cuid())
   businessId String
-  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business   Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name       String
   // [{ key: "create-quote", size: "half" }, …] (lib/dashboard/widgets.ts)
   widgets    Json
   ownerId    String?
-  owner      StaffUser?  @relation("DashboardOwner", fields: [businessId, ownerId], references: [businessId, id], onDelete: Cascade)
-  isDefault  Boolean     @default(false)
-  usedBy     StaffUser[] @relation("StaffDashboard")
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  owner      StaffUser?       @relation("DashboardOwner", fields: [businessId, ownerId], references: [businessId, id], onDelete: Cascade)
+  // Which section's dashboard it's for: "sales", "production" or "web".
+  section    String           @default("sales")
+  // The business default for its section.
+  isDefault  Boolean          @default(false)
+  usedBy     StaffDashboard[]
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
 
   @@unique([businessId, id])
   @@index([businessId, ownerId])
+}
+
+// The dashboard a staff member sees in a section (their own or a shared
+// one); no row = the business default. Locked: set by an admin, and they
+// can't change it.
+model StaffDashboard {
+  businessId String
+  business   Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  staffId    String
+  staff      StaffUser        @relation(fields: [businessId, staffId], references: [businessId, id], onDelete: Cascade)
+  section    String
+  layoutId   String?
+  layout     DashboardLayout? @relation(fields: [businessId, layoutId], references: [businessId, id], onDelete: Cascade)
+  locked     Boolean          @default(false)
+
+  @@id([staffId, section])
 }

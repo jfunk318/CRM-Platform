@@ -28,6 +28,7 @@ export const NAV: NavItem[] = [
   { href: "/admin/customers", label: "Customers", area: "sales", roles: ["SALES"] },
   { href: "/admin/price-check", label: "Price check", area: "sales", roles: ["SALES"] },
 
+  { href: "/admin/production/dashboard", label: "Dashboard", area: "production", roles: ["PRODUCTION", "PURCHASING", "SHIPPING"] },
   { href: "/admin/production", label: "Production board", area: "production", roles: ["PRODUCTION"] },
   { href: "/admin/production/calendar", label: "Calendar", area: "production", roles: ["PRODUCTION"] },
   { href: "/admin/shipping", label: "Shipping", area: "production", roles: ["SHIPPING"] },
@@ -35,6 +36,7 @@ export const NAV: NavItem[] = [
   { href: "/admin/inventory", label: "Inventory", area: "production", roles: ["PURCHASING"] },
   { href: "/admin/suppliers", label: "Suppliers", area: "production", roles: ["PURCHASING"] },
 
+  { href: "/admin/stores/dashboard", label: "Dashboard", area: "web", roles: ["STORE_MANAGER"] },
   { href: "/admin/stores", label: "All stores", area: "web", roles: ["STORE_MANAGER"], requests: true },
   { href: "/admin/stores/groups", label: "Store groups", area: "web", roles: ["STORE_MANAGER"] },
   { href: "/admin/stores/main-site", label: "Main site", area: "web", roles: ["STORE_MANAGER"] },

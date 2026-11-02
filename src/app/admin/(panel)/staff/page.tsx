@@ -4,14 +4,15 @@ import { MIN_PASSWORD_LENGTH } from "@/lib/auth/password";
 import { ALL_ROLES, ROLE_LABELS } from "@/lib/auth/roles";
 import { ActionForm } from "@/components/admin/action-form";
 import { ListRow } from "@/components/admin/list-row";
+import { type Section, SECTIONS } from "@/lib/dashboard/widgets";
 import { createStaff, saveStaff } from "./actions";
 
 export default async function StaffPage() {
   const me = await requireStaff(["ADMIN"]);
   const { db } = me;
   const [staff, templates] = await Promise.all([
-    db.staffUser.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }], include: { dashboard: { select: { ownerId: true } } } }),
-    db.dashboardLayout.findMany({ where: { ownerId: null }, orderBy: { name: "asc" }, select: { id: true, name: true, isDefault: true } }),
+    db.staffUser.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }], include: { dashboards: { include: { layout: { select: { ownerId: true, name: true } } } } } }),
+    db.dashboardLayout.findMany({ where: { ownerId: null }, orderBy: { name: "asc" }, select: { id: true, name: true, isDefault: true, section: true } }),
   ]);
 
   return (
@@ -24,7 +25,11 @@ export default async function StaffPage() {
       </div>
       <div className="card divide-y divide-gray-100 p-0" data-testid="staff-list">
         {staff.map((s) => {
-          const dashboard = s.dashboard?.ownerId ? "Their own dashboard" : s.dashboardId ? (templates.find((t) => t.id === s.dashboardId)?.name ?? "A template") : "Default dashboard";
+          // Dashboards set for them (others are the defaults).
+          const dashboard = s.dashboards
+            .filter((d) => d.layout)
+            .map((d) => `${SECTIONS[d.section as Section]?.label ?? d.section}: ${d.layout!.ownerId ? "their own" : d.layout!.name}${d.locked ? " (locked)" : ""}`)
+            .join(" · ") || "Default dashboards";
           return (
             <ListRow
               key={s.id}
@@ -44,20 +49,28 @@ export default async function StaffPage() {
                       {s.id === me.id && <input type="hidden" name="active" value="on" />}
                     </label>
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-3 sm:items-end" data-testid="staff-dashboard">
-                    <div>
-                      <label className="label" htmlFor={`dash-${s.id}`}>Dashboard</label>
-                      <select className="input" id={`dash-${s.id}`} name="dashboardId" defaultValue={s.dashboard?.ownerId ? "own" : (s.dashboardId ?? "")}>
-                        <option value="">The business default</option>
-                        {s.dashboard?.ownerId && <option value="own">Their own</option>}
-                        {templates.map((t) => <option key={t.id} value={t.id}>{t.name}{t.isDefault ? " (default)" : ""}</option>)}
-                      </select>
+                  <fieldset data-testid="staff-dashboard">
+                    <legend className="label">Dashboards</legend>
+                    <div className="space-y-2">
+                      {(Object.keys(SECTIONS) as Section[]).map((section) => {
+                        const choice = s.dashboards.find((d) => d.section === section);
+                        const own = choice?.layout?.ownerId === s.id;
+                        return (
+                          <div key={section} className="grid items-center gap-3 sm:grid-cols-[7rem_1fr_auto]">
+                            <label className="text-sm font-medium" htmlFor={`dash-${section}-${s.id}`}>{SECTIONS[section].label}</label>
+                            <select className="input" id={`dash-${section}-${s.id}`} name={`dash_${section}`} defaultValue={own ? "own" : (choice?.layoutId ?? "")}>
+                              <option value="">The business default</option>
+                              {own && <option value="own">Their own</option>}
+                              {templates.filter((t) => t.section === section).map((t) => <option key={t.id} value={t.id}>{t.name}{t.isDefault ? " (default)" : ""}</option>)}
+                            </select>
+                            <label className="flex items-center gap-2 text-sm" title="They see this dashboard and can't change it">
+                              <input type="checkbox" name={`lock_${section}`} defaultChecked={choice?.locked} /> Lock it
+                            </label>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <label className="flex items-center gap-2 pb-2 text-sm" title="They see this dashboard and can't change it">
-                      <input type="checkbox" name="dashboardLocked" defaultChecked={s.dashboardLocked} />
-                      Lock it (they can&apos;t change it)
-                    </label>
-                  </div>
+                  </fieldset>
                 </ActionForm>
               }
             >
@@ -82,10 +95,7 @@ export default async function StaffPage() {
                     ))
                   )}
                 </div>
-                <div className="w-44 text-xs text-gray-500">
-                  {dashboard}
-                  {s.dashboardLocked && " · locked"}
-                </div>
+                <div className="w-56 text-xs text-gray-500">{dashboard}</div>
               </div>
             </ListRow>
           );

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { chooseDashboardAction, deleteTemplateAction, saveMyDashboardAction, saveTemplateAction, setDefaultDashboardAction } from "@/app/admin/(panel)/dashboard-actions";
 import type { DashboardSource } from "@/lib/dashboard/layouts";
-import { DEFAULT_LAYOUT, type LayoutItem, type WidgetKey, type WidgetSize } from "@/lib/dashboard/widgets";
+import { DEFAULT_LAYOUTS, type LayoutItem, type Section, SECTIONS, type WidgetKey, type WidgetSize } from "@/lib/dashboard/widgets";
 import { ActionForm } from "../action-form";
 
 type WidgetInfo = { key: WidgetKey; title: string; description: string };
@@ -20,6 +20,8 @@ const SIZE_LABEL: Record<WidgetSize, string> = { third: "⅓", half: "½", full:
  * template everyone can use, optionally everyone's default.
  */
 export function DashboardBoard({
+  section,
+  title,
   name,
   layout: initial,
   rendered,
@@ -29,6 +31,9 @@ export function DashboardBoard({
   isAdmin,
   editing,
 }: {
+  section: Section;
+  /** The heading; the Sales dashboard welcomes the person instead. */
+  title?: string;
   name: string;
   layout: LayoutItem[];
   rendered: Partial<Record<WidgetKey, React.ReactNode>>;
@@ -45,6 +50,9 @@ export function DashboardBoard({
   const info = (k: WidgetKey) => widgets.find((w) => w.key === k)!;
   const unused = widgets.filter((w) => !layout.some((i) => i.key === w.key));
   const json = JSON.stringify(layout);
+  const path = SECTIONS[section].path;
+  // Every form here says which section's dashboard it's about.
+  const sectionField = <input type="hidden" name="section" value={section} />;
 
   const move = (from: WidgetKey, to: WidgetKey) =>
     setLayout((l) => {
@@ -71,13 +79,13 @@ export function DashboardBoard({
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="page-title">Welcome, {name}</h1>
+          <h1 className="page-title">{title ?? `Welcome, ${name}`}</h1>
           {!editing && source.locked && <p className="mt-1 text-xs text-gray-500">Your dashboard ({source.name}) is set by an admin.</p>}
         </div>
         {!editing && !source.locked && (
           <div className="flex flex-wrap items-center gap-2">
             {choices.length > 0 && (
-              <ActionForm action={chooseDashboardAction} submitLabel="Use" className="flex items-center gap-2">
+              <ActionForm action={chooseDashboardAction} submitLabel="Use" className="flex items-center gap-2">{sectionField}
                 <label className="sr-only" htmlFor="db-choose">Dashboard</label>
                 <select className="input w-auto" id="db-choose" name="layoutId" defaultValue={source.businessDefault ? "" : (source.id ?? "")}>
                   <option value="">The business default</option>
@@ -87,7 +95,7 @@ export function DashboardBoard({
                 </select>
               </ActionForm>
             )}
-            <Link href="/admin?edit=1" className="btn-secondary" data-testid="customize">Customize</Link>
+            <Link href={`${path}?edit=1`} className="btn-secondary" data-testid="customize">Customize</Link>
           </div>
         )}
       </div>
@@ -97,8 +105,8 @@ export function DashboardBoard({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-brand-900">Drag widgets to reorder them (or use the arrows), pick a size, remove what you don&apos;t need, and add more below.</p>
             <div className="flex gap-2">
-              <button type="button" className="btn-secondary" onClick={() => setLayout(DEFAULT_LAYOUT.filter((i) => widgets.some((w) => w.key === i.key)))}>Start over</button>
-              <Link href="/admin" className="btn-secondary">Done</Link>
+              <button type="button" className="btn-secondary" onClick={() => setLayout(DEFAULT_LAYOUTS[section].filter((i) => widgets.some((w) => w.key === i.key)))}>Start over</button>
+              <Link href={path} className="btn-secondary">Done</Link>
             </div>
           </div>
           {unused.length > 0 && (
@@ -111,11 +119,11 @@ export function DashboardBoard({
             </div>
           )}
           <div className="flex flex-wrap items-start gap-6 border-t border-brand-200 pt-3">
-            <ActionForm action={saveMyDashboardAction} submitLabel="Save as my dashboard" className="flex items-center gap-3">
+            <ActionForm action={saveMyDashboardAction} submitLabel="Save as my dashboard" className="flex items-center gap-3">{sectionField}
               <input type="hidden" name="layout" value={json} />
             </ActionForm>
             {isAdmin && (
-              <ActionForm action={saveTemplateAction} submitLabel="Save as template" className="flex flex-wrap items-center gap-3">
+              <ActionForm action={saveTemplateAction} submitLabel="Save as template" className="flex flex-wrap items-center gap-3">{sectionField}
                 <input type="hidden" name="layout" value={json} />
                 <input className="input w-48" name="name" placeholder="Template name" aria-label="Template name" defaultValue={source.personal || !source.id ? "" : source.name} />
                 <label className="flex items-center gap-1.5 text-sm"><input type="checkbox" name="makeDefault" /> Everyone&apos;s default</label>
@@ -193,11 +201,11 @@ export function DashboardBoard({
                 <span className="font-medium">{c.name}{c.isDefault && <span className="ml-2 rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-800">Everyone&apos;s default</span>}</span>
                 <span className="flex gap-3">
                   {!c.isDefault && (
-                    <ActionForm action={setDefaultDashboardAction} submitLabel="Make default" className="flex items-center gap-2">
+                    <ActionForm action={setDefaultDashboardAction} submitLabel="Make default" className="flex items-center gap-2">{sectionField}
                       <input type="hidden" name="layoutId" value={c.id} />
                     </ActionForm>
                   )}
-                  <ActionForm action={deleteTemplateAction} submitLabel="Delete" danger confirm={`Delete the "${c.name}" template? Anyone using it goes back to the default.`} className="flex items-center gap-2">
+                  <ActionForm action={deleteTemplateAction} submitLabel="Delete" danger confirm={`Delete the "${c.name}" template? Anyone using it goes back to the default.`} className="flex items-center gap-2">{sectionField}
                     <input type="hidden" name="layoutId" value={c.id} />
                   </ActionForm>
                 </span>

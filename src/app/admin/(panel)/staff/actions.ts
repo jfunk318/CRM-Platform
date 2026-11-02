@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/auth/session";
 import { hashPassword, MIN_PASSWORD_LENGTH, verifyPassword } from "@/lib/auth/password";
 import { ALL_ROLES } from "@/lib/auth/roles";
+import { assignDashboard, DashboardError } from "@/lib/dashboard/layouts";
+import { type Section, SECTIONS } from "@/lib/dashboard/widgets";
 import { type ActionResult, checkbox, FormError, optionalText, runAction, text } from "@/lib/admin/form";
 
 function roles(form: FormData): StaffRole[] {
@@ -66,17 +68,21 @@ export async function saveStaff(_: ActionResult, form: FormData): Promise<Action
           ...(newPassword && { passwordHash: await hashPassword(newPassword) }),
         },
       });
-      // The dashboard they see: a template (optionally locked), their own, or the default.
-      const dashboard = optionalText(form, "dashboardId");
-      if (dashboard !== "own") {
-        if (dashboard && !(await tx.dashboardLayout.findFirst({ where: { id: dashboard, ownerId: null } }))) throw new FormError("Choose a dashboard template");
-        await tx.staffUser.update({ where: { id }, data: { dashboardId: dashboard, dashboardLocked: !!dashboard && checkbox(form, "dashboardLocked") } });
-      } else {
-        await tx.staffUser.update({ where: { id }, data: { dashboardLocked: checkbox(form, "dashboardLocked") } });
-      }
       // Deactivating or resetting a password signs them out everywhere.
       if (!active || newPassword) await tx.staffSession.deleteMany({ where: { userId: id } });
     });
+    // The dashboard they see in each section: a template or their own (optionally locked), or the default.
+    for (const section of Object.keys(SECTIONS) as Section[]) {
+      if (!form.has(`dash_${section}`)) continue;
+      const choice = optionalText(form, `dash_${section}`);
+      const layoutId = choice === "own" ? ((await db.dashboardLayout.findFirst({ where: { ownerId: id, section }, select: { id: true } }))?.id ?? null) : choice;
+      try {
+        await assignDashboard(db, id, section, layoutId, checkbox(form, `lock_${section}`));
+      } catch (e) {
+        if (e instanceof DashboardError) throw new FormError(`${SECTIONS[section].label} dashboard: ${e.message}`);
+        throw e;
+      }
+    }
     revalidatePath("/admin/staff");
     return newPassword ? "Saved; password reset and signed out of other sessions" : "Saved";
   });

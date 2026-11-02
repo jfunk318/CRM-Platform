@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { requireStaff } from "@/lib/auth/session";
 import { type ActionResult, checkbox, FormError, optionalText, runAction, text } from "@/lib/admin/form";
 import { chooseDashboard, DashboardError, deleteTemplate, saveMyDashboard, saveTemplate, setBusinessDefault } from "@/lib/dashboard/layouts";
-import { type LayoutItem, parseLayout } from "@/lib/dashboard/widgets";
+import { isSection, type LayoutItem, parseLayout, type Section, SECTIONS } from "@/lib/dashboard/widgets";
 import { createOrder, OrderError } from "@/lib/orders/service";
 
 /** Dashboard errors are user-facing. */
@@ -18,6 +18,13 @@ const run = (fn: () => Promise<string | void>) =>
       throw e;
     }
   });
+
+const sectionFrom = (form: FormData): Section => {
+  const s = form.get("section");
+  if (!isSection(s)) throw new FormError("Which dashboard?");
+  return s;
+};
+const refresh = (section: Section) => revalidatePath(SECTIONS[section].path);
 
 const layoutFrom = (form: FormData): LayoutItem[] => {
   try {
@@ -44,8 +51,9 @@ export async function createQuoteAction(_: ActionResult, form: FormData): Promis
 export async function saveMyDashboardAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   const staff = await requireStaff();
   return run(async () => {
-    await saveMyDashboard(staff.db, staff.id, layoutFrom(form));
-    revalidatePath("/admin");
+    const section = sectionFrom(form);
+    await saveMyDashboard(staff.db, staff.id, section, layoutFrom(form));
+    refresh(section);
     return "Saved as your dashboard";
   });
 }
@@ -53,9 +61,10 @@ export async function saveMyDashboardAction(_: ActionResult, form: FormData): Pr
 export async function saveTemplateAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   const staff = await requireStaff(["ADMIN"]);
   return run(async () => {
-    const id = await saveTemplate(staff.db, text(form, "name", "Template name"), layoutFrom(form));
-    if (checkbox(form, "makeDefault")) await setBusinessDefault(staff.db, id);
-    revalidatePath("/admin");
+    const section = sectionFrom(form);
+    const id = await saveTemplate(staff.db, section, text(form, "name", "Template name"), layoutFrom(form));
+    if (checkbox(form, "makeDefault")) await setBusinessDefault(staff.db, section, id);
+    refresh(section);
     return checkbox(form, "makeDefault") ? "Saved as a template and made everyone's default" : "Saved as a template everyone can use";
   });
 }
@@ -63,8 +72,9 @@ export async function saveTemplateAction(_: ActionResult, form: FormData): Promi
 export async function chooseDashboardAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   const staff = await requireStaff();
   return run(async () => {
-    await chooseDashboard(staff.db, staff.id, optionalText(form, "layoutId"));
-    revalidatePath("/admin");
+    const section = sectionFrom(form);
+    await chooseDashboard(staff.db, staff.id, section, optionalText(form, "layoutId"));
+    refresh(section);
     return "Switched";
   });
 }
@@ -72,8 +82,9 @@ export async function chooseDashboardAction(_: ActionResult, form: FormData): Pr
 export async function setDefaultDashboardAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   const staff = await requireStaff(["ADMIN"]);
   return run(async () => {
-    await setBusinessDefault(staff.db, optionalText(form, "layoutId"));
-    revalidatePath("/admin");
+    const section = sectionFrom(form);
+    await setBusinessDefault(staff.db, section, optionalText(form, "layoutId"));
+    refresh(section);
     return "Default updated";
   });
 }
@@ -81,8 +92,9 @@ export async function setDefaultDashboardAction(_: ActionResult, form: FormData)
 export async function deleteTemplateAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   const staff = await requireStaff(["ADMIN"]);
   return run(async () => {
+    const section = sectionFrom(form);
     await deleteTemplate(staff.db, text(form, "layoutId"));
-    revalidatePath("/admin");
+    refresh(section);
     return "Template deleted";
   });
 }
