@@ -157,6 +157,7 @@ model Business {
   // Placement guidelines for artwork sizing (null = the standard set).
   placementGuides        Json?
   cartFiles              CartFile[]
+  dashboardLayouts       DashboardLayout[]
 }
 
 // People who run the platform itself (not staff of a business).
@@ -229,6 +230,12 @@ model StaffUser {
   tasksCreated      Task[]              @relation("TaskCreator")
   tasksDone         Task[]              @relation("TaskDoneBy")
   commissionPayouts CommissionPayout[]
+  // The dashboard this person sees (their own or a shared one); empty = the
+  // business default. Locked: set by an admin, and they can't change it.
+  dashboardId       String?
+  dashboard         DashboardLayout?    @relation("StaffDashboard", fields: [businessId, dashboardId], references: [businessId, id], onDelete: NoAction)
+  dashboardLocked   Boolean             @default(false)
+  dashboardsOwned   DashboardLayout[]   @relation("DashboardOwner")
 
   @@unique([businessId, id])
   @@unique([businessId, email])
@@ -2299,4 +2306,25 @@ model CatalogImport {
   finishedAt  DateTime?
 
   @@unique([businessId, id])
+}
+
+// A dashboard arrangement: which widgets, in what order and size. Personal
+// (owner set) or shared with everyone as a template (owner empty). One can be
+// the business's default.
+model DashboardLayout {
+  id         String      @id @default(cuid())
+  businessId String
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name       String
+  // [{ key: "create-quote", size: "half" }, …] (lib/dashboard/widgets.ts)
+  widgets    Json
+  ownerId    String?
+  owner      StaffUser?  @relation("DashboardOwner", fields: [businessId, ownerId], references: [businessId, id], onDelete: Cascade)
+  isDefault  Boolean     @default(false)
+  usedBy     StaffUser[] @relation("StaffDashboard")
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@unique([businessId, id])
+  @@index([businessId, ownerId])
 }

@@ -66,6 +66,14 @@ export async function saveStaff(_: ActionResult, form: FormData): Promise<Action
           ...(newPassword && { passwordHash: await hashPassword(newPassword) }),
         },
       });
+      // The dashboard they see: a template (optionally locked), their own, or the default.
+      const dashboard = optionalText(form, "dashboardId");
+      if (dashboard !== "own") {
+        if (dashboard && !(await tx.dashboardLayout.findFirst({ where: { id: dashboard, ownerId: null } }))) throw new FormError("Choose a dashboard template");
+        await tx.staffUser.update({ where: { id }, data: { dashboardId: dashboard, dashboardLocked: !!dashboard && checkbox(form, "dashboardLocked") } });
+      } else {
+        await tx.staffUser.update({ where: { id }, data: { dashboardLocked: checkbox(form, "dashboardLocked") } });
+      }
       // Deactivating or resetting a password signs them out everywhere.
       if (!active || newPassword) await tx.staffSession.deleteMany({ where: { userId: id } });
     });

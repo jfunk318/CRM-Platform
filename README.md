@@ -505,6 +505,23 @@ toddler), since SanMar's own size index isn't reliable.
 - `STORAGE_DIR` must be on persistent disk, and backed up, until file storage
   moves to S3/R2. Allow 55 MB request bodies at the proxy for uploads.
 
+## Dashboard
+
+The dashboard is made of widgets: Create a quote (find the customer, name the
+job, optionally a webstore quote), quick actions, my tasks, assigned to me,
+the shop floor, sales this month, recent quotes, due this week, store
+requests and setup reminders. Each person only gets widgets their roles
+allow (`src/lib/dashboard/widgets.ts`).
+
+- **Customize** opens the editor on the real widgets: drag them into order
+  (or use the arrows), make each a third, half or full width, remove them,
+  or add more. **Save as my dashboard** keeps it for you.
+- **Templates** (admins): save the arrangement under a name for everyone to
+  switch to, and optionally make it everyone's default. Without a choice of
+  their own, people see the default; without a default, the standard one.
+- **Admin → Staff & permissions** sets someone's dashboard to a template
+  and can **lock** it, so they see it and can't change it.
+
 ## Back office sections
 
 The menu has five sections. Sales, Production and Web are switched at the
@@ -527,6 +544,27 @@ sections and pages their roles allow (`src/lib/admin/nav.ts` lists them).
   commission owed), over the last 30 days, 90 days or 12 months, compared
   with the period before. Cancelled orders and store batches (which repeat
   the stores' own orders) aren't counted.
+
+## Webstores from quotes
+
+- **For a webstore:** tick it on a quote (or when creating one from the
+  dashboard) and items can be added without quantities. They show what
+  they'd sell for in the store; the quote can't become an order until every
+  item has quantities.
+- **Create webstore** (next to a quote's items) makes a new store (from a
+  look, or a copy of another store's setup without its items), adds the
+  items to a store, or replaces a store's items (optionally its settings
+  too). The new store is named after the quote's title. Items sell every
+  size, priced as a 25-piece batch plus the store's markup. The dialog also
+  sets the owner's commission (none, a percentage, or dollars per piece),
+  the delivery options shoppers can choose, and the look: banner art or a
+  banner picture, logo, favicon and accent color. All of these stay
+  editable on the store's own tabs (Look has the favicon).
+- **Artwork** can be PNG, JPG, SVG, PDF, AI, EPS, PSD or TIFF, in the design
+  studio and the shoppers' designer: PDF and Illustrator files are rendered,
+  Photoshop files use their flattened image, EPS files their PDF copy or
+  preview, all to place on the mockup; the original file is kept for
+  production. New decorations open on Full Front.
 
 ## Look and colors
 

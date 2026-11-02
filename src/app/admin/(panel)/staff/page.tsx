@@ -8,7 +8,10 @@ import { createStaff, saveStaff } from "./actions";
 export default async function StaffPage() {
   const me = await requireStaff(["ADMIN"]);
   const { db } = me;
-  const staff = await db.staffUser.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }] });
+  const [staff, templates] = await Promise.all([
+    db.staffUser.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }], include: { dashboard: { select: { ownerId: true } } } }),
+    db.dashboardLayout.findMany({ where: { ownerId: null }, orderBy: { name: "asc" }, select: { id: true, name: true, isDefault: true } }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -32,6 +35,20 @@ export default async function StaffPage() {
                 <input type="checkbox" name="active" defaultChecked={s.active} disabled={s.id === me.id} />
                 Active
                 {s.id === me.id && <input type="hidden" name="active" value="on" />}
+              </label>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3 sm:items-end" data-testid="staff-dashboard">
+              <div>
+                <label className="label" htmlFor={`dash-${s.id}`}>Dashboard</label>
+                <select className="input" id={`dash-${s.id}`} name="dashboardId" defaultValue={s.dashboard?.ownerId ? "own" : (s.dashboardId ?? "")}>
+                  <option value="">The business default</option>
+                  {s.dashboard?.ownerId && <option value="own">Their own</option>}
+                  {templates.map((t) => <option key={t.id} value={t.id}>{t.name}{t.isDefault ? " (default)" : ""}</option>)}
+                </select>
+              </div>
+              <label className="flex items-center gap-2 pb-2 text-sm" title="They see this dashboard and can't change it">
+                <input type="checkbox" name="dashboardLocked" defaultChecked={s.dashboardLocked} />
+                Lock it (they can&apos;t change it)
               </label>
             </div>
           </ActionForm>
