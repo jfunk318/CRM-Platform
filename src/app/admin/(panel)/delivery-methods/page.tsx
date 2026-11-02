@@ -1,9 +1,10 @@
 import type { DeliveryMethod } from "@prisma/client";
 import { requireStaff } from "@/lib/auth/session";
 import { CARRIERS, DELIVERY_KIND_LABELS } from "@/lib/shipping/service";
-import { ActionButton } from "@/components/admin/action-button";
 import { ActionForm } from "@/components/admin/action-form";
-import { deleteDeliveryMethod, saveDeliveryMethod } from "../shipping/actions";
+import { ListRow } from "@/components/admin/list-row";
+import { ToggleAction } from "@/components/admin/toggle-action";
+import { deleteDeliveryMethod, saveDeliveryMethod, setDeliveryActiveAction } from "../shipping/actions";
 
 export default async function DeliveryMethodsPage() {
   const { db } = await requireStaff(["ADMIN"]);
@@ -16,31 +17,50 @@ export default async function DeliveryMethodsPage() {
       <div>
         <h1 className="page-title">Delivery methods</h1>
         <p className="text-sm text-gray-500">
-          One list for the whole business: chosen on orders now, and offered by your storefront and affiliate stores later.
-          Carrier and service codes are for the ShipStation connection (integrations phase).
+          One list for the whole business: chosen on orders and offered at checkout in your stores (each store can offer only some).
+          Untick Offered to stop using one without deleting it.
         </p>
       </div>
-      {methods.map((m) => (
-        <div key={m.id} className="card space-y-2" data-testid="delivery-method">
-          <ActionForm action={saveDeliveryMethod} className="grid gap-3 sm:grid-cols-6 sm:items-end">
-            <input type="hidden" name="id" value={m.id} />
-            <input type="hidden" name="sortOrder" value={m.sortOrder} />
-            <Fields m={m} />
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="active" defaultChecked={m.active} /> Active
-            </label>
-          </ActionForm>
-          <div className="flex items-center gap-3 text-xs text-gray-500">
-            Used on {m._count.orders} order{m._count.orders === 1 ? "" : "s"}
-            <ActionButton action={deleteDeliveryMethod} fields={{ id: m.id }} label="Delete" className="text-red-700 hover:underline" confirm={`Delete ${m.name}? Orders using it keep their shipping amount.`} />
-          </div>
-        </div>
-      ))}
-      <div className="card">
-        <h2 className="mb-2 font-semibold">Add a delivery method</h2>
-        <ActionForm action={saveDeliveryMethod} submitLabel="Add" resetOnSuccess className="grid gap-3 sm:grid-cols-6 sm:items-end">
-          <Fields />
-        </ActionForm>
+      <div className="card divide-y divide-gray-100 p-0" data-testid="delivery-methods">
+        {methods.map((m) => (
+          <ListRow
+            key={m.id}
+            testId="delivery-method"
+            editor={
+              <ActionForm action={saveDeliveryMethod} className="grid gap-3 sm:grid-cols-6 sm:items-end">
+                <input type="hidden" name="id" value={m.id} />
+                <input type="hidden" name="sortOrder" value={m.sortOrder} />
+                <input type="hidden" name="active" value={m.active ? "on" : ""} />
+                <Fields m={m} />
+              </ActionForm>
+            }
+            remove={{ action: deleteDeliveryMethod, fields: { id: m.id }, label: "Delete", confirm: `Delete ${m.name}? Orders using it keep their shipping amount.` }}
+          >
+            <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 text-sm ${m.active ? "" : "opacity-60"}`}>
+              <div className="min-w-48 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold">{m.name}</span>
+                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">{DELIVERY_KIND_LABELS[m.kind]}</span>
+                  {m.carrier && <span className="text-xs text-gray-500">{CARRIERS[m.carrier]?.name ?? m.carrier}{m.service && <> · <span className="font-mono">{m.service}</span></>}</span>}
+                </div>
+                {m.description && <div className="truncate text-xs text-gray-600">{m.description}</div>}
+              </div>
+              <div className="w-36 text-right tabular-nums">
+                <div className="font-medium">{m.price.isZero() ? "Free" : `$${m.price.toFixed(2)}`}</div>
+                {m.freeOver && <div className="text-xs text-gray-500">free over ${m.freeOver.toFixed(2)}</div>}
+              </div>
+              <div className="w-28 text-xs text-gray-500">{m._count.orders} order{m._count.orders === 1 ? "" : "s"}</div>
+              <ToggleAction action={setDeliveryActiveAction} fields={{ id: m.id }} name="active" checked={m.active} label="Offered" />
+            </div>
+          </ListRow>
+        ))}
+        <ListRow editLabel="+ Add a delivery method" testId="add-delivery-method"
+          editor={
+            <ActionForm action={saveDeliveryMethod} submitLabel="Add" resetOnSuccess className="grid gap-3 sm:grid-cols-6 sm:items-end">
+              <Fields />
+            </ActionForm>
+          }
+        />
       </div>
     </div>
   );

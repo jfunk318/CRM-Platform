@@ -109,6 +109,16 @@ export async function saveDeliveryMethod(_: ActionResult, form: FormData): Promi
   });
 }
 
+/** Turn a delivery method on or off (from its row in the list). */
+export async function setDeliveryActiveAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["ADMIN"]);
+  return runAction(async () => {
+    await db.deliveryMethod.update({ where: { id: text(form, "id") }, data: { active: checkbox(form, "active") } });
+    revalidatePath("/admin/delivery-methods");
+    return checkbox(form, "active") ? "Offered" : "Turned off";
+  });
+}
+
 /** Delete a method; orders and shipments keep its name but lose the link. */
 export async function deleteDeliveryMethod(_: ActionResult, form: FormData): Promise<ActionResult> {
   const { db } = await requireStaff(["ADMIN"]);
