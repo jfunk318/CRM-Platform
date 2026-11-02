@@ -3,6 +3,7 @@ import { requireStaff } from "@/lib/auth/session";
 import { MIN_PASSWORD_LENGTH } from "@/lib/auth/password";
 import { ALL_ROLES, ROLE_LABELS } from "@/lib/auth/roles";
 import { ActionForm } from "@/components/admin/action-form";
+import { ListRow } from "@/components/admin/list-row";
 import { createStaff, saveStaff } from "./actions";
 
 export default async function StaffPage() {
@@ -16,53 +17,92 @@ export default async function StaffPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="page-title">Staff</h1>
+        <h1 className="page-title">Staff &amp; permissions</h1>
         <p className="text-sm text-gray-500">
-          Roles control which parts of the back office each person can use. Admins can do everything.
+          Roles control which parts of the back office each person can use; admins can do everything. Edit someone to change their roles, password or dashboard.
         </p>
       </div>
-      {staff.map((s) => (
-        <div key={s.id} className={`card ${s.active ? "" : "opacity-60"}`}>
-          <ActionForm action={saveStaff}>
-            <input type="hidden" name="id" value={s.id} />
-            <StaffFields user={s} />
-            <div className="grid gap-3 sm:grid-cols-3 sm:items-end">
-              <div>
-                <label className="label" htmlFor={`pw-${s.id}`}>Reset password (optional)</label>
-                <input className="input" id={`pw-${s.id}`} name="password" type="password" autoComplete="new-password" />
+      <div className="card divide-y divide-gray-100 p-0" data-testid="staff-list">
+        {staff.map((s) => {
+          const dashboard = s.dashboard?.ownerId ? "Their own dashboard" : s.dashboardId ? (templates.find((t) => t.id === s.dashboardId)?.name ?? "A template") : "Default dashboard";
+          return (
+            <ListRow
+              key={s.id}
+              testId="staff-member"
+              editor={
+                <ActionForm action={saveStaff}>
+                  <input type="hidden" name="id" value={s.id} />
+                  <StaffFields user={s} />
+                  <div className="grid gap-3 sm:grid-cols-3 sm:items-end">
+                    <div>
+                      <label className="label" htmlFor={`pw-${s.id}`}>Reset password (optional)</label>
+                      <input className="input" id={`pw-${s.id}`} name="password" type="password" autoComplete="new-password" />
+                    </div>
+                    <label className="flex items-center gap-2 pb-2 text-sm">
+                      <input type="checkbox" name="active" defaultChecked={s.active} disabled={s.id === me.id} />
+                      Active
+                      {s.id === me.id && <input type="hidden" name="active" value="on" />}
+                    </label>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-3 sm:items-end" data-testid="staff-dashboard">
+                    <div>
+                      <label className="label" htmlFor={`dash-${s.id}`}>Dashboard</label>
+                      <select className="input" id={`dash-${s.id}`} name="dashboardId" defaultValue={s.dashboard?.ownerId ? "own" : (s.dashboardId ?? "")}>
+                        <option value="">The business default</option>
+                        {s.dashboard?.ownerId && <option value="own">Their own</option>}
+                        {templates.map((t) => <option key={t.id} value={t.id}>{t.name}{t.isDefault ? " (default)" : ""}</option>)}
+                      </select>
+                    </div>
+                    <label className="flex items-center gap-2 pb-2 text-sm" title="They see this dashboard and can't change it">
+                      <input type="checkbox" name="dashboardLocked" defaultChecked={s.dashboardLocked} />
+                      Lock it (they can&apos;t change it)
+                    </label>
+                  </div>
+                </ActionForm>
+              }
+            >
+              <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 text-sm ${s.active ? "" : "opacity-60"}`}>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-800" aria-hidden="true">
+                  {s.name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("")}
+                </span>
+                <div className="min-w-48 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold">{s.name}</span>
+                    {s.id === me.id && <span className="text-xs text-gray-500">(you)</span>}
+                    {!s.active && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">Inactive</span>}
+                  </div>
+                  <div className="truncate text-xs text-gray-600">{s.email}</div>
+                </div>
+                <div className="flex flex-1 flex-wrap gap-1" data-testid="staff-roles">
+                  {s.roles.length === 0 ? (
+                    <span className="text-xs text-gray-500">No roles</span>
+                  ) : (
+                    s.roles.map((r) => (
+                      <span key={r} className={`rounded-full px-2 py-0.5 text-xs ${r === "ADMIN" ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-700"}`}>{ROLE_LABELS[r]}</span>
+                    ))
+                  )}
+                </div>
+                <div className="w-44 text-xs text-gray-500">
+                  {dashboard}
+                  {s.dashboardLocked && " · locked"}
+                </div>
               </div>
-              <label className="flex items-center gap-2 pb-2 text-sm">
-                <input type="checkbox" name="active" defaultChecked={s.active} disabled={s.id === me.id} />
-                Active
-                {s.id === me.id && <input type="hidden" name="active" value="on" />}
-              </label>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3 sm:items-end" data-testid="staff-dashboard">
-              <div>
-                <label className="label" htmlFor={`dash-${s.id}`}>Dashboard</label>
-                <select className="input" id={`dash-${s.id}`} name="dashboardId" defaultValue={s.dashboard?.ownerId ? "own" : (s.dashboardId ?? "")}>
-                  <option value="">The business default</option>
-                  {s.dashboard?.ownerId && <option value="own">Their own</option>}
-                  {templates.map((t) => <option key={t.id} value={t.id}>{t.name}{t.isDefault ? " (default)" : ""}</option>)}
-                </select>
+            </ListRow>
+          );
+        })}
+        <ListRow
+          editLabel="+ Add a staff member"
+          testId="add-staff"
+          editor={
+            <ActionForm action={createStaff} submitLabel="Add staff member" resetOnSuccess>
+              <StaffFields />
+              <div className="max-w-xs">
+                <label className="label" htmlFor="pw-new">Temporary password (min {MIN_PASSWORD_LENGTH} characters)</label>
+                <input className="input" id="pw-new" name="password" type="password" autoComplete="new-password" required />
               </div>
-              <label className="flex items-center gap-2 pb-2 text-sm" title="They see this dashboard and can't change it">
-                <input type="checkbox" name="dashboardLocked" defaultChecked={s.dashboardLocked} />
-                Lock it (they can&apos;t change it)
-              </label>
-            </div>
-          </ActionForm>
-        </div>
-      ))}
-      <div className="card">
-        <h2 className="mb-2 font-semibold">Add staff</h2>
-        <ActionForm action={createStaff} submitLabel="Add staff member" resetOnSuccess>
-          <StaffFields />
-          <div className="max-w-xs">
-            <label className="label" htmlFor="pw-new">Temporary password (min {MIN_PASSWORD_LENGTH} characters)</label>
-            <input className="input" id="pw-new" name="password" type="password" autoComplete="new-password" required />
-          </div>
-        </ActionForm>
+            </ActionForm>
+          }
+        />
       </div>
     </div>
   );
