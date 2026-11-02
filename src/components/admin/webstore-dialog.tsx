@@ -5,6 +5,9 @@ import type { ActionResult } from "@/lib/admin/form";
 import { slugify } from "@/lib/catalog/products";
 import { ActionForm } from "./action-form";
 import { FilePicker } from "@/components/file-picker";
+import { DesignMockups } from "@/components/design-mockups";
+import type { DesignMockup } from "@/lib/design/mockups";
+import { ProductThumb } from "./product-thumb";
 
 /** A store's current settings, shown (and changeable) in the dialog. */
 export type StoreSettings = {
@@ -18,6 +21,18 @@ export type StoreSettings = {
   hasHero: boolean;
   hasLogo: boolean;
   hasFavicon: boolean;
+};
+/** An item on the quote, as the dialog lists it. */
+export type WebstoreLine = {
+  id: string;
+  name: string;
+  styleCode: string;
+  color: string;
+  colorHex: string | null;
+  qty: number;
+  decorations: string;
+  mockups: DesignMockup[] | null;
+  thumbUrl: string | null;
 };
 export type WebstoreTarget = { id: string; name: string; main: boolean; items: number; fromThisOrder: number; settings: StoreSettings };
 type Option = { key: string; label: string };
@@ -46,7 +61,7 @@ export function WebstoreDialog({
 }: {
   action: (prev: ActionResult, form: FormData) => Promise<ActionResult>;
   orderId: string;
-  lines: { id: string; label: string; qty: number }[];
+  lines: WebstoreLine[];
   stores: WebstoreTarget[];
   /** From the quote's title (empty if it has none). */
   defaultName: string;
@@ -171,16 +186,7 @@ export function WebstoreDialog({
               )}
 
               <Step n={3} title="Items to sell" />
-              <fieldset className="space-y-1">
-                <legend className="sr-only">Items</legend>
-                {lines.map((l) => (
-                  <label key={l.id} className="flex items-center gap-2">
-                    <input type="checkbox" name="lineIds" value={l.id} defaultChecked /> {l.label}
-                    {l.qty > 0 && <span className="text-xs text-gray-500">({l.qty} on the quote)</span>}
-                  </label>
-                ))}
-                <p className="text-xs text-gray-500">Each item sells every size its color comes in, priced as a 25-piece batch plus the store&apos;s markup.</p>
-              </fieldset>
+              <ItemsPicker lines={lines} />
 
               <Step n={4} title="Store settings" note={mode === "new" ? (from ? `Copied from ${from.name}; change anything here.` : "Set up now; all of it can be changed later on the store's tabs.") : `${store?.name ?? "The store"}'s current settings. Change anything here and it's saved with the items.`} />
               <SettingsFields key={settingsKey} current={current} deliveries={deliveries} arts={arts.filter((a) => a.theme === (theme ?? current.theme))} />
@@ -290,5 +296,70 @@ function SettingsFields({ current, deliveries, arts }: { current: StoreSettings;
         </div>
       </section>
     </div>
+  );
+}
+
+/** Step 3: every item by default, or tick the ones to sell; listed like the quote's items. */
+function ItemsPicker({ lines }: { lines: WebstoreLine[] }) {
+  const [all, setAll] = useState(true);
+  const [picked, setPicked] = useState<string[]>(lines.map((l) => l.id));
+  return (
+    <fieldset className="space-y-3" data-testid="ws-items">
+      <legend className="sr-only">Items to sell</legend>
+      <div className="flex flex-wrap gap-4">
+        <label className="flex items-center gap-2">
+          <input type="radio" checked={all} onChange={() => setAll(true)} /> All {lines.length} item{lines.length === 1 ? "" : "s"}
+        </label>
+        <label className="flex items-center gap-2">
+          <input type="radio" checked={!all} onChange={() => setAll(false)} /> Choose items
+        </label>
+        {!all && <span className="text-xs text-gray-500 self-center">{picked.length} of {lines.length} chosen</span>}
+      </div>
+      <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200">
+        {lines.map((l) => {
+          const on = all || picked.includes(l.id);
+          return (
+            <li key={l.id}>
+              <label className={`flex items-center gap-3 px-3 py-2 ${all ? "" : "cursor-pointer hover:bg-gray-50"} ${on ? "" : "opacity-50"}`}>
+                {all ? (
+                  <input type="hidden" name="lineIds" value={l.id} />
+                ) : (
+                  <input type="checkbox" name="lineIds" value={l.id} checked={on} onChange={(e) => setPicked((p) => (e.target.checked ? [...p, l.id] : p.filter((x) => x !== l.id)))} aria-label={`Sell ${l.name} in ${l.color}`} />
+                )}
+                <Thumb line={l} />
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="font-semibold">{l.name}</span>
+                    <span className="font-mono text-xs text-gray-500">{l.styleCode}</span>
+                    <span className="flex items-center gap-1 text-gray-600">
+                      <span className="inline-block h-2.5 w-2.5 rounded-full border" style={{ background: l.colorHex ?? "#fff" }} />
+                      {l.color}
+                    </span>
+                  </span>
+                  <span className="block truncate text-xs text-gray-600">
+                    {l.decorations}
+                    {l.qty > 0 && <> · {l.qty} on the quote</>}
+                  </span>
+                </span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="text-xs text-gray-500">Each item sells every size its color comes in, priced as a 25-piece batch plus the store&apos;s markup.</p>
+    </fieldset>
+  );
+}
+
+/** A small mockup (or product photo); hover or focus for a bigger look. */
+function Thumb({ line }: { line: WebstoreLine }) {
+  const small = line.mockups ? <DesignMockups mockups={line.mockups.slice(0, 1)} artBase="/admin/files/" className="w-10" compact /> : <ProductThumb url={line.thumbUrl} label={line.styleCode} size={40} />;
+  return (
+    <span className="group relative shrink-0" tabIndex={0} aria-label={`Preview of ${line.name}`}>
+      {small}
+      <span className="pointer-events-none absolute top-0 left-12 z-20 hidden rounded-lg border border-gray-200 bg-white p-2 shadow-xl group-hover:block group-focus:block">
+        {line.mockups ? <DesignMockups mockups={line.mockups} artBase="/admin/files/" className="w-48" /> : <ProductThumb url={line.thumbUrl} label={line.styleCode} size={192} />}
+      </span>
+    </span>
   );
 }

@@ -317,8 +317,14 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                   orderId={order.id}
                   lines={order.lines.map((l) => ({
                     id: l.id,
-                    label: `${l.design.product.styleCode} ${l.design.product.name} · ${l.design.color.name}`,
+                    name: l.design.product.name,
+                    styleCode: l.design.product.styleCode,
+                    color: l.design.color.name,
+                    colorHex: l.design.color.hex,
                     qty: l.sizes.reduce((n, s) => n + s.qty, 0),
+                    decorations: l.design.decorations.map((d) => `${d.location} ${d.method.shortName}`).join(" | ") || "Blank (no decoration)",
+                    mockups: mockups.get(l.designId) ?? null,
+                    thumbUrl: lineThumbs.get(l.design.colorId) ?? null,
                   }))}
                   stores={publishStores.map((s) => ({
                     id: s.id,
