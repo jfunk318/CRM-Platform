@@ -315,13 +315,11 @@ Areas adjusted by hand in the product editor are never moved again.
 
 ## Main site, affiliate stores and checkout
 
-- **Two areas in the back office.** "Business" is the CRM, orders,
-  production, purchasing and shipping. "Affiliate stores" is where stores
-  are run. The switcher at the top only appears for staff with the **Store
-  manager** role (and admins).
+- **The stores live under Web** in the back office (see "Back office
+  sections" above), for staff with the **Store manager** role (and admins).
 - **Affiliate stores** are stores the business runs for its customers, each
   at its own subdomain: `store1.companyname.com` (in development
-  `http://store1.companyname.localhost:3000`). Affiliate stores → All stores
+  `http://store1.companyname.localhost:3000`). Web → All stores
   lists them with search, filters (group, status, manager) and views
   (newest, highest sales, closing soon). Each store has a dashboard:
   Overview (sales, latest orders), Items, Pages, Codes and Settings
@@ -330,7 +328,7 @@ Areas adjusted by hand in the product editor are never moved again.
 - **Store groups** (Schools, Teams…) carry settings their stores inherit:
   business defaults → group → store.
 - **The main site** (the business's own address) is managed the same way
-  under Affiliate stores → Main site. It sells the business's own items,
+  under Web → Main site. It sells the business's own items,
   offers the blank catalog and quote requests, and shows the stores.
 - **Look** (store → Look): every store (and the main site) has a theme:
   **Minimal** (clean white, modern sans-serif, split banner), **Team /
@@ -394,8 +392,8 @@ Areas adjusted by hand in the product editor are never moved again.
   the store is closed or private. They see the sections you turn on
   (sales, orders with names and numbers, codes and their use, commission,
   requests) plus the store's contacts. **Requests** they send are emailed to
-  you, posted to Slack if a webhook is saved (Defaults & payments), and
-  flagged live in the back office: a red count next to Affiliate stores /
+  you, posted to Slack if a webhook is saved (Admin → Payments & store defaults), and
+  flagged live in the back office: a red count next to Web /
   All stores (checked every 30 seconds), on the store's row and its Requests
   tab. Answer them there (the owner is emailed) or make a draft quote from
   one; a store can make the quote automatically (`src/lib/store/portal.ts`).
@@ -406,11 +404,11 @@ Areas adjusted by hand in the product editor are never moved again.
   updates the ones published from that quote/order before (names, uploaded
   pictures and price overrides stay), or replaces everything in the store.
   The order's activity records each publish (`src/lib/store/publish.ts`).
-- **Promo and gift codes** are one list for all stores (Affiliate stores →
+- **Promo and gift codes** are one list for all stores (Web →
   Promo codes / Gift codes); each works in every store or only chosen ones,
   and each store's Codes tab shows what it accepts and how they were used.
 - **Checkout**: cart, codes, delivery methods, tax, Stripe on the business's
-  own account (Affiliate stores → Defaults & payments; keys encrypted with
+  own account (Admin → Integrations → Payments & store defaults; keys encrypted with
   `APP_SECRET`), optional pay later, a test payment page in development.
   Orders from every store land in Orders tagged "Online" with the store's
   name; quote requests from the main site land in Quotes as "Web request".
@@ -506,6 +504,29 @@ toddler), since SanMar's own size index isn't reliable.
   (`/api/cron/store-batches` does just the batching.)
 - `STORAGE_DIR` must be on persistent disk, and backed up, until file storage
   moves to S3/R2. Allow 55 MB request bodies at the proxy for uploads.
+
+## Back office sections
+
+The menu has five sections. Sales, Production and Web are switched at the
+top; Admin and Reporting sit at the bottom. Each person only sees the
+sections and pages their roles allow (`src/lib/admin/nav.ts` lists them).
+
+- **Sales:** dashboard, tasks, leads, pipeline, quotes, orders, customers,
+  price check.
+- **Production:** the production board and calendar, shipping, purchasing,
+  inventory, suppliers.
+- **Web:** affiliate stores, store groups, the main site, promo and gift
+  codes.
+- **Admin:** setup. Shop & tax, staff & permissions, order statuses,
+  delivery methods, automations; the catalog and pricing (products,
+  categories, decoration methods, pricing, placement guides); and
+  integrations (payment keys and store defaults).
+- **Reporting:** sales (booked, payments, quote win rate, by month, top
+  customers, what's owed), production (jobs finished, on-time rate,
+  turnaround, by method) and stores (online sales, visits, conversion,
+  commission owed), over the last 30 days, 90 days or 12 months, compared
+  with the period before. Cancelled orders and store batches (which repeat
+  the stores' own orders) aren't counted.
 
 ## Look and colors
 
