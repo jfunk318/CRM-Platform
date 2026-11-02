@@ -146,7 +146,8 @@ export async function createOrder(
   return id;
 }
 
-async function validateLine(db: BusinessDb, spec: LineSpec) {
+/** `optionalQty`: a webstore quote's item, which doesn't need quantities. */
+async function validateLine(db: BusinessDb, spec: LineSpec, o: { optionalQty?: boolean } = {}) {
   const product = await db.product.findUnique({
     where: { id: spec.productId },
     include: { colors: true, sizes: true, variants: { where: { colorId: spec.colorId } } },
@@ -155,7 +156,7 @@ async function validateLine(db: BusinessDb, spec: LineSpec) {
   const color = product.colors.find((c) => c.id === spec.colorId);
   if (!color) throw new OrderError("Choose a color");
   const sizes = Object.entries(spec.quantities).filter(([, q]) => q > 0);
-  if (sizes.length === 0) throw new OrderError("Enter a quantity for at least one size");
+  if (sizes.length === 0 && !o.optionalQty) throw new OrderError("Enter a quantity for at least one size");
   for (const [sizeId, qty] of sizes) {
     if (!Number.isInteger(qty)) throw new OrderError("Quantities must be whole numbers");
     const size = product.sizes.find((s) => s.id === sizeId);
@@ -269,7 +270,8 @@ async function listArtworkOnOrder(tx: BusinessTx, businessId: string, orderId: s
 
 export async function addLine(db: BusinessDb, orderId: string, spec: LineSpec, staffId: string | null): Promise<string> {
   const businessId = db.$businessId;
-  const { product, color, sizes } = await validateLine(db, spec);
+  const { forStore } = await db.order.findUniqueOrThrow({ where: { id: orderId }, select: { forStore: true } });
+  const { product, color, sizes } = await validateLine(db, spec, { optionalQty: forStore });
   const roster = rosterRows(spec, product.sizes, sizes, []);
   await checkArtwork(db, spec);
   const lineId = await db.$transaction(async (tx) => {
@@ -311,7 +313,8 @@ export async function addLine(db: BusinessDb, orderId: string, spec: LineSpec, s
  */
 export async function updateLine(db: BusinessDb, lineId: string, spec: LineSpec, staffId: string | null): Promise<void> {
   const businessId = db.$businessId;
-  const { product, color, sizes } = await validateLine(db, spec);
+  const { order: owner } = await db.orderLine.findUniqueOrThrow({ where: { id: lineId }, select: { order: { select: { forStore: true } } } });
+  const { product, color, sizes } = await validateLine(db, spec, { optionalQty: owner.forStore });
   const line = await db.orderLine.findUniqueOrThrow({
     where: { id: lineId },
     include: {
@@ -435,6 +438,8 @@ export async function convertQuote(db: BusinessDb, quoteId: string, staffId: str
     if (quote.type !== "QUOTE") throw new OrderError("Only quotes can be converted");
     if (quote.convertedTo) throw new OrderError(`Already converted to order ${orderRef(quote.convertedTo)}`);
     if (quote.lines.length === 0) throw new OrderError("Add at least one item before converting");
+    const noQty = quote.lines.filter((l) => l.sizes.every((s) => s.qty === 0));
+    if (noQty.length) throw new OrderError(`${noQty.length} item${noQty.length === 1 ? " has" : "s have"} no quantities. Enter them first, or publish this quote to a webstore instead`);
     const problems = quote.lines.filter((l) => (l.issues as { severity: string }[]).some((i) => i.severity === "error"));
     if (problems.length) {
       throw new OrderError(`Fix the pricing problems on ${problems.length} item(s) before converting`);

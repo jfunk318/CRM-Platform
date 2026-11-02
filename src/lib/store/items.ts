@@ -10,6 +10,9 @@ import { type DecorationRequest, LineRequestError, loadLineItemInput } from "@/l
 
 export type ItemDecoration = DecorationSpec;
 
+/** Store items are priced as a batch of this many, garment and decoration. */
+export const STORE_BATCH_QTY = 25;
+
 /**
  * Per-size base prices for a decorated product as if ordered in a batch of
  * `batchQty`: garment plus decoration at that quantity's price break, with

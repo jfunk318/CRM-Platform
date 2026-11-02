@@ -8,6 +8,8 @@ import { orderRef } from "@/lib/orders/numbers";
 import type { Fee, PricingIssue } from "@/lib/pricing";
 import { ActionForm } from "@/components/admin/action-form";
 import { LineRow } from "@/components/admin/line-row";
+import { ToggleAction } from "@/components/admin/toggle-action";
+import { basePricesFor, STORE_BATCH_QTY } from "@/lib/store/items";
 import { LineEditor, type LineValue } from "@/components/admin/line-editor";
 import { BulkDecorate } from "@/components/admin/bulk-decorate";
 import { ProductThumb } from "@/components/admin/product-thumb";
@@ -37,6 +39,7 @@ import {
   releaseFromBatchAction,
   removeLineAction,
   saveDetailsAction,
+  setForStoreAction,
   setStatusAction,
   updateLineAction,
 } from "../actions";
@@ -122,6 +125,29 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       ])
     : [[], []];
   const storeName = order.customer.company?.name ?? `${order.customer.firstName} ${order.customer.lastName}`.trim();
+  // A webstore quote's items without quantities: what each would sell for, as a batch.
+  const storePrices = new Map<string, { low: Prisma.Decimal; high: Prisma.Decimal } | { error: string }>();
+  if (order.forStore) {
+    for (const line of order.lines.filter((l) => l.sizes.every((s) => s.qty === 0))) {
+      const variants = await db.productVariant.findMany({ where: { productId: line.design.productId, colorId: line.design.colorId, active: true }, select: { sizeId: true } });
+      try {
+        const prices = [
+          ...(
+            await basePricesFor(db, {
+              productId: line.design.productId,
+              colorId: line.design.colorId,
+              sizeIds: variants.map((v) => v.sizeId),
+              decorations: line.design.decorations.map((d) => ({ methodId: d.methodId, location: d.location, colors: d.colors, stitches: d.stitches, widthIn: d.widthIn?.toNumber() ?? null, heightIn: d.heightIn?.toNumber() ?? null })),
+              batchQty: STORE_BATCH_QTY,
+            })
+          ).values(),
+        ];
+        if (prices.length) storePrices.set(line.id, { low: Prisma.Decimal.min(...prices), high: Prisma.Decimal.max(...prices) });
+      } catch (e) {
+        storePrices.set(line.id, { error: e instanceof Error ? e.message : "Couldn't be priced" });
+      }
+    }
+  }
   const lineValue = (line: (typeof order.lines)[number]): LineValue => ({
     productId: line.design.productId,
     colorId: line.design.colorId,
@@ -255,7 +281,20 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
         <div className="space-y-6">
           <section className="space-y-3">
-            <h2 className="font-semibold">Items</h2>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="font-semibold">Items</h2>
+              {isQuote && editable && (
+                <ToggleAction
+                  action={setForStoreAction}
+                  fields={{ orderId: order.id }}
+                  name="forStore"
+                  checked={order.forStore}
+                  label="For a webstore (no quantities needed)"
+                  title={`Items can be added without quantities; they're priced for the store as ${STORE_BATCH_QTY}-piece batches`}
+                  testId="for-store"
+                />
+              )}
+            </div>
             {order.lines.length === 0 && <p className="text-sm text-gray-500">No items yet.</p>}
             {order.lines.length > 0 && (
               <div className="card divide-y divide-gray-100 p-0" data-testid="lines">
@@ -306,7 +345,19 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                       </div>
                       {/* Sizes in one line, smallest to largest, with the price each. */}
                       <div className="flex flex-wrap items-center gap-x-2 text-gray-700" data-testid="line-sizes">
-                        <span className="font-medium">{qty} pcs</span>
+                        {qty === 0 && order.forStore ? (
+                          <span className="text-gray-600" data-testid="store-price">
+                            For the webstore, every size
+                            {(() => {
+                              const p = storePrices.get(line.id);
+                              if (!p) return null;
+                              if ("error" in p) return <span className="text-warn-800"> · {p.error}</span>;
+                              return <> · sells from {money(p.low)}{!p.low.equals(p.high) && <>–{money(p.high)}</>} each before markup ({STORE_BATCH_QTY}-piece batch)</>;
+                            })()}
+                          </span>
+                        ) : (
+                          <span className="font-medium">{qty} pcs</span>
+                        )}
                         {sizes.length > 0 && (
                           <span className="text-gray-500">
                             {sizes.map((s, i) => (
@@ -317,7 +368,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                             ))}
                           </span>
                         )}
-                        <span className="text-xs text-gray-500">
+                        <span className={`text-xs text-gray-500 ${qty === 0 ? "hidden" : ""}`}>
                           {onePrice ? `${money(sizes[0]?.unitPrice ?? 0)} each` : sizes.map((s) => `${s.size.code} ${money(s.unitPrice)}`).join(" · ") + " each"}
                         </span>
                       </div>

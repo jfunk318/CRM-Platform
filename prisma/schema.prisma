@@ -1139,6 +1139,8 @@ model Order {
   placedAt         DateTime? // when a shopper placed it online
   // The store owner's commission on this order, worked out when it was placed.
   commission       Decimal           @default(0) @db.Decimal(10, 2)
+  // A quote for setting up a webstore: its items don't need quantities.
+  forStore         Boolean           @default(false)
   // Store orders waiting for the store's batch (made at close), and the batch they went into.
   heldForBatch     Boolean           @default(false)
   batchId          String?

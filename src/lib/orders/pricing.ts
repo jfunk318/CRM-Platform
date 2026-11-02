@@ -65,6 +65,11 @@ export async function repriceOrder(db: BusinessDb, orderId: string): Promise<voi
       priced.push({ lineId: line.id, price: fixedLinePrice(line), issues: [] });
       continue;
     }
+    // A webstore quote's item without quantities: priced for the store when published, not here.
+    if (order.forStore && lineQty(line) === 0) {
+      priced.push({ lineId: line.id, price: null, issues: [] });
+      continue;
+    }
     const decorations: DecorationRequest[] = line.design.decorations.map((d) => ({
       methodId: d.methodId,
       location: d.location,

@@ -24,6 +24,7 @@ import {
   updateDetails,
   updateLine,
 } from "@/lib/orders/service";
+import { repriceOrder } from "@/lib/orders/pricing";
 import { publishToStore } from "@/lib/store/publish";
 import { createProductionJobs } from "@/lib/production/jobs";
 import { createAffiliateStore, StoreError } from "@/lib/store/stores";
@@ -117,6 +118,23 @@ export async function removeLineAction(_: ActionResult, form: FormData): Promise
     await removeLine(db, text(form, "lineId"), staff.id);
     refresh(orderId);
     return "Removed";
+  });
+}
+
+/** Mark a quote as being for a webstore (its items don't need quantities), or not. */
+export async function setForStoreAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const staff = await requireStaff(["SALES"]);
+  const { db } = staff;
+  const orderId = text(form, "orderId");
+  const on = form.get("forStore") === "on";
+  return run(async () => {
+    const order = await db.order.findUniqueOrThrow({ where: { id: orderId }, select: { type: true } });
+    if (order.type !== "QUOTE") throw new FormError("Only quotes can be for a webstore");
+    await db.order.update({ where: { id: orderId }, data: { forStore: on } });
+    await logEvent(db, db.$businessId, orderId, "EDITED", on ? "Marked as a webstore quote" : "No longer a webstore quote", staff.id);
+    await repriceOrder(db, orderId);
+    refresh(orderId);
+    return on ? "Items can now be added without quantities" : "Items need quantities again";
   });
 }
 
