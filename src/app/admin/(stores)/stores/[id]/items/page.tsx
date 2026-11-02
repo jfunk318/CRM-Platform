@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { STORE_BATCH_QTY } from "@/lib/store/items";
 import { itemPrice } from "@/lib/store/settings";
 import { ActionForm } from "@/components/admin/action-form";
 import { LineEditor } from "@/components/admin/line-editor";
@@ -67,7 +68,7 @@ export default async function ItemsPage({ params }: { params: Promise<{ id: stri
             </div>
             <div>
               <label className="label" htmlFor="batchQty">Price as a batch of</label>
-              <input className="input" id="batchQty" name="batchQty" defaultValue="24" inputMode="numeric" />
+              <input className="input" id="batchQty" name="batchQty" defaultValue={STORE_BATCH_QTY} inputMode="numeric" />
             </div>
           </div>
           <div>

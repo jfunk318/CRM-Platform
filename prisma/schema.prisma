@@ -1312,6 +1312,7 @@ model StoredFile {
   proofFiles    ProofFile[]
   storeLogos    Store[]            @relation("StoreLogo")
   storeHeroes   Store[]            @relation("StoreHero")
+  storeIcons    Store[]            @relation("StoreFavicon")
   storeItems    StoreItem[]
   artworkFor    DesignDecoration[] @relation("DecorationArtwork")
   artSourceFor  DesignDecoration[] @relation("DecorationArtSource")
@@ -1777,6 +1778,9 @@ model Store {
   showHero              Boolean               @default(true)
   heroImageFileId       String?
   heroImage             StoredFile?           @relation("StoreHero", fields: [businessId, heroImageFileId], references: [businessId, id], onDelete: NoAction)
+  // The browser-tab icon; empty = the logo, else the platform's.
+  faviconFileId         String?
+  favicon               StoredFile?           @relation("StoreFavicon", fields: [businessId, faviconFileId], references: [businessId, id], onDelete: NoAction)
   heroHeadline          String? // defaults to the store name
   heroText              String? // defaults to the tagline
   heroButton            String? // defaults to "Shop now"

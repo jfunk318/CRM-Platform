@@ -20,13 +20,14 @@ import { DesignMockups } from "@/components/design-mockups";
 import { SourceTag, StatusBadge } from "@/components/admin/order-table";
 import { requestOrigin } from "@/lib/business";
 import { orderBlankStatus } from "@/lib/purchasing/service";
-import { freeStoreSlug } from "@/lib/store/stores";
 import { THEMES } from "@/lib/store/themes";
 import { rosterText } from "@/lib/store/personalization";
 import { Roster } from "@/components/roster";
 import { TasksCard } from "@/components/admin/tasks";
 import { taskInclude } from "@/lib/crm/tasks";
-import { PublishToStoreFields } from "@/components/admin/publish-to-store";
+import { WebstoreDialog } from "@/components/admin/webstore-dialog";
+import { ARTS } from "@/lib/store/banner-art";
+import { DELIVERY_KIND_LABELS } from "@/lib/shipping/labels";
 import { NavHint } from "@/components/admin/side-nav";
 import { CustomerLinkSection, EmailsSection, FilesSection, orderSectionsInclude, PaymentsSection, ProofsSection } from "./sections";
 import { BlanksSection, fulfillmentInclude, ProductionSection, ShippingSection } from "./fulfillment";
@@ -124,7 +125,6 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         db.storeItem.groupBy({ by: ["storeId"], where: { sourceLineId: { in: order.lines.map((l) => l.id) } }, _count: true }),
       ])
     : [[], []];
-  const storeName = order.customer.company?.name ?? `${order.customer.firstName} ${order.customer.lastName}`.trim();
   // A webstore quote's items without quantities: what each would sell for, as a batch.
   const storePrices = new Map<string, { low: Prisma.Decimal; high: Prisma.Decimal } | { error: string }>();
   if (order.forStore) {
@@ -283,6 +283,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           <section className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="font-semibold">Items</h2>
+              <div className="flex flex-wrap items-center gap-3">
               {isQuote && editable && (
                 <ToggleAction
                   action={setForStoreAction}
@@ -294,6 +295,29 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                   testId="for-store"
                 />
               )}
+              {canPublish && (
+                <WebstoreDialog
+                  action={publishToStoreAction}
+                  orderId={order.id}
+                  lines={order.lines.map((l) => ({
+                    id: l.id,
+                    label: `${l.design.product.styleCode} ${l.design.product.name} · ${l.design.color.name}`,
+                    qty: l.sizes.reduce((n, s) => n + s.qty, 0),
+                  }))}
+                  stores={publishStores.map((s) => ({
+                    id: s.id,
+                    name: s.name,
+                    main: s.kind === "ROOT",
+                    items: s._count.items,
+                    fromThisOrder: published.find((p) => p.storeId === s.id)?._count ?? 0,
+                  }))}
+                  defaultName={order.title?.trim() ?? ""}
+                  themes={Object.entries(THEMES).map(([key, t]) => ({ key, label: t.label }))}
+                  arts={Object.entries(ARTS).map(([key, a]) => ({ key, label: a.label, theme: a.theme }))}
+                  deliveries={deliveryMethods.filter((d) => d.active).map((d) => ({ id: d.id, name: d.name, kind: DELIVERY_KIND_LABELS[d.kind] }))}
+                />
+              )}
+              </div>
             </div>
             {order.lines.length === 0 && <p className="text-sm text-gray-500">No items yet.</p>}
             {order.lines.length > 0 && (
@@ -447,35 +471,6 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               </details>
             )}
           </section>
-
-          {canPublish && (
-            <details className="card" data-testid="publish-to-store">
-              <summary className="cursor-pointer font-semibold">Publish to a store</summary>
-              <p className="mt-1 text-sm text-gray-600">Sell these items in a team or group store, with their designs and mockups.</p>
-              <div className="mt-3">
-                <ActionForm action={publishToStoreAction} submitLabel="Publish">
-                  <input type="hidden" name="orderId" value={order.id} />
-                  <PublishToStoreFields
-                    lines={order.lines.map((l) => ({
-                      id: l.id,
-                      label: `${l.design.product.styleCode} ${l.design.product.name} · ${l.design.color.name}`,
-                      qty: l.sizes.reduce((n, s) => n + s.qty, 0),
-                    }))}
-                    stores={publishStores.map((s) => ({
-                      id: s.id,
-                      name: s.name,
-                      main: s.kind === "ROOT",
-                      items: s._count.items,
-                      fromThisOrder: published.find((p) => p.storeId === s.id)?._count ?? 0,
-                    }))}
-                    defaultName={storeName}
-                    defaultSlug={await freeStoreSlug(db, storeName)}
-                    themes={Object.entries(THEMES).map(([key, t]) => ({ key, label: t.label }))}
-                  />
-                </ActionForm>
-              </div>
-            </details>
-          )}
 
           <FilesSection order={order} canEdit={canArtwork && !locked} />
           {!isQuote && <ProofsSection order={order} origin={origin} canEdit={canArtwork} hasArtwork={mockups.size > 0} />}

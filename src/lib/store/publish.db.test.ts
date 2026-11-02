@@ -31,14 +31,14 @@ const items = () => t.db.storeItem.findMany({ where: { storeId }, include: { pri
 const events = () => t.db.orderEvent.findMany({ where: { orderId, type: "STORE" } });
 
 describe("publishing to a store", () => {
-  it("adds each item with the line's design, every size of its color, priced at the quantity ordered", async () => {
+  it("adds each item with the line's design, every size of its color, priced as a batch of 25", async () => {
     expect(await publishToStore(t.db, orderId, { storeId, mode: "update", staffId: t.staff.id })).toEqual({ added: 1, updated: 0, removed: 0 });
     const [item] = await items();
     const line = await t.db.orderLine.findUniqueOrThrow({ where: { id: lineId } });
     expect(item).toMatchObject({ name: "Tee", designId: line.designId, sourceLineId: lineId, imageFileId: null });
     expect(item.prices.map((p) => p.sizeId)).toEqual([t.product.sizes[0].id]);
-    // $10 each (garment + print) plus $40 of one-time fees spread over the 12 ordered.
-    expect(item.prices[0].basePrice.toFixed(2)).toBe("13.33");
+    // $10 each (garment + print) plus $40 of one-time fees spread over 25, whatever was ordered.
+    expect(item.prices[0].basePrice.toFixed(2)).toBe("11.60");
     expect((await events())[0].body).toBe("Published to Tigers Football (1 added)");
   });
 

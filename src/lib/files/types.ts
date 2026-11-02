@@ -12,6 +12,7 @@ export const UPLOAD_TYPES: Record<string, { contentType: string; inline: boolean
   jpeg: { contentType: "image/jpeg", inline: true },
   gif: { contentType: "image/gif", inline: true },
   webp: { contentType: "image/webp", inline: true },
+  ico: { contentType: "image/x-icon", inline: true },
   pdf: { contentType: "application/pdf", inline: true },
   // Vector and production formats are downloaded, not shown in the browser
   // (SVG can carry scripts).

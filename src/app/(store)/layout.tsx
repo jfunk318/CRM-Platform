@@ -10,6 +10,13 @@ import { StoreFooter, StoreHeader } from "@/components/store/chrome";
 import { THEMES, themeFontsUrl, themeOf, themeStyle } from "@/lib/store/themes";
 import { enterAccessCode } from "./actions";
 
+/** The browser-tab icon: the store's favicon, else its logo. */
+export async function generateMetadata() {
+  const rs = await getRequestStore();
+  const icon = rs?.store.faviconFileId ?? rs?.store.logoFileId;
+  return icon ? { icons: { icon: `/media/${icon}` } } : {};
+}
+
 /** Every storefront page: the store's branding, navigation and footer. */
 export default async function StoreLayout({ children }: { children: React.ReactNode }) {
   const rs = await getRequestStore();

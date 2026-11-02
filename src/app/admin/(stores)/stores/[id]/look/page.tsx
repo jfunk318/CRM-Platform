@@ -5,7 +5,7 @@ import { loadAdminStore } from "@/lib/store/admin";
 import { BannerArt } from "@/components/store/banner-art";
 import { ARTS, artsFor, DEFAULT_ART } from "@/lib/store/banner-art";
 import { THEMES, type ThemeKey, themeOf, themeStyle } from "@/lib/store/themes";
-import { removeHeroAction, removeLogoAction, saveLookAction, uploadHeroAction, uploadLogoAction } from "../../actions";
+import { removeFaviconAction, removeHeroAction, removeLogoAction, saveLookAction, uploadFaviconAction, uploadHeroAction, uploadLogoAction } from "../../actions";
 
 const ALL_FONTS = `https://fonts.googleapis.com/css2?${[...new Set(Object.values(THEMES).flatMap((t) => t.fonts))].map((f) => `family=${f}`).join("&")}&display=swap`;
 
@@ -118,6 +118,19 @@ export default async function LookPage({ params }: { params: Promise<{ id: strin
             <FilePicker id="logo-file" name="logo" accept="image/png,image/jpeg,image/gif,image/webp" required hint="PNG with a transparent background works on every theme" />
           </ActionForm>
           {store.logoFileId && <ActionButton action={removeLogoAction} fields={{ storeId: store.id }} label="Remove logo" className="text-xs text-red-700 hover:underline" />}
+        </section>
+        <section className="card space-y-3" data-testid="favicon">
+          <h2 className="font-semibold">Favicon</h2>
+          <p className="text-sm text-gray-600">The little icon on the browser tab. Without one, the logo is used.</p>
+          {store.faviconFileId && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={`/admin/files/${store.faviconFileId}`} alt="Favicon" className="h-10 w-10 rounded border object-contain" />
+          )}
+          <ActionForm action={uploadFaviconAction} submitLabel="Upload" resetOnSuccess className="max-w-md space-y-2">
+            <input type="hidden" name="storeId" value={store.id} />
+            <FilePicker id="favicon-file" name="favicon" accept="image/png,image/jpeg,image/gif,image/webp,image/x-icon,.ico" required hint="Square, 64 px or more" />
+          </ActionForm>
+          {store.faviconFileId && <ActionButton action={removeFaviconAction} fields={{ storeId: store.id }} label="Remove favicon" className="text-xs text-red-700 hover:underline" />}
         </section>
       </div>
 

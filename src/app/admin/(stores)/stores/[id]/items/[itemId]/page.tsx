@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { STORE_BATCH_QTY } from "@/lib/store/items";
 import { notFound } from "next/navigation";
 import { effectiveMarkup, itemPrice } from "@/lib/store/settings";
 import { ActionForm } from "@/components/admin/action-form";
@@ -150,7 +151,7 @@ export default async function ItemPage({ params }: { params: Promise<{ id: strin
               <input type="hidden" name="id" value={item.id} />
               <div>
                 <label className="label" htmlFor="batchQty">From current pricing, as a batch of</label>
-                <input className="input w-24" id="batchQty" name="batchQty" defaultValue="24" inputMode="numeric" />
+                <input className="input w-24" id="batchQty" name="batchQty" defaultValue={STORE_BATCH_QTY} inputMode="numeric" />
               </div>
             </ActionForm>
           </section>

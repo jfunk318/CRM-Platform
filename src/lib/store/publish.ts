@@ -1,7 +1,7 @@
 import "server-only";
 import type { BusinessDb } from "@/lib/db";
 import { logEvent, OrderError } from "@/lib/orders/service";
-import { basePricesFor, createStoreItem, type ItemDecoration, refreshMockupPicture } from "./items";
+import { basePricesFor, createStoreItem, type ItemDecoration, refreshMockupPicture, STORE_BATCH_QTY } from "./items";
 
 /**
  * "update": add the order's items, updating the ones published from it before.
@@ -14,13 +14,14 @@ export type PublishResult = { added: number; updated: number; removed: number };
 /**
  * Publish a quote's or order's items to a store. Each item shares the
  * line's design (editing the order later makes the line its own copy) and
- * sells every size its color comes in, priced as a batch of the quantity
- * ordered (or `batchQty` for every item).
+ * sells every size its color comes in, priced as a batch of 25 (or
+ * `batchQty`), whatever quantity the quote has.
  */
 export async function publishToStore(
   db: BusinessDb,
   orderId: string,
-  o: { storeId: string; mode: PublishMode; lineIds?: string[]; batchQty?: number | null; staffId: string | null },
+  /** `updateExisting` (default on): items published from these lines before are updated; off, they're added again. */
+  o: { storeId: string; mode: PublishMode; lineIds?: string[]; batchQty?: number | null; updateExisting?: boolean; staffId: string | null },
 ): Promise<PublishResult> {
   const order = await db.order.findUniqueOrThrow({
     where: { id: orderId },
@@ -42,7 +43,6 @@ export async function publishToStore(
     const variants = await db.productVariant.findMany({ where: { productId: line.design.productId, colorId: line.design.colorId, active: true }, select: { sizeId: true } });
     const sizeIds = variants.map((v) => v.sizeId);
     if (sizeIds.length === 0) throw new OrderError(`${line.design.product.name} in ${line.design.color.name} has no sizes to sell`);
-    const ordered = line.sizes.reduce((n, s) => n + s.qty, 0);
     const decorations: ItemDecoration[] = line.design.decorations.map((d) => ({
       methodId: d.methodId,
       location: d.location,
@@ -51,7 +51,7 @@ export async function publishToStore(
       widthIn: d.widthIn?.toNumber() ?? null,
       heightIn: d.heightIn?.toNumber() ?? null,
     }));
-    const batchQty = o.batchQty ?? Math.max(1, ordered);
+    const batchQty = o.batchQty ?? STORE_BATCH_QTY;
     const prices = await basePricesFor(db, { productId: line.design.productId, colorId: line.design.colorId, sizeIds, decorations, batchQty });
     plans.push({ line, sizeIds, decorations, batchQty, prices });
   }
@@ -66,7 +66,7 @@ export async function publishToStore(
   }
 
   for (const { line, sizeIds, decorations, batchQty, prices } of plans) {
-    const existing = o.mode === "update" ? await db.storeItem.findFirst({ where: { storeId: store.id, sourceLineId: line.id }, include: { prices: true } }) : null;
+    const existing = o.mode === "update" && o.updateExisting !== false ? await db.storeItem.findFirst({ where: { storeId: store.id, sourceLineId: line.id }, include: { prices: true } }) : null;
     if (existing) {
       // Same item: new design and base prices; its name, picture and price overrides stay.
       await db.$transaction([

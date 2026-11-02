@@ -6,7 +6,9 @@ import type { OrderFileKind, PaymentMethod } from "@prisma/client";
 import { requireStaff } from "@/lib/auth/session";
 import { hasAnyRole } from "@/lib/auth/roles";
 import { requestOrigin } from "@/lib/business";
-import { formFiles, UploadError } from "@/lib/files/storage";
+import { formFiles, saveUpload, UploadError } from "@/lib/files/storage";
+import { extensionOf, isImage } from "@/lib/files/types";
+import { applyStoreSetup, checkSetup, commissionFrom, copyStoreSetup, type StoreSetup } from "@/lib/store/setup";
 import { addOrderFiles, FILE_KIND_LABELS, removeOrderFile } from "@/lib/files/order-files";
 import { cancelProof, createProof, ensurePublicToken, sendProof, sendQuote } from "@/lib/orders/customer-flow";
 import { issueInvoice, recordPayment, sendInvoice, setDeposit } from "@/lib/orders/payments";
@@ -233,6 +235,20 @@ export async function releaseFromBatchAction(_: ActionResult, form: FormData): P
 }
 
 /** Publish the quote's/order's items to a new store (for its customer) or an existing one. */
+/** An optional picture from the webstore dialog, saved; undefined when none was chosen. */
+async function pictureFrom(db: Parameters<typeof saveUpload>[0], form: FormData, field: string, what: string, staffId: string, icons = false) {
+  const [file] = formFiles(form, field);
+  if (!file) return undefined;
+  const ok = isImage(file.name) || (icons && extensionOf(file.name) === "ico");
+  if (!ok) throw new FormError(`The ${what} must be a PNG, JPG, GIF or WebP image${icons ? " (or .ico)" : ""}`);
+  return (await saveUpload(db, file, staffId)).id;
+}
+
+/**
+ * The webstore dialog: make a new store (from a look or another store's
+ * setup), add the items to a store, or replace a store's items, with the
+ * store's commission, delivery options and look.
+ */
 export async function publishToStoreAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   const staff = await requireStaff(["STORE_MANAGER"]);
   const { db } = staff;
@@ -240,18 +256,52 @@ export async function publishToStoreAction(_: ActionResult, form: FormData): Pro
   const result = await run(async () => {
     try {
       const order = await db.order.findUniqueOrThrow({ where: { id: text(form, "orderId") } });
-      const target = text(form, "target", "Store");
+      const mode = String(form.get("mode") ?? "new");
+      if (!["new", "add", "overwrite"].includes(mode)) throw new FormError("Choose what to do");
       const lineIds = form.getAll("lineIds").map(String);
       if (lineIds.length === 0) throw new FormError("Tick at least one item to publish");
-      const batchRaw = optionalText(form, "batchQty");
-      const batchQty = batchRaw ? Number(batchRaw) : null;
-      if (batchQty !== null && !(Number.isInteger(batchQty) && batchQty >= 1)) throw new FormError("Batch quantity must be a whole number, 1 or more");
+
+      const template = String(form.get("template") ?? "");
+      const fromStore = mode === "new" && template.startsWith("store:") ? template.slice(6) : null;
+      const withSettings = mode === "new" ? !fromStore : checkbox(form, "applySettings");
+      let setup: StoreSetup = {};
+      if (withSettings) {
+        const delivery = form.getAll("deliveryMethodIds").map(String);
+        const allDeliveries = await db.deliveryMethod.count({ where: { active: true } });
+        setup = {
+          commission: commissionFrom(optionalText(form, "commissionKind"), optionalText(form, "commissionValue")),
+          // Every method ticked = offer every active one, including ones added later.
+          ...(form.get("deliveryShown") ? { deliveryMethodIds: delivery.length >= allDeliveries ? null : delivery } : {}),
+          heroArt: optionalText(form, "heroArt"),
+          ...(checkbox(form, "setAccent") ? { accentColor: optionalText(form, "accentColor") } : {}),
+        };
+        checkSetup(setup);
+      }
+
       const store =
-        target === "new"
-          ? await createAffiliateStore(db, { name: text(form, "storeName", "Store name"), slug: optionalText(form, "storeSlug"), customerId: order.customerId, managerId: staff.id, theme: optionalText(form, "storeTheme") })
-          : await db.store.findUniqueOrThrow({ where: { id: target } });
-      const mode = form.get("mode") === "overwrite" && target !== "new" ? "overwrite" : "update";
-      await publishToStore(db, order.id, { storeId: store.id, mode, lineIds, batchQty, staffId: staff.id });
+        mode === "new"
+          ? await createAffiliateStore(db, {
+              name: text(form, "storeName", "Store name"),
+              slug: optionalText(form, "storeSlug"),
+              customerId: order.customerId,
+              managerId: staff.id,
+              theme: fromStore ? null : optionalText(form, "theme"),
+            })
+          : await db.store.findUniqueOrThrow({ where: { id: text(form, "storeId", "Store") } });
+      if (fromStore) await copyStoreSetup(db, fromStore, store.id);
+      if (withSettings) {
+        setup.heroImageFileId = await pictureFrom(db, form, "hero", "banner picture", staff.id);
+        setup.logoFileId = await pictureFrom(db, form, "logo", "logo", staff.id);
+        setup.faviconFileId = await pictureFrom(db, form, "favicon", "favicon", staff.id, true);
+        await applyStoreSetup(db, store.id, setup);
+      }
+      await publishToStore(db, order.id, {
+        storeId: store.id,
+        mode: mode === "overwrite" ? "overwrite" : "update",
+        updateExisting: mode !== "add" || !form.has("updateShown") || checkbox(form, "updateExisting"),
+        lineIds,
+        staffId: staff.id,
+      });
       path = `/admin/stores/${store.id}/items`;
       refresh(order.id);
       revalidatePath("/admin/stores", "layout");

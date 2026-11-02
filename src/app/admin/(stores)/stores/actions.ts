@@ -14,7 +14,7 @@ import { formFiles, saveUpload, UploadError } from "@/lib/files/storage";
 import { isImage } from "@/lib/files/types";
 import { OrderError } from "@/lib/orders/service";
 import { normalizeCode } from "@/lib/store/cart";
-import { createStoreItem, refreshMockupPicture, repriceStoreItem } from "@/lib/store/items";
+import { createStoreItem, refreshMockupPicture, repriceStoreItem, STORE_BATCH_QTY } from "@/lib/store/items";
 import { batchStoreOrders } from "@/lib/store/batches";
 import { isPortalSection, quoteFromRequest, updateStoreRequest } from "@/lib/store/portal";
 import { isValidEmail } from "@/lib/email/mailer";
@@ -169,6 +169,30 @@ export async function removeLogoAction(_: ActionResult, form: FormData): Promise
     await db.store.update({ where: { id: store.id }, data: { logoFileId: null } });
     refresh();
     return "Logo removed";
+  });
+}
+
+export async function uploadFaviconAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const staff = await requireStaff(["STORE_MANAGER"]);
+  return run(async () => {
+    const store = await storeOf(staff.db, form);
+    const [file] = formFiles(form, "favicon");
+    if (!file) throw new FormError("Choose an image");
+    if (!isImage(file.name) && !file.name.toLowerCase().endsWith(".ico")) throw new FormError("The favicon must be a PNG, JPG, GIF, WebP or .ico image");
+    const saved = await saveUpload(staff.db, file, staff.id);
+    await staff.db.store.update({ where: { id: store.id }, data: { faviconFileId: saved.id } });
+    refresh();
+    return "Favicon updated";
+  });
+}
+
+export async function removeFaviconAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  return run(async () => {
+    const store = await storeOf(db, form);
+    await db.store.update({ where: { id: store.id }, data: { faviconFileId: null } });
+    refresh();
+    return "Favicon removed; the logo is used instead";
   });
 }
 
@@ -525,7 +549,7 @@ export async function createItemAction(_: ActionResult, form: FormData): Promise
       colorId: line.colorId,
       sizeIds: selectedSizes(form),
       decorations: line.decorations,
-      batchQty: int(String(form.get("batchQty") ?? "") || "24", "Batch quantity"),
+      batchQty: int(String(form.get("batchQty") ?? "") || String(STORE_BATCH_QTY), "Batch quantity"),
     });
     path = `/admin/stores/${store.id}/items/${id}`;
     refresh();
