@@ -7,6 +7,7 @@ import { hasAnyRole } from "@/lib/auth/roles";
 import { orderRef } from "@/lib/orders/numbers";
 import type { Fee, PricingIssue } from "@/lib/pricing";
 import { ActionForm } from "@/components/admin/action-form";
+import { LineRow } from "@/components/admin/line-row";
 import { LineEditor, type LineValue } from "@/components/admin/line-editor";
 import { BulkDecorate } from "@/components/admin/bulk-decorate";
 import { ProductThumb } from "@/components/admin/product-thumb";
@@ -256,112 +257,105 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           <section className="space-y-3">
             <h2 className="font-semibold">Items</h2>
             {order.lines.length === 0 && <p className="text-sm text-gray-500">No items yet.</p>}
-            {order.lines.map((line) => {
-              const fees = line.fees as unknown as (Omit<Fee, "amount"> & { amount: string })[];
-              const issues = line.issues as unknown as PricingIssue[];
-              const qty = line.sizes.reduce((n, s) => n + s.qty, 0);
-              return (
-                <div key={line.id} className="card space-y-3" data-testid="line">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="flex items-start gap-3">
-                      {mockups.get(line.designId) ? (
-                        <DesignMockups mockups={mockups.get(line.designId)!} artBase="/admin/files/" className="w-36" />
-                      ) : (
-                        <ProductThumb url={lineThumbs.get(line.design.colorId)} label={line.design.product.styleCode} size={56} />
-                      )}
-                      <div>
-                        <div className="font-medium">
-                          {line.design.product.name}{" "}
-                          <span className="font-mono text-xs text-gray-500">{line.design.product.styleCode}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                          <span className="inline-block h-3 w-3 rounded-full border" style={{ background: line.design.color.hex ?? "#fff" }} />
-                          {line.design.color.name} · {qty} pcs
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold">{money(line.total)}</div>
-                      {!line.discountPct.isZero() && (
-                        <div className="text-xs text-green-700">{line.discountPct.times(100).toString()}% quantity discount</div>
-                      )}
-                    </div>
-                  </div>
-
-                  {issues.length > 0 && (
-                    <ul className="rounded-md bg-warn-50 px-3 py-2 text-sm text-warn-900">
-                      {issues.map((i, n) => <li key={n}>{i.location ? `${i.location}: ` : ""}{i.message}</li>)}
-                    </ul>
-                  )}
-
-                  {/* Sizes in one line, smallest to largest, with the price each where it differs. */}
-                  <div className="flex flex-wrap gap-1 text-sm" data-testid="line-sizes">
-                    {[...line.sizes]
-                      .sort((a, b) => sizeRank(a.size.code) - sizeRank(b.size.code))
-                      .map((s) => (
-                        <span key={s.id} className="rounded border border-gray-200 px-2 py-0.5" title={`${money(s.unitPrice)} each`}>
-                          <span className="text-xs text-gray-500">{s.size.code}</span> <span className="font-medium">{s.qty}</span>
-                        </span>
-                      ))}
-                    <span className="self-center pl-1 text-xs text-gray-500">
-                      {new Set(line.sizes.map((s) => s.unitPrice.toFixed(2))).size === 1
-                        ? `${money(line.sizes[0]?.unitPrice ?? 0)} each`
-                        : `${[...line.sizes].sort((a, b) => sizeRank(a.size.code) - sizeRank(b.size.code)).map((s) => `${s.size.code} ${money(s.unitPrice)}`).join(" · ")} each`}
-                    </span>
-                  </div>
-
-                  {line.design.decorations.length > 0 ? (
-                    <ul className="space-y-0.5 text-sm">
-                      {line.design.decorations.map((d) => (
-                        <li key={d.id}>
-                          <span className="font-medium">{d.location}</span>: {d.method.shortName}
-                          {d.colors ? ` · ${d.colors} color${d.colors === 1 ? "" : "s"}` : ""}
-                          {d.stitches ? ` · ${d.stitches.toLocaleString()} stitches` : ""}
-                          {d.widthIn && d.heightIn ? ` · ${d.widthIn.toString()}″ × ${d.heightIn.toString()}″` : ""}
-                          {d.inkColors.length ? ` · ${d.inkColors.join(", ")}` : ""}
-                          {d.needsArtwork ? " · needs artwork" : ""}
-                          {d.needsDigitizing ? " · needs digitizing" : ""}
-                          {d.reuseScreens ? " · reuse screens" : ""}
-                          {enhanceLabel(d.artEdits) ? ` · artwork ${enhanceLabel(d.artEdits)}` : ""}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm text-gray-500">Blank (no decoration)</p>
-                  )}
-                  <Roster names={line.names} />
-                  <p className="text-xs text-gray-500">
-                    {line.fixedPrice ? "Sold at the store's price (not repriced)" : <>Decoration {money(line.decorationUnit)} per piece</>}
-                    {nameCharges(line.names) && <> · names &amp; numbers {money(nameCharges(line.names)!)}</>}
-                  </p>
-                  {fees.length > 0 && (
-                    <ul className="text-sm text-gray-700">
-                      {fees.map((f, i) => <li key={i}>{f.location}: {f.description} — {money(f.amount)}</li>)}
-                    </ul>
-                  )}
-                  {line.notes && <p className="text-sm italic text-gray-600">{line.notes}</p>}
-
-                  {editable && (
-                    <div className="flex flex-wrap gap-3">
-                      <details className="w-full">
-                        <summary className="cursor-pointer text-sm text-brand-700">Edit item</summary>
-                        <div className="mt-3">
+            {order.lines.length > 0 && (
+              <div className="card divide-y divide-gray-100 p-0" data-testid="lines">
+                {order.lines.map((line) => {
+                  const fees = line.fees as unknown as (Omit<Fee, "amount"> & { amount: string })[];
+                  const issues = line.issues as unknown as PricingIssue[];
+                  const qty = line.sizes.reduce((n, s) => n + s.qty, 0);
+                  const sizes = [...line.sizes].sort((a, b) => sizeRank(a.size.code) - sizeRank(b.size.code));
+                  const onePrice = new Set(sizes.map((s) => s.unitPrice.toFixed(2))).size <= 1;
+                  return (
+                    <LineRow
+                      key={line.id}
+                      editor={
+                        editable ? (
                           <ActionForm action={updateLineAction} submitLabel="Save item">
                             <input type="hidden" name="orderId" value={order.id} />
                             <input type="hidden" name="lineId" value={line.id} />
                             <LineEditor product={line.design.product} initial={lineValue(line)} artOwner={artOwner} pricing={{ orderId: order.id, lineId: line.id }} />
                           </ActionForm>
+                        ) : undefined
+                      }
+                      remove={editable ? { action: removeLineAction, fields: { orderId: order.id, lineId: line.id } } : undefined}
+                      thumb={
+                        mockups.get(line.designId) ? (
+                          <DesignMockups mockups={mockups.get(line.designId)!} artBase="/admin/files/" className="w-14" compact />
+                        ) : (
+                          <ProductThumb url={lineThumbs.get(line.design.colorId)} label={line.design.product.styleCode} size={56} />
+                        )
+                      }
+                      price={
+                        <>
+                          <div className="font-semibold tabular-nums">{money(line.total)}</div>
+                          <div className="text-xs text-gray-500">
+                            {line.fixedPrice ? "store price" : <>deco {money(line.decorationUnit)}/pc</>}
+                            {nameCharges(line.names) && <> · names {money(nameCharges(line.names)!)}</>}
+                          </div>
+                          {!line.discountPct.isZero() && <div className="text-xs text-green-700">{line.discountPct.times(100).toString()}% qty discount</div>}
+                        </>
+                      }
+                    >
+                      <div className="flex flex-wrap items-baseline gap-x-2">
+                        <span className="font-semibold">{line.design.product.name}</span>
+                        <span className="font-mono text-xs text-gray-500">{line.design.product.styleCode}</span>
+                        <span className="flex items-center gap-1 text-gray-600">
+                          <span className="inline-block h-2.5 w-2.5 rounded-full border" style={{ background: line.design.color.hex ?? "#fff" }} />
+                          {line.design.color.name}
+                        </span>
+                      </div>
+                      {/* Sizes in one line, smallest to largest, with the price each. */}
+                      <div className="flex flex-wrap items-center gap-x-2 text-gray-700" data-testid="line-sizes">
+                        <span className="font-medium">{qty} pcs</span>
+                        {sizes.length > 0 && (
+                          <span className="text-gray-500">
+                            {sizes.map((s, i) => (
+                              <span key={s.id} title={`${money(s.unitPrice)} each`}>
+                                {i > 0 && " · "}
+                                {s.size.code} <span className="font-medium text-gray-800">{s.qty}</span>
+                              </span>
+                            ))}
+                          </span>
+                        )}
+                        <span className="text-xs text-gray-500">
+                          {onePrice ? `${money(sizes[0]?.unitPrice ?? 0)} each` : sizes.map((s) => `${s.size.code} ${money(s.unitPrice)}`).join(" · ") + " each"}
+                        </span>
+                      </div>
+                      <div className="text-gray-600">
+                        {line.design.decorations.length > 0
+                          ? line.design.decorations.map((d, i) => (
+                              <span key={d.id}>
+                                {i > 0 && <span className="text-gray-300"> | </span>}
+                                <span className="font-medium text-gray-800">{d.location}</span> {d.method.shortName}
+                                {d.colors ? ` · ${d.colors} color${d.colors === 1 ? "" : "s"}` : ""}
+                                {d.stitches ? ` · ${d.stitches.toLocaleString()} st` : ""}
+                                {d.widthIn && d.heightIn ? ` · ${d.widthIn.toString()}″×${d.heightIn.toString()}″` : ""}
+                                {d.inkColors.length ? ` · ${d.inkColors.join(", ")}` : ""}
+                                {d.needsArtwork && <span className="text-warn-800"> · needs artwork</span>}
+                                {d.needsDigitizing && <span className="text-warn-800"> · needs digitizing</span>}
+                                {d.reuseScreens ? " · reuse screens" : ""}
+                                {enhanceLabel(d.artEdits) ? ` · artwork ${enhanceLabel(d.artEdits)}` : ""}
+                              </span>
+                            ))
+                          : "Blank (no decoration)"}
+                      </div>
+                      {issues.length > 0 && (
+                        <ul className="text-warn-900">
+                          {issues.map((i, n) => <li key={n}>⚠ {i.location ? `${i.location}: ` : ""}{i.message}</li>)}
+                        </ul>
+                      )}
+                      <Roster names={line.names} inline />
+                      {(fees.length > 0 || line.notes) && (
+                        <div className="text-xs text-gray-500">
+                          {fees.map((f, i) => <span key={i}>{i > 0 && " · "}{f.location}: {f.description} {money(f.amount)}</span>)}
+                          {line.notes && <span className="italic">{fees.length > 0 && " · "}{line.notes}</span>}
                         </div>
-                      </details>
-                      <ActionForm action={removeLineAction} submitLabel="Remove item" danger confirm="Remove this item?">
-                        <input type="hidden" name="orderId" value={order.id} />
-                        <input type="hidden" name="lineId" value={line.id} />
-                      </ActionForm>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                      )}
+                    </LineRow>
+                  );
+                })}
+              </div>
+            )}
             {editable && (
               <details className="card">
                 <summary className="cursor-pointer font-medium text-brand-700">+ Add several items with the same decoration</summary>

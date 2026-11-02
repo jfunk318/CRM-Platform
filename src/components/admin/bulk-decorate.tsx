@@ -48,7 +48,8 @@ const k2 = (targetKey: string, loc: string) => `${targetKey}|${locationKey(loc)}
  * aren't touched, and any item can be fine-tuned on its own before saving.
  */
 export function BulkDecorate({ mode, orderId, artOwner, lines = [] }: { mode: "add" | "update"; orderId: string; artOwner: ArtOwnerIds & { name: string }; lines?: BulkLine[] }) {
-  const [rows, setRows] = useState<Target[]>(() => [newRow(), newRow()]);
+  // Fixed keys for the first rows, so the server's and the browser's first render match.
+  const [rows, setRows] = useState<Target[]>(() => [{ ...newRow(), key: "first-0" }, { ...newRow(), key: "first-1" }]);
   const [selected, setSelected] = useState<string[]>([]);
   const [action, setAction] = useState<"replace" | "adjust">("replace");
   const [adjustLoc, setAdjustLoc] = useState("");
