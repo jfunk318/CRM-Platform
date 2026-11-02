@@ -121,7 +121,23 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const canPublish = hasAnyRole(staff.roles, ["STORE_MANAGER"]) && order.lines.length > 0 && order.source !== "STOREFRONT" && order.source !== "STORE_BATCH";
   const [publishStores, published] = canPublish
     ? await Promise.all([
-        db.store.findMany({ where: { active: true }, orderBy: [{ kind: "asc" }, { name: "asc" }], select: { id: true, name: true, kind: true, _count: { select: { items: true } } } }),
+        db.store.findMany({ where: { active: true }, orderBy: [{ kind: "asc" }, { name: "asc" }], select: {
+            id: true,
+            name: true,
+            kind: true,
+            theme: true,
+            commissionKind: true,
+            commissionValue: true,
+            customDeliveryMethods: true,
+            deliveryMethods: { select: { deliveryMethodId: true } },
+            heroArt: true,
+            accentColor: true,
+            heroImageFileId: true,
+            logoFileId: true,
+            faviconFileId: true,
+            _count: { select: { items: true } },
+          },
+        }),
         db.storeItem.groupBy({ by: ["storeId"], where: { sourceLineId: { in: order.lines.map((l) => l.id) } }, _count: true }),
       ])
     : [[], []];
@@ -310,6 +326,17 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                     main: s.kind === "ROOT",
                     items: s._count.items,
                     fromThisOrder: published.find((p) => p.storeId === s.id)?._count ?? 0,
+                    settings: {
+                      theme: s.theme,
+                      commissionKind: s.commissionKind,
+                      commissionValue: s.commissionValue?.toString() ?? null,
+                      deliveryIds: s.customDeliveryMethods ? s.deliveryMethods.map((d) => d.deliveryMethodId) : null,
+                      heroArt: s.heroArt,
+                      accentColor: s.accentColor,
+                      hasHero: !!s.heroImageFileId,
+                      hasLogo: !!s.logoFileId,
+                      hasFavicon: !!s.faviconFileId,
+                    },
                   }))}
                   defaultName={order.title?.trim() ?? ""}
                   themes={Object.entries(THEMES).map(([key, t]) => ({ key, label: t.label }))}

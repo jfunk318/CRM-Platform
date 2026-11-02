@@ -263,20 +263,18 @@ export async function publishToStoreAction(_: ActionResult, form: FormData): Pro
 
       const template = String(form.get("template") ?? "");
       const fromStore = mode === "new" && template.startsWith("store:") ? template.slice(6) : null;
-      const withSettings = mode === "new" ? !fromStore : checkbox(form, "applySettings");
-      let setup: StoreSetup = {};
-      if (withSettings) {
-        const delivery = form.getAll("deliveryMethodIds").map(String);
-        const allDeliveries = await db.deliveryMethod.count({ where: { active: true } });
-        setup = {
-          commission: commissionFrom(optionalText(form, "commissionKind"), optionalText(form, "commissionValue")),
-          // Every method ticked = offer every active one, including ones added later.
-          ...(form.get("deliveryShown") ? { deliveryMethodIds: delivery.length >= allDeliveries ? null : delivery } : {}),
-          heroArt: optionalText(form, "heroArt"),
-          ...(checkbox(form, "setAccent") ? { accentColor: optionalText(form, "accentColor") } : {}),
-        };
-        checkSetup(setup);
-      }
+      // The dialog always shows the store's settings (current or chosen) and saves them.
+      const delivery = form.getAll("deliveryMethodIds").map(String);
+      const allDeliveries = await db.deliveryMethod.count({ where: { active: true } });
+      const setup: StoreSetup = {
+        commission: commissionFrom(optionalText(form, "commissionKind"), optionalText(form, "commissionValue")),
+        // Every method ticked = offer every active one, including ones added later.
+        ...(form.get("deliveryShown") ? { deliveryMethodIds: delivery.length >= allDeliveries ? null : delivery } : {}),
+        heroArt: optionalText(form, "heroArt"),
+        // "The look's" color clears a custom one.
+        ...(form.get("accentShown") ? { accentColor: checkbox(form, "setAccent") ? optionalText(form, "accentColor") : null } : {}),
+      };
+      checkSetup(setup);
 
       const store =
         mode === "new"
@@ -289,12 +287,10 @@ export async function publishToStoreAction(_: ActionResult, form: FormData): Pro
             })
           : await db.store.findUniqueOrThrow({ where: { id: text(form, "storeId", "Store") } });
       if (fromStore) await copyStoreSetup(db, fromStore, store.id);
-      if (withSettings) {
-        setup.heroImageFileId = await pictureFrom(db, form, "hero", "banner picture", staff.id);
-        setup.logoFileId = await pictureFrom(db, form, "logo", "logo", staff.id);
-        setup.faviconFileId = await pictureFrom(db, form, "favicon", "favicon", staff.id, true);
-        await applyStoreSetup(db, store.id, setup);
-      }
+      setup.heroImageFileId = await pictureFrom(db, form, "hero", "banner picture", staff.id);
+      setup.logoFileId = await pictureFrom(db, form, "logo", "logo", staff.id);
+      setup.faviconFileId = await pictureFrom(db, form, "favicon", "favicon", staff.id, true);
+      await applyStoreSetup(db, store.id, setup);
       await publishToStore(db, order.id, {
         storeId: store.id,
         mode: mode === "overwrite" ? "overwrite" : "update",
