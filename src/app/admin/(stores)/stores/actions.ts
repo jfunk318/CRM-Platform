@@ -22,6 +22,8 @@ import { storeUrlHere } from "@/lib/business";
 import { checkStoreSlug, createAffiliateStore, StoreError } from "@/lib/store/stores";
 import { ACCOUNT_MODE_LABELS } from "@/lib/store/settings";
 import { THEMES } from "@/lib/store/themes";
+import { cleanHref, parseSections, parseSite, SOCIALS } from "@/lib/store/homepage";
+import { Prisma } from "@prisma/client";
 
 type Db = Awaited<ReturnType<typeof requireStaff>>["db"];
 
@@ -194,6 +196,80 @@ export async function removeFaviconAction(_: ActionResult, form: FormData): Prom
     refresh();
     return "Favicon removed; the logo is used instead";
   });
+}
+
+// ─── Main site homepage ─────────────────────────────────────────────────
+
+const mainSiteOf = async (db: Db, form: FormData) => {
+  const store = await storeOf(db, form);
+  if (store.kind !== "ROOT") throw new FormError("Only the main site has a homepage builder");
+  return store;
+};
+
+export async function saveHomepageAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  return run(async () => {
+    const store = await mainSiteOf(db, form);
+    let raw: unknown;
+    try {
+      raw = JSON.parse(text(form, "sections", "Sections"));
+    } catch {
+      throw new FormError("The homepage couldn't be read; reload and try again");
+    }
+    const sections = parseSections(raw);
+    if (!sections.some((x) => x.on)) throw new FormError("Show at least one section");
+    await db.store.update({ where: { id: store.id }, data: { homeSections: sections as unknown as Prisma.InputJsonValue } });
+    refresh();
+    return "Homepage saved";
+  });
+}
+
+export async function resetHomepageAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  return run(async () => {
+    const store = await mainSiteOf(db, form);
+    await db.store.update({ where: { id: store.id }, data: { homeSections: Prisma.DbNull } });
+    refresh();
+    return "Back to the starting homepage";
+  });
+}
+
+export async function saveSiteDetailsAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const { db } = await requireStaff(["STORE_MANAGER"]);
+  return run(async () => {
+    const store = await mainSiteOf(db, form);
+    const social: Record<string, string> = {};
+    for (const k of Object.keys(SOCIALS)) {
+      const raw = optionalText(form, `social_${k}`);
+      if (!raw) continue;
+      const href = cleanHref(raw);
+      if (!href.startsWith("http")) throw new FormError(`${SOCIALS[k as keyof typeof SOCIALS]} must be a web address, like https://instagram.com/yourshop`);
+      social[k] = href;
+    }
+    const label = optionalText(form, "buttonLabel") ?? "";
+    const href = optionalText(form, "buttonHref") ?? "";
+    if (label && !cleanHref(href)) throw new FormError("The header button needs a link, like /quote");
+    const site = parseSite({ social, hours: optionalText(form, "hours") ?? "", headerButton: { label, href }, storesLink: checkbox(form, "storesLink") });
+    await db.store.update({ where: { id: store.id }, data: { siteSettings: site as unknown as Prisma.InputJsonValue } });
+    refresh();
+    return "Site details saved";
+  });
+}
+
+/** A photo for a homepage section; the editor puts its id in the section, and it goes live when the homepage is saved. */
+export async function uploadHomeImageAction(form: FormData): Promise<{ id?: string; error?: string }> {
+  const staff = await requireStaff(["STORE_MANAGER"]);
+  try {
+    await mainSiteOf(staff.db, form);
+    const [file] = formFiles(form, "image");
+    if (!file) return { error: "Choose an image" };
+    if (!isImage(file.name)) return { error: "Use a PNG, JPG, GIF or WebP image" };
+    const saved = await saveUpload(staff.db, file, staff.id);
+    return { id: saved.id };
+  } catch (e) {
+    if (e instanceof FormError || e instanceof UploadError) return { error: e.message };
+    throw e;
+  }
 }
 
 // ─── Look ───────────────────────────────────────────────────────────────

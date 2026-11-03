@@ -7,6 +7,8 @@ import { ActionForm } from "@/components/admin/action-form";
 import { Analytics } from "@/components/store/analytics";
 import { VisitBeacon } from "@/components/store/visit-beacon";
 import { StoreFooter, StoreHeader } from "@/components/store/chrome";
+import { SiteFooter, SiteHeader, siteMenu } from "@/components/store/site-chrome";
+import { parseSite, sectionAnchors, sectionsOf } from "@/lib/store/homepage";
 import { THEMES, themeFontsUrl, themeOf, themeStyle } from "@/lib/store/themes";
 import { enterAccessCode } from "./actions";
 
@@ -23,7 +25,8 @@ export default async function StoreLayout({ children }: { children: React.ReactN
   // The platform's own address has no store; its pages render on their own.
   if (!rs) return <>{children}</>;
   const { db, store, business, settings } = rs;
-  const [pages, cart, shopper, itemCount, access, designer] = await Promise.all([
+  const main = store.kind === "ROOT";
+  const [pages, cart, shopper, itemCount, access, designer, storeCount] = await Promise.all([
     db.storePage.findMany({
       where: { storeId: store.id, published: true, OR: [{ showInNav: true }, { parent: { showInNav: true } }] },
       orderBy: [{ navOrder: "asc" }, { title: "asc" }],
@@ -34,25 +37,36 @@ export default async function StoreLayout({ children }: { children: React.ReactN
     db.storeItem.count({ where: { storeId: store.id, published: true } }),
     hasStoreAccess(store),
     designerConfig(db, store),
+    main ? db.store.count({ where: { kind: "AFFILIATE", showcase: true, active: true } }) : 0,
   ]);
   const top = pages.filter((p) => p.showInNav && !p.parentId).map((p) => ({ ...p, children: pages.filter((c) => c.parentId === p.id) }));
   const theme = themeOf(store.theme);
+  const cartCount = cart?.items.reduce((n, i) => n + i.qty, 0) ?? 0;
+  // The main site gets the business website's header and footer; affiliate stores their theme's.
+  const site = main ? parseSite(store.siteSettings) : null;
+  const menu = site
+    ? siteMenu({ pages: top, anchors: new Set(sectionAnchors(sectionsOf(store, business)).values()), hasItems: itemCount > 0, hasStores: storeCount > 0, designer: designer.enabled, site })
+    : [];
   return (
     <div className="storefront flex min-h-screen flex-col overflow-x-clip" data-theme={theme} style={themeStyle(theme, store.accentColor) as React.CSSProperties}>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
       <link rel="stylesheet" href={themeFontsUrl(theme)} precedence="default" />
       {store.announcement && <div className="bg-[var(--accent)] px-4 py-2 text-center text-sm font-medium text-[var(--accent-contrast)]">{store.announcement}</div>}
-      <StoreHeader
-        style={THEMES[theme].header}
-        store={store}
-        pages={top}
-        cartCount={cart?.items.reduce((n, i) => n + i.qty, 0) ?? 0}
-        signedIn={!!shopper}
-        accounts={settings.accountMode !== "GUEST_ONLY"}
-        hasItems={itemCount > 0}
-        designer={designer.enabled}
-      />
+      {site ? (
+        <SiteHeader store={store} menu={menu} site={site} cartCount={cartCount} signedIn={!!shopper} accounts={settings.accountMode !== "GUEST_ONLY"} />
+      ) : (
+        <StoreHeader
+          style={THEMES[theme].header}
+          store={store}
+          pages={top}
+          cartCount={cartCount}
+          signedIn={!!shopper}
+          accounts={settings.accountMode !== "GUEST_ONLY"}
+          hasItems={itemCount > 0}
+          designer={designer.enabled}
+        />
+      )}
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
         {rs.status.state !== "open" ? (
           <div className="mx-auto max-w-md space-y-3 py-12 text-center" data-testid="store-closed">
@@ -71,7 +85,7 @@ export default async function StoreLayout({ children }: { children: React.ReactN
           </div>
         )}
       </main>
-      <StoreFooter business={business} store={store} pages={top} />
+      {site ? <SiteFooter business={business} store={store} menu={menu} site={site} /> : <StoreFooter business={business} store={store} pages={top} />}
       <Analytics ga4Id={store.ga4Id} metaPixelId={store.metaPixelId} />
       <VisitBeacon />
     </div>

@@ -8,12 +8,27 @@ import { PageBody } from "@/components/store/showcase";
 import { ItemGrid, shopItemsInclude } from "@/components/store/items";
 import { StoreHero } from "@/components/store/hero";
 import { THEMES, themeOf } from "@/lib/store/themes";
+import { HomeSections } from "@/components/store/home-sections";
+import { parseSite, sectionsOf, SOCIALS, type SocialKey } from "@/lib/store/homepage";
+import { requestOrigin } from "@/lib/business";
 
 export async function generateMetadata(): Promise<Metadata> {
   const rs = await getRequestStore();
   if (!rs) return { title: PLATFORM_NAME };
   const home = await rs.db.storePage.findFirst({ where: { storeId: rs.store.id, slug: "home", published: true } });
-  return { title: home?.seoTitle ?? rs.store.name + (rs.store.tagline ? ` · ${rs.store.tagline}` : ""), description: home?.seoDescription ?? rs.store.tagline ?? undefined };
+  const title = home?.seoTitle ?? rs.store.name + (rs.store.tagline ? ` · ${rs.store.tagline}` : "");
+  const description = home?.seoDescription ?? rs.store.tagline ?? undefined;
+  // How the site looks when shared on social media and in messages.
+  const heroPhoto = rs.store.kind === "ROOT" ? sectionsOf(rs.store, rs.business).find((x) => x.kind === "hero" && x.on)?.data.image : null;
+  const picture = (typeof heroPhoto === "string" ? heroPhoto : null) ?? rs.store.heroImageFileId ?? rs.store.logoFileId;
+  const origin = await requestOrigin();
+  const images = picture ? [`${origin}/media/${picture}`] : undefined;
+  return {
+    title,
+    description,
+    openGraph: { title, description, siteName: rs.store.name, type: "website", url: origin, images },
+    twitter: { card: images ? "summary_large_image" : "summary", title, description, images },
+  };
 }
 
 export default async function Home() {
@@ -29,6 +44,7 @@ export default async function Home() {
       </main>
     );
   }
+  if (rs.store.kind === "ROOT") return <MainHome rs={rs} />;
   const [home, featured] = await Promise.all([
     rs.db.storePage.findFirst({ where: { storeId: rs.store.id, slug: "home", published: true } }),
     rs.db.storeItem.findMany({
@@ -54,5 +70,33 @@ export default async function Home() {
         </section>
       )}
     </div>
+  );
+}
+
+/** The business's own website: its homepage sections, plus details search engines read. */
+async function MainHome({ rs }: { rs: NonNullable<Awaited<ReturnType<typeof getRequestStore>>> }) {
+  const { db, store, business, settings } = rs;
+  const site = parseSite(store.siteSettings);
+  const origin = await requestOrigin();
+  const sameAs = (Object.keys(SOCIALS) as SocialKey[]).map((k) => site.social[k]).filter(Boolean);
+  const ld = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    name: business.name,
+    url: origin,
+    ...(store.tagline ? { description: store.tagline } : {}),
+    ...(store.logoFileId ? { logo: `${origin}/media/${store.logoFileId}`, image: `${origin}/media/${store.heroImageFileId ?? store.logoFileId}` } : {}),
+    ...(business.phone ? { telephone: business.phone } : {}),
+    ...(business.email ? { email: business.email } : {}),
+    ...(business.addressLine1
+      ? { address: { "@type": "PostalAddress", streetAddress: [business.addressLine1, business.addressLine2].filter(Boolean).join(", "), addressLocality: business.city, addressRegion: business.region, postalCode: business.postalCode, addressCountry: business.country } }
+      : {}),
+    ...(sameAs.length ? { sameAs } : {}),
+  };
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld).replace(/</g, "\\u003c") }} />
+      <HomeSections sections={sectionsOf(store, business)} db={db} store={store} business={business} site={site} showPrices={settings.showPrices} />
+    </>
   );
 }

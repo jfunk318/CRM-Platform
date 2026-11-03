@@ -1793,6 +1793,11 @@ model Store {
   accentColor           String? // "#f59e0b"
   announcement          String? // bar across the top of every page
   footerText            String?
+  // The main site's homepage: its sections in order (lib/store/homepage.ts;
+  // empty = the built-in set) and site-wide details (social links, hours,
+  // the header button).
+  homeSections          Json?
+  siteSettings          Json?
   active                Boolean               @default(true)
   // Affiliate stores: the customer the store is for, the staff member who
   // looks after it, its group, and when it's open.

@@ -327,9 +327,31 @@ Areas adjusted by hand in the product editor are never moved again.
   prices, pay later, access code, markup, delivery methods, showcase).
 - **Store groups** (Schools, Teams…) carry settings their stores inherit:
   business defaults → group → store.
-- **The main site** (the business's own address) is managed the same way
-  under Web → Main site. It sells the business's own items,
-  offers the blank catalog and quote requests, and shows the stores.
+- **The main site** (the business's own address, e.g. `jakesprintshop.com`)
+  is the business's website and the door to its stores. Web → Main site
+  opens its **Homepage** builder: a list of sections to drag into order,
+  switch on and off, edit and add to, with a desktop/phone preview that
+  reloads on save. Sections: Banner (headline, text, two buttons, a photo
+  beside or behind the text, plus a live "N team stores open" line),
+  Trusted by (affiliate store logos, automatic), Numbers, Services (icon
+  cards), Team & group stores (the showcase, with search), Shop (the main
+  site's own items), About (text, points, photo), How it works, Our work
+  (uploaded photos, else store item pictures), Reviews, Call to action,
+  Contact (address with map link, phone, email, hours, social links) and
+  Free text (Markdown, showcase lines allowed). Until it's saved, the
+  homepage uses a ready-made set written from the business's name and city.
+  **Site details** on the same page: social links (Instagram, Facebook,
+  TikTok, X, YouTube, LinkedIn, Pinterest, Google reviews), opening hours,
+  the header button (default "Get a quote") and whether the menu links to
+  **/stores**, a directory of every showcased store with search and group
+  filters. The main site has a sticky header (menu built from the shown
+  sections: Services, Our work, About, Contact, plus the shop, catalog,
+  designer and its own pages) with a phone menu, and a footer with links,
+  contact details and social icons. For sharing and search, the homepage
+  has Open Graph / Twitter card tags (banner photo or logo) and
+  LocalBusiness structured data (address, phone, social profiles). Colors
+  and fonts follow the main site's theme (Look). It also sells the
+  business's own items and offers the blank catalog and quote requests.
 - **Look** (store → Look): every store (and the main site) has a theme:
   **Minimal** (clean white, modern sans-serif, split banner), **Team /
   sports** (bold condensed capitals, a header and striped banner in the

@@ -14,6 +14,12 @@ export type ShowcaseCard = {
   pictures: { id: string; src: string; name: string }[];
 };
 
+/** A store's color as a soft gradient; stores without one use the site's accent. */
+const tile = (accent: string | null) => {
+  const c = accent ?? "var(--accent)";
+  return { background: `linear-gradient(135deg, ${c}, color-mix(in srgb, ${c} 70%, black))` };
+};
+
 const COLS = ["", "sm:grid-cols-1", "sm:grid-cols-2", "sm:grid-cols-3", "sm:grid-cols-4", "sm:grid-cols-5", "sm:grid-cols-6"];
 
 /** Store cards as a grid or a list, with an optional search box and group buttons for shoppers. */
@@ -48,7 +54,7 @@ export function ShowcaseCards({ stores, layout, columns, filters }: { stores: Sh
           {shown.map((s) => (
             <li key={s.id}>
               <a href={s.url} className="group flex items-center gap-4 p-3 hover:bg-[var(--st-subtle)]">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md" style={{ background: s.accent ?? "#f3f4f6" }}>
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md" style={tile(s.accent)}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   {s.logo ? <img src={s.logo} alt="" className="max-h-10 w-auto" /> : <span className="text-lg font-bold text-white drop-shadow">{s.name.slice(0, 1)}</span>}
                 </span>
@@ -65,28 +71,35 @@ export function ShowcaseCards({ stores, layout, columns, filters }: { stores: Sh
       ) : (
         <div className={`grid grid-cols-2 gap-5 ${COLS[columns]}`}>
           {shown.map((s) => (
-            <a key={s.id} href={s.url} className="group block overflow-hidden rounded-lg border border-[var(--st-border)] bg-[var(--st-surface)] hover:border-[var(--accent)]">
-              <div className="flex h-28 items-center justify-center p-4" style={{ background: s.accent ?? "#f3f4f6" }}>
+            <a key={s.id} href={s.url} className="group flex flex-col overflow-hidden border border-[var(--st-border)] bg-[var(--st-surface)] transition duration-200 hover:-translate-y-1 hover:shadow-xl" style={{ borderRadius: "var(--st-radius)" }}>
+              <div className="relative flex h-32 items-center justify-center overflow-hidden p-4" style={tile(s.accent)}>
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_10%,rgb(255_255_255/0.25),transparent_55%)]" />
                 {s.logo ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={s.logo} alt={s.name} className="max-h-20 w-auto" />
+                  <img src={s.logo} alt={s.name} className="relative max-h-20 w-auto drop-shadow transition duration-300 group-hover:scale-105" />
                 ) : (
-                  <span className="text-center text-xl font-bold text-white drop-shadow">{s.name}</span>
+                  <span className="st-heading relative text-center text-xl leading-tight text-white drop-shadow">{s.name}</span>
                 )}
+                {s.group && <span className="absolute top-2 left-2 rounded-full bg-black/30 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur">{s.group}</span>}
               </div>
-              <div className="space-y-1 p-3">
+              <div className="flex flex-1 flex-col gap-1.5 p-4">
                 <div className="font-semibold group-hover:text-[var(--accent)]">{s.name}</div>
-                {s.tagline && <div className="text-sm text-[var(--st-muted)]">{s.tagline}</div>}
+                {s.tagline && <div className="line-clamp-2 text-sm text-[var(--st-muted)]">{s.tagline}</div>}
                 {s.pictures.length > 0 && (
                   <div className="flex gap-1.5 pt-1">
                     {s.pictures.map((p) => (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img key={p.id} src={p.src} alt={p.name} className="h-10 w-10 rounded object-cover" />
+                      <img key={p.id} src={p.src} alt={p.name} className="h-11 w-11 rounded-md bg-[var(--st-subtle)] object-cover" />
                     ))}
                   </div>
                 )}
-                <div className="text-xs text-[var(--st-muted)]">{s.status}</div>
-                <div className="text-xs text-[var(--accent)]">Visit the store →</div>
+                <div className="mt-auto flex items-center justify-between pt-2 text-xs">
+                  <span className="flex items-center gap-1.5 text-[var(--st-muted)]">
+                    <span className={`h-1.5 w-1.5 rounded-full ${s.status.startsWith("Open") ? "bg-green-500" : "bg-gray-400"}`} />
+                    {s.status}
+                  </span>
+                  <span className="font-semibold text-[var(--accent)]">Visit →</span>
+                </div>
               </div>
             </a>
           ))}

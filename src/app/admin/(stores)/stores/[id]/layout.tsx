@@ -11,6 +11,7 @@ export default async function StoreDashboardLayout({ children, params }: { child
   const main = store.kind === "ROOT";
   const tabs = [
     { href: `/admin/stores/${id}`, label: "Overview" },
+    ...(main ? [{ href: `/admin/stores/${id}/homepage`, label: "Homepage" }] : []),
     { href: `/admin/stores/${id}/items`, label: "Items" },
     { href: `/admin/stores/${id}/look`, label: "Look" },
     { href: `/admin/stores/${id}/designer`, label: "Designer" },
