@@ -190,3 +190,63 @@ export function themeStyle(key: string | null | undefined, accentColor: string |
 /** The stylesheet URL for a store's fonts: its own font, else its theme's. */
 export const themeFontsUrl = (key: string | null | undefined, font?: string | null) =>
   `https://fonts.googleapis.com/css2?${(isFontKey(font) ? [FONTS[font].family] : THEMES[themeOf(key)].fonts).map((f) => `family=${f}`).join("&")}&display=swap`;
+
+const luminance = (hex: string) => {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+
+/**
+ * The CSS variables for one band of a page (a homepage section): a plain,
+ * tinted, solid-color or dark background, optionally in its own color.
+ * Everything inside (cards, buttons, muted text) follows, because it's
+ * all drawn from these variables. `accent` is the store's own accent, used
+ * when the band has no color of its own.
+ */
+export function bandStyle(band: string, color: string | null | undefined, accent: string): Record<string, string> {
+  const c = color && HEX.test(color) ? color : HEX.test(accent) ? accent : "#111827";
+  const own: Record<string, string> = color && HEX.test(color) ? { "--accent": c, "--accent-contrast": contrastText(c) } : {};
+  switch (band) {
+    case "plain":
+      return { ...own, background: "var(--st-bg)" };
+    case "tint":
+      return {
+        ...own,
+        background: `color-mix(in srgb, ${c} 10%, var(--st-bg))`,
+        "--st-subtle": `color-mix(in srgb, ${c} 14%, #ffffff)`,
+        "--st-border": `color-mix(in srgb, ${c} 22%, #e5e7eb)`,
+      };
+    case "accent": {
+      const on = contrastText(c);
+      return {
+        background: c,
+        color: on,
+        // Buttons and links turn to the text color, so they show on the color.
+        "--accent": on,
+        "--accent-contrast": c,
+        "--st-text": on,
+        "--st-muted": `color-mix(in srgb, ${on} 78%, ${c})`,
+        "--st-surface": `color-mix(in srgb, ${on} 9%, ${c})`,
+        "--st-subtle": `color-mix(in srgb, ${on} 14%, ${c})`,
+        "--st-border": `color-mix(in srgb, ${on} 24%, ${c})`,
+      };
+    }
+    case "dark": {
+      // A dark accent would vanish on a dark band, so it's lightened.
+      const a = luminance(c) < 0.06 ? `color-mix(in srgb, ${c} 25%, #ffffff)` : c;
+      return {
+        background: "#111318",
+        color: "#f4f4f5",
+        "--accent": a,
+        "--accent-contrast": luminance(c) < 0.06 ? "#111318" : contrastText(c),
+        "--st-text": "#f4f4f5",
+        "--st-muted": "#a1a1aa",
+        "--st-surface": "#1a1d24",
+        "--st-subtle": "#22262e",
+        "--st-border": "#2e333d",
+      };
+    }
+    default:
+      return own;
+  }
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blankSection, cleanHref, defaultSections, parseSections, parseSite, sectionAnchors, sectionImages, sectionsOf } from "./homepage";
+import { affiliateSections, blankSection, cleanHref, defaultSections, kindsFor, parseSections, parseSite, sectionAnchors, sectionImages, sectionsOf } from "./homepage";
 
 describe("cleanHref", () => {
   it("keeps site paths, anchors, mail and phone links and web addresses", () => {
@@ -90,5 +90,38 @@ describe("helpers", () => {
     expect(String(d.find((s) => s.kind === "about")!.data.body)).toContain("in Keene");
     expect(sectionsOf({ homeSections: null, tagline: null }, { name: "J" })).toHaveLength(d.length);
     expect(sectionsOf({ homeSections: [{ id: "t", kind: "text", data: { body: "x" } }], tagline: null }, { name: "J" })).toHaveLength(1);
+  });
+});
+
+describe("section looks and team-store homepages", () => {
+  it("keeps a section's background and color, and drops bad ones", () => {
+    const [a, b] = parseSections([
+      { id: "a", kind: "services", data: { bg: "dark", color: "#1D4ED8" } },
+      { id: "b", kind: "services", data: { bg: "neon", color: "blue" } },
+    ]);
+    expect([a.data.bg, a.data.color]).toEqual(["dark", "#1d4ed8"]);
+    expect([b.data.bg, b.data.color]).toEqual(["auto", ""]);
+  });
+  it("gives the banner a color but no background choice", () => {
+    expect(parseSections([{ kind: "hero", data: { bg: "dark", color: "#ff0000" } }])[0].data).toMatchObject({ color: "#ff0000" });
+    expect(parseSections([{ kind: "hero", data: { bg: "dark" } }])[0].data.bg).toBeUndefined();
+  });
+  it("starts the infographic sections filled in", () => {
+    expect((blankSection("timeline").data.items as unknown[]).length).toBe(5);
+    const methods = blankSection("methods").data.items as Record<string, unknown>[];
+    expect(methods[0]).toMatchObject({ name: "Screen printing", durability: 5, cost: "$" });
+    expect(blankSection("stores").data.card).toBe("photo");
+  });
+  it("keeps store showcases off team-store homepages", () => {
+    expect(kindsFor("AFFILIATE")).not.toContain("stores");
+    expect(kindsFor("AFFILIATE")).not.toContain("logos");
+    expect(kindsFor("ROOT")).toContain("stores");
+    expect(parseSections([{ kind: "stores" }, { kind: "shop" }], "AFFILIATE").map((x) => x.kind)).toEqual(["shop"]);
+  });
+  it("suggests a team-store homepage with the store's name", () => {
+    const a = affiliateSections({ name: "Keene Swim", tagline: "Season gear" });
+    expect(a[0].data).toMatchObject({ headline: "Keene Swim", text: "Season gear" });
+    expect(a.map((x) => x.kind)).toEqual(["hero", "features", "shop", "steps"]);
+    expect(sectionsOf({ homeSections: null, tagline: null, kind: "AFFILIATE", name: "Keene Swim" }, { name: "J" })[0].kind).toBe("hero");
   });
 });

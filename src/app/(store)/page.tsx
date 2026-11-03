@@ -7,7 +7,7 @@ import { getRequestStore } from "@/lib/store/resolve";
 import { PageBody } from "@/components/store/showcase";
 import { ItemGrid, shopItemsInclude } from "@/components/store/items";
 import { StoreHero } from "@/components/store/hero";
-import { THEMES, themeOf } from "@/lib/store/themes";
+import { THEMES, themeOf, themeStyle } from "@/lib/store/themes";
 import { HomeSections } from "@/components/store/home-sections";
 import { parseSite, sectionsOf, SOCIALS, type SocialKey } from "@/lib/store/homepage";
 import { requestOrigin } from "@/lib/business";
@@ -19,7 +19,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const title = home?.seoTitle ?? rs.store.name + (rs.store.tagline ? ` · ${rs.store.tagline}` : "");
   const description = home?.seoDescription ?? rs.store.tagline ?? undefined;
   // How the site looks when shared on social media and in messages.
-  const heroPhoto = rs.store.kind === "ROOT" ? sectionsOf(rs.store, rs.business).find((x) => x.kind === "hero" && x.on)?.data.image : null;
+  const built = rs.store.kind === "ROOT" || rs.store.homeSections != null;
+  const heroPhoto = built ? sectionsOf(rs.store, rs.business).find((x) => x.kind === "hero" && x.on)?.data.image : null;
   const picture = (typeof heroPhoto === "string" ? heroPhoto : null) ?? rs.store.heroImageFileId ?? rs.store.logoFileId;
   const origin = await requestOrigin();
   const images = picture ? [`${origin}/media/${picture}`] : undefined;
@@ -45,6 +46,21 @@ export default async function Home() {
     );
   }
   if (rs.store.kind === "ROOT") return <MainHome rs={rs} />;
+  // A team store with a homepage built from sections; without one, the classic banner and items.
+  if (rs.store.homeSections != null) {
+    return (
+      <HomeSections
+        sections={sectionsOf(rs.store, rs.business)}
+        db={rs.db}
+        store={rs.store}
+        business={rs.business}
+        site={parseSite(null)}
+        showPrices={rs.settings.showPrices}
+        accent={themeStyle(rs.store.theme, rs.store.accentColor)["--accent"]}
+        statusLabel={rs.store.closesAt ? rs.status.label : null}
+      />
+    );
+  }
   const [home, featured] = await Promise.all([
     rs.db.storePage.findFirst({ where: { storeId: rs.store.id, slug: "home", published: true } }),
     rs.db.storeItem.findMany({
@@ -96,7 +112,7 @@ async function MainHome({ rs }: { rs: NonNullable<Awaited<ReturnType<typeof getR
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld).replace(/</g, "\\u003c") }} />
-      <HomeSections sections={sectionsOf(store, business)} db={db} store={store} business={business} site={site} showPrices={settings.showPrices} />
+      <HomeSections sections={sectionsOf(store, business)} db={db} store={store} business={business} site={site} showPrices={settings.showPrices} accent={themeStyle(store.theme, store.accentColor)["--accent"]} />
     </>
   );
 }

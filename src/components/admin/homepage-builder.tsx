@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { resetHomepageAction, saveHomepageAction, uploadHomeImageAction } from "@/app/admin/(stores)/stores/actions";
-import { blankRow, blankSection, type FieldSpec, type FieldValue, type Link, type Section, SECTION_KEYS, SECTION_KINDS, type SectionKind, SINGLE } from "@/lib/store/homepage";
+import { blankRow, blankSection, type FieldSpec, fieldsOf, type FieldValue, type Link, type Section, SECTION_KINDS, type SectionKind, SINGLE } from "@/lib/store/homepage";
 import { ActionForm } from "./action-form";
 
 /** Places a button can point to, offered as suggestions. */
@@ -19,12 +19,12 @@ const LINK_SUGGESTIONS = [
 ];
 
 /**
- * The main site's homepage, as a list of sections: drag (or nudge) them
+ * A store's homepage, as a list of sections: drag (or nudge) them
  * into order, switch them on and off, open one to edit its words, buttons
  * and photos, add more from the list below, then save. The preview beside
  * it reloads after each save.
  */
-export function HomepageBuilder({ storeId, initial, url, custom }: { storeId: string; initial: Section[]; url: string; custom: boolean }) {
+export function HomepageBuilder({ storeId, initial, url, custom, kinds, affiliate = false }: { storeId: string; initial: Section[]; url: string; custom: boolean; kinds: SectionKind[]; affiliate?: boolean }) {
   const [sections, setSections] = useState(initial);
   const [open, setOpen] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -71,7 +71,7 @@ export function HomepageBuilder({ storeId, initial, url, custom }: { storeId: st
       <div className="space-y-4">
         <div className="sticky top-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur" data-testid="homepage-savebar">
           <div className="text-sm">
-            {dirty ? <span className="font-medium text-warn-800">Unsaved changes</span> : <span className="text-gray-500">{custom ? "Saved" : "The starting homepage. Change anything and save to make it yours."}</span>}
+            {dirty ? <span className="font-medium text-warn-800">Unsaved changes</span> : <span className="text-gray-500">{custom ? "Saved" : affiliate ? "A suggested homepage. Save to use it instead of the classic one." : "The starting homepage. Change anything and save to make it yours."}</span>}
           </div>
           <ActionForm
             action={saveHomepageAction}
@@ -150,7 +150,7 @@ export function HomepageBuilder({ storeId, initial, url, custom }: { storeId: st
                 {isOpen && (
                   <div className="space-y-3 border-t border-gray-100 px-4 py-4" data-testid="section-editor">
                     <p className="text-xs text-gray-500">{kind.description}</p>
-                    <Fields fields={kind.fields} data={s.data} onChange={(data) => update(s.id, data)} storeId={storeId} prefix={s.id} />
+                    <Fields fields={fieldsOf(s.kind)} data={s.data} onChange={(data) => update(s.id, data)} storeId={storeId} prefix={s.id} />
                   </div>
                 )}
               </li>
@@ -161,7 +161,7 @@ export function HomepageBuilder({ storeId, initial, url, custom }: { storeId: st
         <div className="rounded-xl border border-dashed border-gray-300 p-4" data-testid="section-palette">
           <h3 className="mb-2 text-sm font-semibold">Add a section</h3>
           <div className="grid gap-2 sm:grid-cols-2">
-            {SECTION_KEYS.map((k) => {
+            {kinds.map((k) => {
               const taken = SINGLE.includes(k) && sections.some((x) => x.kind === k);
               return (
                 <button key={k} type="button" disabled={taken} onClick={() => add(k)} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-left hover:border-brand-400 disabled:opacity-40" title={taken ? "Already on the page" : undefined}>
@@ -174,7 +174,11 @@ export function HomepageBuilder({ storeId, initial, url, custom }: { storeId: st
         </div>
 
         {custom && (
-          <ActionForm action={resetHomepageAction} submitLabel="Start over with the starting homepage" danger confirm="Replace your homepage with the starting one? Your sections are lost." className="flex items-center gap-3" onSaved={() => window.location.reload()}>
+          <ActionForm
+            action={resetHomepageAction}
+            submitLabel={affiliate ? "Go back to the classic homepage" : "Start over with the starting homepage"}
+            danger
+            confirm={affiliate ? "Go back to the classic homepage (banner and featured items)? These sections are lost." : "Replace your homepage with the starting one? Your sections are lost."} className="flex items-center gap-3" onSaved={() => window.location.reload()}>
             <input type="hidden" name="storeId" value={storeId} />
           </ActionForm>
         )}
@@ -278,6 +282,18 @@ function Field({ spec, value, onChange, storeId, id }: { spec: FieldSpec; value:
             {LINK_SUGGESTIONS.map(([href, label]) => <option key={href} value={href}>{label}</option>)}
           </datalist>
         </fieldset>
+      );
+    }
+    case "color": {
+      const v = typeof value === "string" ? value : "";
+      return (
+        <>
+          <span className="label">{spec.label}</span>
+          <span className="flex items-center gap-2">
+            <input type="color" className="h-9 w-12 cursor-pointer rounded border border-gray-300" value={v || "#888888"} onChange={(e) => onChange(e.target.value)} aria-label={spec.label} />
+            {v ? <button type="button" className="text-xs text-brand-700 hover:underline" onClick={() => onChange("")}>Use the accent color</button> : <span className="text-xs text-gray-500">The store&apos;s accent color</span>}
+          </span>
+        </>
       );
     }
     case "image":

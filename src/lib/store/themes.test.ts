@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contrastText, THEMES, themeFontsUrl, themeOf, themeStyle } from "./themes";
+import { bandStyle, contrastText, THEMES, themeFontsUrl, themeOf, themeStyle } from "./themes";
 
 describe("store themes", () => {
   it("falls back to minimal for unknown themes", () => {
@@ -29,5 +29,22 @@ describe("store themes", () => {
     expect(v["--st-font-body"]).toBe(v["--st-font-heading"]);
     expect(themeFontsUrl("luxury", "encode")).toContain("family=Encode+Sans+Semi+Condensed");
     expect(themeStyle("luxury", null, "comic-sans")["--st-font-heading"]).toContain("Cormorant Garamond");
+  });
+});
+
+describe("section bands", () => {
+  it("draws a solid band in its color, with buttons in the text color", () => {
+    const b = bandStyle("accent", "#1d4ed8", "#111111");
+    expect(b.background).toBe("#1d4ed8");
+    expect(b["--accent"]).toBe("#ffffff");
+    expect(b["--accent-contrast"]).toBe("#1d4ed8");
+  });
+  it("lightens a dark accent on a dark band", () => {
+    expect(bandStyle("dark", null, "#111827")["--accent"]).toContain("color-mix");
+    expect(bandStyle("dark", null, "#f59e0b")["--accent"]).toBe("#f59e0b");
+  });
+  it("only sets a color on automatic bands", () => {
+    expect(bandStyle("auto", null, "#111111")).toEqual({});
+    expect(bandStyle("auto", "#ff0000", "#111111")).toEqual({ "--accent": "#ff0000", "--accent-contrast": "#ffffff" });
   });
 });

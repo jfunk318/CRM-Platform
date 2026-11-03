@@ -145,6 +145,9 @@ function ShowcaseFields({ value, groups, onChange }: { value: ShowcaseOptions; g
       <Select label="Order" value={value.sort} onChange={(v) => set({ sort: v as ShowcaseOptions["sort"] })} options={Object.entries(SHOWCASE_SORTS)} />
       <Num label="Show up to" value={value.limit} min={1} max={48} onChange={(limit) => set({ limit })} />
       <Select label="Layout" value={value.layout} onChange={(v) => set({ layout: v as ShowcaseOptions["layout"] })} options={[["grid", "Cards"], ["list", "List"]]} />
+      {value.layout === "grid" && (
+        <Select label="Cards show" value={value.card} onChange={(v) => set({ card: v as ShowcaseOptions["card"] })} options={[["photo", "Card picture"], ["logo", "Logo on color"], ["products", "Logo + products"]]} />
+      )}
       {value.layout === "grid" && <Select label="Columns" value={String(value.columns)} onChange={(v) => set({ columns: Number(v) })} options={[1, 2, 3, 4, 5, 6].map((n) => [String(n), String(n)])} />}
       <div className="space-y-1 pt-1 sm:col-span-3">
         <label className="flex items-center gap-2"><input type="checkbox" checked={value.filters} onChange={(e) => set({ filters: e.target.checked })} /> Search box and group buttons for shoppers</label>

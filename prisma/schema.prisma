@@ -1318,6 +1318,7 @@ model StoredFile {
   storeLogos    Store[]            @relation("StoreLogo")
   storeHeroes   Store[]            @relation("StoreHero")
   storeIcons    Store[]            @relation("StoreFavicon")
+  storeCards    Store[]            @relation("StoreCard")
   storeItems    StoreItem[]
   artworkFor    DesignDecoration[] @relation("DecorationArtwork")
   artSourceFor  DesignDecoration[] @relation("DecorationArtSource")
@@ -1786,6 +1787,10 @@ model Store {
   // The browser-tab icon; empty = the logo, else the platform's.
   faviconFileId         String?
   favicon               StoredFile?           @relation("StoreFavicon", fields: [businessId, faviconFileId], references: [businessId, id], onDelete: NoAction)
+  // The picture on the store's card in showcases ("Find your team store");
+  // empty = the logo on the store's color.
+  cardImageFileId       String?
+  cardImage             StoredFile?           @relation("StoreCard", fields: [businessId, cardImageFileId], references: [businessId, id], onDelete: NoAction)
   heroHeadline          String? // defaults to the store name
   heroText              String? // defaults to the tagline
   heroButton            String? // defaults to "Shop now"
@@ -1795,8 +1800,9 @@ model Store {
   accentColor           String? // "#f59e0b"
   announcement          String? // bar across the top of every page
   footerText            String?
-  // The main site's homepage: its sections in order (lib/store/homepage.ts;
-  // empty = the built-in set) and site-wide details (social links, hours,
+  // The homepage: its sections in order (lib/store/homepage.ts; empty = the
+  // built-in set; affiliate stores without any keep the classic homepage)
+  // and, for the main site, site-wide details (social links, hours,
   // the header button).
   homeSections          Json?
   siteSettings          Json?

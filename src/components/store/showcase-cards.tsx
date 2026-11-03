@@ -8,6 +8,8 @@ export type ShowcaseCard = {
   tagline: string | null;
   url: string;
   logo: string | null;
+  /** The store's card picture (or banner photo). */
+  image: string | null;
   accent: string | null;
   group: string | null;
   status: string;
@@ -22,8 +24,10 @@ const tile = (accent: string | null) => {
 
 const COLS = ["", "sm:grid-cols-1", "sm:grid-cols-2", "sm:grid-cols-3", "sm:grid-cols-4", "sm:grid-cols-5", "sm:grid-cols-6"];
 
+type CardKind = "photo" | "logo" | "products";
+
 /** Store cards as a grid or a list, with an optional search box and group buttons for shoppers. */
-export function ShowcaseCards({ stores, layout, columns, filters }: { stores: ShowcaseCard[]; layout: "grid" | "list"; columns: number; filters: boolean }) {
+export function ShowcaseCards({ stores, layout, card = "photo", columns, filters }: { stores: ShowcaseCard[]; layout: "grid" | "list"; card?: CardKind; columns: number; filters: boolean }) {
   const [q, setQ] = useState("");
   const [group, setGroup] = useState<string | null>(null);
   const groups = [...new Set(stores.map((s) => s.group).filter((g): g is string => !!g))].sort();
@@ -69,42 +73,97 @@ export function ShowcaseCards({ stores, layout, columns, filters }: { stores: Sh
           ))}
         </ul>
       ) : (
-        <div className={`grid grid-cols-2 gap-5 ${COLS[columns]}`}>
-          {shown.map((s) => (
-            <a key={s.id} href={s.url} className="group flex flex-col overflow-hidden border border-[var(--st-border)] bg-[var(--st-surface)] transition duration-200 hover:-translate-y-1 hover:shadow-xl" style={{ borderRadius: "var(--st-radius)" }}>
-              <div className="relative flex h-32 items-center justify-center overflow-hidden p-4" style={tile(s.accent)}>
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_10%,rgb(255_255_255/0.25),transparent_55%)]" />
-                {s.logo ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={s.logo} alt={s.name} className="relative max-h-20 w-auto drop-shadow transition duration-300 group-hover:scale-105" />
-                ) : (
-                  <span className="st-heading relative text-center text-xl leading-tight text-white drop-shadow">{s.name}</span>
-                )}
-                {s.group && <span className="absolute top-2 left-2 rounded-full bg-black/30 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur">{s.group}</span>}
-              </div>
-              <div className="flex flex-1 flex-col gap-1.5 p-4">
-                <div className="font-semibold group-hover:text-[var(--accent)]">{s.name}</div>
-                {s.tagline && <div className="line-clamp-2 text-sm text-[var(--st-muted)]">{s.tagline}</div>}
-                {s.pictures.length > 0 && (
-                  <div className="flex gap-1.5 pt-1">
-                    {s.pictures.map((p) => (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img key={p.id} src={p.src} alt={p.name} className="h-11 w-11 rounded-md bg-[var(--st-subtle)] object-cover" />
-                    ))}
-                  </div>
-                )}
-                <div className="mt-auto flex items-center justify-between pt-2 text-xs">
-                  <span className="flex items-center gap-1.5 text-[var(--st-muted)]">
-                    <span className={`h-1.5 w-1.5 rounded-full ${s.status.startsWith("Open") ? "bg-green-500" : "bg-gray-400"}`} />
-                    {s.status}
-                  </span>
-                  <span className="font-semibold text-[var(--accent)]">Visit →</span>
-                </div>
-              </div>
-            </a>
-          ))}
+        <div className={`grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 ${COLS[columns]}`} data-card={card}>
+          {shown.map((s) => (card === "photo" ? <PhotoCard key={s.id} s={s} /> : <LogoCard key={s.id} s={s} products={card === "products"} />))}
         </div>
       )}
     </div>
+  );
+}
+
+const Status = ({ s, light = false }: { s: ShowcaseCard; light?: boolean }) => (
+  <span className={`flex items-center gap-1.5 ${light ? "" : "text-[var(--st-muted)]"}`}>
+    <span className={`h-1.5 w-1.5 rounded-full ${s.status.startsWith("Open") ? "bg-green-500" : "bg-gray-400"}`} />
+    {s.status}
+  </span>
+);
+
+/** A big picture of the store (its card picture, banner photo or best product), with its logo and name over it. */
+function PhotoCard({ s }: { s: ShowcaseCard }) {
+  const product = !s.image ? s.pictures[0] : null;
+  const color = s.accent ?? "var(--accent)";
+  return (
+    <a href={s.url} className="group relative flex flex-col overflow-hidden bg-[var(--st-surface)] shadow-sm ring-1 ring-[var(--st-border)] transition duration-200 hover:-translate-y-1 hover:shadow-xl" style={{ borderRadius: "var(--st-radius)" }} data-testid="store-card">
+      <div className="relative aspect-[4/3] overflow-hidden" style={s.image || product ? { background: `color-mix(in srgb, ${color} 14%, var(--st-subtle))` } : tile(s.accent)}>
+        {s.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={s.image} alt="" className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy" data-testid="card-photo" />
+        ) : product ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={product.src} alt="" className="absolute inset-0 m-auto h-[82%] w-auto object-contain drop-shadow-lg transition duration-500 group-hover:scale-105" loading="lazy" />
+        ) : (
+          <>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_10%,rgb(255_255_255/0.25),transparent_55%)]" />
+            {s.logo && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={s.logo} alt="" className="absolute inset-0 m-auto max-h-[45%] max-w-[60%] object-contain drop-shadow transition duration-300 group-hover:scale-105" />
+            )}
+          </>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
+        {s.group && <span className="absolute top-3 left-3 rounded-full bg-black/35 px-2.5 py-0.5 text-[11px] font-medium text-white backdrop-blur">{s.group}</span>}
+        <span className="absolute top-3 right-3 rounded-full bg-white/90 px-2.5 py-0.5 text-[11px] font-medium text-gray-800 shadow-sm"><Status s={s} light /></span>
+        <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 p-4 text-white">
+          {s.logo && (s.image || product) && (
+            <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full bg-white p-1.5 shadow-md ring-2 ring-white/60">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={s.logo} alt="" className="max-h-full max-w-full object-contain" />
+            </span>
+          )}
+          <span className="min-w-0">
+            <span className="st-heading block text-lg leading-tight drop-shadow">{s.name}</span>
+            {s.tagline && <span className="block truncate text-sm opacity-85">{s.tagline}</span>}
+          </span>
+        </div>
+      </div>
+      <div className="flex items-center justify-between border-t-4 px-4 py-2.5 text-sm" style={{ borderTopColor: color }}>
+        <span className="text-[var(--st-muted)]">{s.pictures.length >= 4 ? "4+ items" : s.pictures.length === 1 ? "1 item" : s.pictures.length ? `${s.pictures.length} items` : "Team gear"}</span>
+        <span className="font-semibold text-[var(--accent)] transition group-hover:translate-x-0.5">Shop the store →</span>
+      </div>
+    </a>
+  );
+}
+
+/** The store's logo on its color, optionally with a row of its products. */
+function LogoCard({ s, products }: { s: ShowcaseCard; products: boolean }) {
+  return (
+    <a href={s.url} className="group flex flex-col overflow-hidden border border-[var(--st-border)] bg-[var(--st-surface)] transition duration-200 hover:-translate-y-1 hover:shadow-xl" style={{ borderRadius: "var(--st-radius)" }} data-testid="store-card">
+      <div className={`relative flex items-center justify-center overflow-hidden p-4 ${products ? "h-32" : "h-40"}`} style={tile(s.accent)}>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_10%,rgb(255_255_255/0.25),transparent_55%)]" />
+        {s.logo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={s.logo} alt={s.name} className={`relative w-auto drop-shadow transition duration-300 group-hover:scale-105 ${products ? "max-h-20" : "max-h-24"}`} />
+        ) : (
+          <span className="st-heading relative text-center text-xl leading-tight text-white drop-shadow">{s.name}</span>
+        )}
+        {s.group && <span className="absolute top-2 left-2 rounded-full bg-black/30 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur">{s.group}</span>}
+      </div>
+      <div className="flex flex-1 flex-col gap-1.5 p-4">
+        <div className="font-semibold group-hover:text-[var(--accent)]">{s.name}</div>
+        {s.tagline && <div className="line-clamp-2 text-sm text-[var(--st-muted)]">{s.tagline}</div>}
+        {products && s.pictures.length > 0 && (
+          <div className="flex gap-1.5 pt-1">
+            {s.pictures.slice(0, 3).map((p) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={p.id} src={p.src} alt={p.name} className="h-11 w-11 rounded-md bg-[var(--st-subtle)] object-cover" />
+            ))}
+          </div>
+        )}
+        <div className="mt-auto flex items-center justify-between pt-2 text-xs">
+          <Status s={s} />
+          <span className="font-semibold text-[var(--accent)]">Visit →</span>
+        </div>
+      </div>
+    </a>
   );
 }

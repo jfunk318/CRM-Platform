@@ -5,7 +5,7 @@ import { loadAdminStore } from "@/lib/store/admin";
 import { BannerArt } from "@/components/store/banner-art";
 import { ARTS, artsFor, DEFAULT_ART } from "@/lib/store/banner-art";
 import { FONTS, type FontKey, THEMES, type ThemeKey, themeOf, themeStyle } from "@/lib/store/themes";
-import { removeFaviconAction, removeHeroAction, removeLogoAction, saveLookAction, uploadFaviconAction, uploadHeroAction, uploadLogoAction } from "../../actions";
+import { removeCardImageAction, removeFaviconAction, removeHeroAction, removeLogoAction, saveLookAction, uploadCardImageAction, uploadFaviconAction, uploadHeroAction, uploadLogoAction } from "../../actions";
 
 const ALL_FONTS = `https://fonts.googleapis.com/css2?${[...new Set([...Object.values(THEMES).flatMap((t) => t.fonts), ...Object.values(FONTS).map((f) => f.family)])].map((f) => `family=${f}`).join("&")}&display=swap`;
 
@@ -154,6 +154,23 @@ export default async function LookPage({ params }: { params: Promise<{ id: strin
           </ActionForm>
           {store.faviconFileId && <ActionButton action={removeFaviconAction} fields={{ storeId: store.id }} label="Remove favicon" className="text-xs text-red-700 hover:underline" />}
         </section>
+        {store.kind === "AFFILIATE" && (
+          <section className="card space-y-3" data-testid="card-picture">
+            <h2 className="font-semibold">Store card picture</h2>
+            <p className="text-sm text-gray-600">
+              The photo on this store&apos;s card where stores are listed, like &ldquo;Find your team store&rdquo; on the main site: the team, the uniform, the mascot. Without one, the banner photo is used, then the store&apos;s best product.
+            </p>
+            {store.cardImageFileId && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={`/admin/files/${store.cardImageFileId}`} alt="Card picture" className="aspect-[4/3] w-48 rounded border object-cover" />
+            )}
+            <ActionForm action={uploadCardImageAction} submitLabel="Upload" resetOnSuccess className="max-w-md space-y-2">
+              <input type="hidden" name="storeId" value={store.id} />
+              <FilePicker id="card-file" name="card" accept="image/png,image/jpeg,image/gif,image/webp" required hint="Landscape (4:3), 1200 px wide or more" />
+            </ActionForm>
+            {store.cardImageFileId && <ActionButton action={removeCardImageAction} fields={{ storeId: store.id }} label="Remove card picture" className="text-xs text-red-700 hover:underline" />}
+          </section>
+        )}
       </div>
 
       <section className="card space-y-2">

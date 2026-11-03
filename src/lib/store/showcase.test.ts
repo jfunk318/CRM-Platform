@@ -6,7 +6,7 @@ describe("page blocks", () => {
   it("splits a page into text, showcase and item blocks", () => {
     const blocks = splitBlocks('# Hi\n\nIntro\n\n[[stores]]\n\nMore\n[[stores group="High Schools" sort=sales limit=3 columns=2 status=all layout=list filters]]\n[[items featured sort=price]]');
     expect(blocks.map((b) => b.kind)).toEqual(["markdown", "stores", "markdown", "stores", "items"]);
-    expect(blocks[3]).toEqual({ kind: "stores", options: { group: "High Schools", sort: "sales", limit: 3, columns: 2, includeClosed: true, layout: "list", filters: true } });
+    expect(blocks[3]).toEqual({ kind: "stores", options: { group: "High Schools", sort: "sales", limit: 3, columns: 2, includeClosed: true, layout: "list", card: "photo", filters: true } });
     expect(blocks[4]).toEqual({ kind: "items", options: { ...DEFAULT_ITEMS, sort: "price", featuredOnly: true } });
   });
   it("uses safe defaults for missing or odd options", () => {
@@ -22,6 +22,15 @@ describe("page blocks", () => {
     expect(joinBlocks(splitBlocks(body))).toBe(body);
     expect(joinBlocks([{ kind: "stores", options: { ...DEFAULT_SHOWCASE, group: 'Odd "name"]' } }])).toBe('[[stores group="Odd name"]]');
     expect(splitBlocks(joinBlocks([{ kind: "stores", options: DEFAULT_SHOWCASE }]))).toEqual([{ kind: "stores", options: DEFAULT_SHOWCASE }]);
+  });
+});
+
+describe("showcase cards", () => {
+  it("reads and writes the card style", () => {
+    expect(parseShowcase("").card).toBe("photo");
+    expect(parseShowcase("card=logo").card).toBe("logo");
+    expect(parseShowcase("card=bogus").card).toBe("photo");
+    expect(joinBlocks([{ kind: "stores", options: { ...DEFAULT_SHOWCASE, card: "products" } }])).toBe("[[stores card=products]]");
   });
 });
 

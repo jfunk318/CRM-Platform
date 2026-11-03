@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { ActionForm } from "@/components/admin/action-form";
 import { HomepageBuilder } from "@/components/admin/homepage-builder";
 import { loadAdminStore } from "@/lib/store/admin";
-import { parseSite, sectionsOf, SOCIALS, type SocialKey } from "@/lib/store/homepage";
+import { kindsFor, parseSite, sectionsOf, SOCIALS, type SocialKey } from "@/lib/store/homepage";
 import { saveSiteDetailsAction } from "../../actions";
 
 const PLACEHOLDER: Record<SocialKey, string> = {
@@ -17,13 +16,25 @@ const PLACEHOLDER: Record<SocialKey, string> = {
   google: "https://g.page/r/…",
 };
 
-/** The main site's homepage builder and its site-wide details. */
+/** A store's homepage builder; the main site's also has its site-wide details. */
 export default async function HomepagePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { db, store, url } = await loadAdminStore(id);
-  if (store.kind !== "ROOT") redirect(`/admin/stores/${id}/look`);
   const business = await db.business.findUniqueOrThrow({ where: { id: db.$businessId } });
   const site = parseSite(store.siteSettings);
+  if (store.kind !== "ROOT") {
+    return (
+      <div className="space-y-6">
+        <p className="max-w-3xl text-sm text-gray-600">
+          {store.homeSections === null
+            ? "This store shows the classic homepage: its banner and featured items. Build one from sections below (a banner, highlights, the shop, how ordering works, a turnaround timeline and more) and save to switch to it."
+            : "This store's homepage, built from sections."}{" "}
+          Colors, font and logo are under <Link href={`/admin/stores/${id}/look`} className="text-brand-700 hover:underline">Look</Link>.
+        </p>
+        <HomepageBuilder storeId={store.id} initial={sectionsOf(store, business)} url={url} custom={store.homeSections !== null} kinds={kindsFor(store.kind)} affiliate />
+      </div>
+    );
+  }
   return (
     <div className="space-y-6">
       <p className="max-w-3xl text-sm text-gray-600">
@@ -33,7 +44,7 @@ export default async function HomepagePage({ params }: { params: Promise<{ id: s
         <Link href="/admin/settings" className="text-brand-700 hover:underline">Shop &amp; tax</Link>.
       </p>
 
-      <HomepageBuilder storeId={store.id} initial={sectionsOf(store, business)} url={url} custom={store.homeSections !== null} />
+      <HomepageBuilder storeId={store.id} initial={sectionsOf(store, business)} url={url} custom={store.homeSections !== null} kinds={kindsFor(store.kind)} />
 
       <section className="card" id="site-details" data-testid="site-details">
         <h2 className="font-semibold">Site details</h2>

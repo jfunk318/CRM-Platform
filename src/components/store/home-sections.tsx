@@ -4,14 +4,25 @@ import type { BusinessDb } from "@/lib/db";
 import { bannerArtOf } from "@/lib/store/banner-art";
 import { DEFAULT_SHOWCASE } from "@/lib/store/showcase";
 import { storeStatus } from "@/lib/store/settings";
-import { type FieldValue, type IconKey, type Link as SiteLink, type Section, sectionAnchors, type SiteSettings, SOCIALS, type SocialKey } from "@/lib/store/homepage";
+import { type CardStyle, type FieldValue, type IconKey, type Link as SiteLink, type Section, sectionAnchors, type SiteSettings, SOCIALS, type SocialKey } from "@/lib/store/homepage";
+import { bandStyle } from "@/lib/store/themes";
 import { BannerArt } from "./banner-art";
 import { ItemGrid, itemImage, shopItemsInclude } from "./items";
 import { Markdown } from "./markdown";
 import { PageBody, StoreShowcase } from "./showcase";
 import { ServiceIcon, SocialIcon } from "./site-icons";
 
-type Ctx = { db: BusinessDb; store: Store & { group: StoreGroup | null }; business: Business; site: SiteSettings; showPrices: boolean };
+type Ctx = {
+  db: BusinessDb;
+  store: Store & { group: StoreGroup | null };
+  business: Business;
+  site: SiteSettings;
+  showPrices: boolean;
+  /** The store's accent color, for bands without their own. */
+  accent: string;
+  /** A team store's open/closing line, shown in its banner. */
+  statusLabel?: string | null;
+};
 type Rows = Record<string, FieldValue>[];
 
 /** Edge to edge, whatever the page width. */
@@ -25,7 +36,7 @@ const link = (v: FieldValue | undefined): SiteLink | null => (v && typeof v === 
 const rows = (v: FieldValue | undefined): Rows => (Array.isArray(v) ? v : []);
 const img = (id: string | null | undefined) => (id ? `/media/${id}` : null);
 
-/** The main site's homepage: its sections in order, each a full-width band. */
+/** A store's homepage: its sections in order, each a full-width band. */
 export async function HomeSections({ sections, ...ctx }: Ctx & { sections: Section[] }) {
   const shown = sections.filter((x) => x.on);
   const anchors = sectionAnchors(shown);
@@ -38,17 +49,32 @@ export async function HomeSections({ sections, ...ctx }: Ctx & { sections: Secti
   );
 }
 
+/** Sections that draw their own background unless given one. */
+const OWN_BAND = new Set(["hero", "cta", "logos", "stats"]);
+
 async function SectionBand({ section, anchor, index, ctx }: { section: Section; anchor: string | null; index: number; ctx: Ctx }) {
   const d = section.data;
-  const body = await renderSection(section, ctx);
+  const bg = section.kind === "hero" ? "auto" : s(d.bg) || "auto";
+  const banded = bg !== "auto";
+  const body = await renderSection(section, ctx, banded);
   if (!body) return null;
-  // Banner, call to action and logos style themselves; the rest alternate plain and tinted.
-  const own = section.kind === "hero" || section.kind === "cta" || section.kind === "logos" || section.kind === "stats";
-  const tint = !own && index % 2 === 0 ? "bg-[var(--st-subtle)]" : "";
+  // On "automatic", the banner, call to action, logos and numbers style
+  // themselves and the rest alternate plain and tinted; a chosen background
+  // overrides that.
+  const own = OWN_BAND.has(section.kind) && !banded;
+  const tint = bg === "auto" && !own && index % 2 === 0 ? "bg-[color-mix(in_srgb,var(--accent)_6%,var(--st-subtle))]" : "";
+  const pad = section.kind === "features" || section.kind === "logos" || section.kind === "stats" ? "py-10 md:py-12" : "py-16 md:py-20";
   return (
-    <section id={anchor ?? undefined} className={`${BLEED} scroll-mt-24 ${tint}`} data-testid={`home-${section.kind}`} data-section={section.id}>
+    <section
+      id={anchor ?? undefined}
+      className={`${BLEED} scroll-mt-24 ${tint} ${banded ? "text-[var(--st-text)]" : ""}`}
+      style={bandStyle(bg, s(d.color), ctx.accent)}
+      data-testid={`home-${section.kind}`}
+      data-section={section.id}
+      data-band={bg}
+    >
       {own ? body : (
-        <div className={`${INNER} py-16 md:py-20`}>
+        <div className={`${INNER} ${pad}`}>
           {(s(d.title) || s(d.intro)) && <Heading title={s(d.title)} intro={s(d.intro)} />}
           {body}
         </div>
@@ -84,7 +110,8 @@ function Buttons({ primary, secondary, invert = false, center = false }: { prima
   );
 }
 
-async function renderSection(section: Section, ctx: Ctx): Promise<React.ReactNode> {
+/** A section's content; `banded` when it sits on a chosen background rather than its own. */
+async function renderSection(section: Section, ctx: Ctx, banded: boolean): Promise<React.ReactNode> {
   const d = section.data;
   const { db, store, business, site } = ctx;
   switch (section.kind) {
@@ -94,15 +121,20 @@ async function renderSection(section: Section, ctx: Ctx): Promise<React.ReactNod
     case "logos": {
       const stores = await db.store.findMany({ where: { kind: "AFFILIATE", showcase: true, active: true, logoFileId: { not: null } }, orderBy: { createdAt: "desc" }, take: n(d.limit, 12), select: { id: true, name: true, logoFileId: true } });
       if (stores.length < 3) return null;
+      const strip = (
+        <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-6">
+          {stores.map((x) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={x.id} src={img(x.logoFileId)!} alt={x.name} title={x.name} className="h-10 w-auto max-w-[8rem] object-contain opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0" />
+          ))}
+        </div>
+      );
+      // On a chosen background the band shows the heading.
+      if (banded) return strip;
       return (
         <div className={`${INNER} py-10`}>
           {s(d.title) && <p className="mb-6 text-center text-xs font-semibold tracking-[0.2em] text-[var(--st-muted)] uppercase">{s(d.title)}</p>}
-          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-6">
-            {stores.map((x) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={x.id} src={img(x.logoFileId)!} alt={x.name} title={x.name} className="h-10 w-auto max-w-[8rem] object-contain opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0" />
-            ))}
-          </div>
+          {strip}
         </div>
       );
     }
@@ -110,17 +142,26 @@ async function renderSection(section: Section, ctx: Ctx): Promise<React.ReactNod
     case "stats": {
       const items = rows(d.items).filter((r) => s(r.value));
       if (!items.length) return null;
+      const dl = (
+        <dl className={`grid grid-cols-2 gap-8 text-center ${STAT_COLS[Math.min(items.length, 4)]}`}>
+          {items.map((r, i) => (
+            <div key={i} className="flex flex-col items-center">
+              {s(r.icon) && s(r.icon) !== "none" && (
+                <span className="mb-3 grid h-11 w-11 place-items-center rounded-full bg-current/10" aria-hidden="true">
+                  <ServiceIcon icon={s(r.icon) as IconKey} className="h-5 w-5" />
+                </span>
+              )}
+              <dt className="sr-only">{s(r.label)}</dt>
+              <dd className="st-heading text-4xl sm:text-5xl">{s(r.value)}</dd>
+              <dd className="mt-1 text-sm opacity-85">{s(r.label)}</dd>
+            </div>
+          ))}
+        </dl>
+      );
+      if (banded) return dl;
       return (
         <div className="bg-[var(--accent)] text-[var(--accent-contrast)]">
-          <dl className={`${INNER} grid grid-cols-2 gap-8 py-12 text-center ${STAT_COLS[Math.min(items.length, 4)]}`}>
-            {items.map((r, i) => (
-              <div key={i}>
-                <dt className="sr-only">{s(r.label)}</dt>
-                <dd className="st-heading text-4xl sm:text-5xl">{s(r.value)}</dd>
-                <dd className="mt-1 text-sm opacity-85">{s(r.label)}</dd>
-              </div>
-            ))}
-          </dl>
+          <div className={`${INNER} py-12`}>{dl}</div>
         </div>
       );
     }
@@ -153,7 +194,11 @@ async function renderSection(section: Section, ctx: Ctx): Promise<React.ReactNod
       const sort = s(d.sort) as typeof DEFAULT_SHOWCASE.sort;
       return (
         <div className="space-y-6">
-          <StoreShowcase db={db} currentStoreId={store.id} options={{ ...DEFAULT_SHOWCASE, group: s(d.group) || null, sort, limit: n(d.limit, 8), columns: 4, filters: d.search === true }} />
+          <StoreShowcase
+            db={db}
+            currentStoreId={store.id}
+            options={{ ...DEFAULT_SHOWCASE, group: s(d.group) || null, sort, limit: n(d.limit, 8), columns: 4, filters: d.search === true, layout: s(d.card) === "list" ? "list" : "grid", card: s(d.card) === "list" ? "photo" : ((s(d.card) || "photo") as Exclude<CardStyle, "list">) }}
+          />
           {site.storesLink && (
             <Link href="/stores" className="st-btn-outline">See every store →</Link>
           )}
@@ -241,6 +286,96 @@ async function renderSection(section: Section, ctx: Ctx): Promise<React.ReactNod
       );
     }
 
+    case "features": {
+      const items = rows(d.items).filter((r) => s(r.title));
+      if (!items.length) return null;
+      return (
+        <ul className={`grid gap-6 sm:grid-cols-2 ${items.length >= 4 ? "lg:grid-cols-4" : items.length === 3 ? "lg:grid-cols-3" : ""}`} data-testid="features">
+          {items.map((r, i) => (
+            <li key={i} className="flex items-start gap-3">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[var(--accent)] text-[var(--accent-contrast)] shadow-sm" aria-hidden="true">
+                <ServiceIcon icon={s(r.icon) as IconKey} className="h-6 w-6" />
+              </span>
+              <span className="pt-1">
+                <span className="block font-semibold leading-snug">{s(r.title)}</span>
+                {s(r.text) && <span className="block text-sm text-[var(--st-muted)]">{s(r.text)}</span>}
+              </span>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+
+    case "timeline": {
+      const items = rows(d.items).filter((r) => s(r.title));
+      if (!items.length) return null;
+      return (
+        <div className="space-y-8">
+          <ol className="grid gap-8 md:grid-cols-[repeat(var(--n),minmax(0,1fr))] md:gap-4" style={{ "--n": items.length } as React.CSSProperties} data-testid="timeline">
+            {items.map((r, i) => (
+              <li key={i} className="relative flex gap-4 md:flex-col md:items-center md:text-center">
+                {/* The line to the next stage: down on phones, across on wider screens. */}
+                {i < items.length - 1 && (
+                  <span className="absolute top-14 bottom-[-2rem] left-7 w-0.5 bg-[color-mix(in_srgb,var(--accent)_35%,transparent)] md:top-7 md:right-[-50%] md:bottom-auto md:left-1/2 md:h-0.5 md:w-auto" aria-hidden="true" />
+                )}
+                <span className="relative z-[1] grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[var(--accent)] text-[var(--accent-contrast)] shadow-md ring-4 ring-[color-mix(in_srgb,var(--accent)_18%,transparent)]" aria-hidden="true">
+                  <ServiceIcon icon={s(r.icon) as IconKey} className="h-6 w-6" />
+                </span>
+                <span className="space-y-1 md:px-2">
+                  {s(r.when) && <span className="block text-xs font-bold tracking-[0.15em] text-[var(--accent)] uppercase">{s(r.when)}</span>}
+                  <span className="block font-semibold">{s(r.title)}</span>
+                  {s(r.text) && <span className="block text-sm leading-relaxed text-[var(--st-muted)]">{s(r.text)}</span>}
+                </span>
+              </li>
+            ))}
+          </ol>
+          {s(d.note) && (
+            <p className="flex items-center justify-center gap-2 text-sm font-medium text-[var(--st-muted)]">
+              <ServiceIcon icon="clock" className="h-4 w-4 text-[var(--accent)]" />
+              {s(d.note)}
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    case "methods": {
+      const items = rows(d.items).filter((r) => s(r.name));
+      if (!items.length) return null;
+      return (
+        <div className={`grid gap-5 sm:grid-cols-2 ${items.length >= 4 ? "lg:grid-cols-4" : items.length === 3 ? "lg:grid-cols-3" : ""}`} data-testid="methods">
+          {items.map((r, i) => (
+            <div key={i} className="st-panel flex flex-col gap-4 p-5">
+              <div className="flex items-center gap-3">
+                <span className="grid h-11 w-11 shrink-0 place-items-center bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] text-[var(--accent)]" style={{ borderRadius: "var(--st-radius)" }} aria-hidden="true">
+                  <ServiceIcon icon={s(r.icon) as IconKey} />
+                </span>
+                <h3 className="text-lg leading-tight">{s(r.name)}</h3>
+              </div>
+              {s(r.bestFor) && <p className="text-sm text-[var(--st-muted)]"><span className="font-semibold text-[var(--st-text)]">Best for</span> {s(r.bestFor)}</p>}
+              <dl className="grid grid-cols-2 gap-2 text-sm">
+                {s(r.minimum) && <Fact label="Minimum" value={s(r.minimum)} />}
+                {s(r.turnaround) && <Fact label="Turnaround" value={s(r.turnaround)} />}
+              </dl>
+              <div className="mt-auto space-y-2.5 text-xs">
+                <Meter label="Durability" value={n(r.durability, 3)} />
+                <Meter label="Detail & color" value={n(r.detail, 3)} />
+                {s(r.cost) && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--st-muted)]">Cost per piece</span>
+                    <span className="font-bold tracking-wider">
+                      <span className="text-[var(--accent)]">{s(r.cost)}</span>
+                      <span className="opacity-25">{"$$$".slice(s(r.cost).length)}</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
     case "testimonials": {
       const items = rows(d.items).filter((r) => s(r.quote));
       if (!items.length) return null;
@@ -264,6 +399,15 @@ async function renderSection(section: Section, ctx: Ctx): Promise<React.ReactNod
 
     case "cta": {
       if (!s(d.headline)) return null;
+      if (banded) {
+        return (
+          <div className="flex flex-col items-center gap-5 text-center">
+            <h2 className="max-w-3xl text-3xl leading-tight sm:text-5xl">{s(d.headline)}</h2>
+            {s(d.text) && <p className="max-w-2xl text-lg text-[var(--st-muted)]">{s(d.text)}</p>}
+            <div className="pt-2"><Buttons primary={link(d.primary)} secondary={link(d.secondary)} center /></div>
+          </div>
+        );
+      }
       return (
         <div className="st-stripes">
           <div className={`${INNER} flex flex-col items-center gap-5 py-16 text-center md:py-20`}>
@@ -285,6 +429,29 @@ async function renderSection(section: Section, ctx: Ctx): Promise<React.ReactNod
   }
 }
 
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md bg-[var(--st-subtle)] px-2.5 py-1.5">
+      <dt className="text-[11px] tracking-wide text-[var(--st-muted)] uppercase">{label}</dt>
+      <dd className="font-semibold">{value}</dd>
+    </div>
+  );
+}
+
+/** A 1–5 rating as five segments. */
+function Meter({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-[var(--st-muted)]">{label}</span>
+      <span className="flex w-24 gap-1" role="img" aria-label={`${label}: ${value} out of 5`}>
+        {[1, 2, 3, 4, 5].map((k) => (
+          <span key={k} className={`h-1.5 flex-1 rounded-full ${k <= value ? "bg-[var(--accent)]" : "bg-[var(--st-border)]"}`} />
+        ))}
+      </span>
+    </div>
+  );
+}
+
 async function Hero({ section, ctx }: { section: Section; ctx: Ctx }) {
   const d = section.data;
   const { db, store } = ctx;
@@ -294,7 +461,9 @@ async function Hero({ section, ctx }: { section: Section; ctx: Ctx }) {
   const headline = s(d.headline) || store.heroHeadline || store.name;
   const text = s(d.text) || store.heroText || store.tagline || "";
   // A live count of open stores, as a bit of proof.
-  const open = (await db.store.findMany({ where: { kind: "AFFILIATE", showcase: true, active: true }, select: { opensAt: true, closesAt: true, active: true } })).filter((x) => storeStatus(x).state === "open").length;
+  // On a team store, its closing date instead.
+  const main = store.kind === "ROOT";
+  const open = main ? (await db.store.findMany({ where: { kind: "AFFILIATE", showcase: true, active: true }, select: { opensAt: true, closesAt: true, active: true } })).filter((x) => storeStatus(x).state === "open").length : 0;
   const copy = (o: { invert?: boolean; center?: boolean }) => (
     <div className={`space-y-6 ${o.center ? "mx-auto max-w-3xl text-center" : ""}`}>
       {s(d.eyebrow) && <div className={`text-xs font-semibold tracking-[0.2em] uppercase ${o.invert ? "opacity-85" : "text-[var(--accent)]"}`}>{s(d.eyebrow)}</div>}
@@ -305,6 +474,12 @@ async function Hero({ section, ctx }: { section: Section; ctx: Ctx }) {
         <p className={`flex items-center gap-2 text-sm ${o.center ? "justify-center" : ""} ${o.invert ? "opacity-85" : "text-[var(--st-muted)]"}`}>
           <span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" /></span>
           {open} team {open === 1 ? "store is" : "stores are"} open right now
+        </p>
+      )}
+      {!main && ctx.statusLabel && (
+        <p className={`flex items-center gap-2 text-sm font-medium ${o.center ? "justify-center" : ""} ${o.invert ? "opacity-90" : "text-[var(--st-muted)]"}`} data-testid="hero-status">
+          <ServiceIcon icon="calendar" className="h-4 w-4" />
+          {ctx.statusLabel}
         </p>
       )}
     </div>

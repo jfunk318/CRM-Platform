@@ -34,7 +34,7 @@ export async function StoreShowcase({ db, options, currentStoreId }: { db: Busin
     },
     include: {
       group: { select: { name: true } },
-      items: { where: { published: true }, orderBy: [{ featured: "desc" }, { sortOrder: "asc" }], take: 3, select: { id: true, imageFileId: true, name: true } },
+      items: { where: { published: true }, orderBy: [{ featured: "desc" }, { sortOrder: "asc" }], take: 4, select: { id: true, imageFileId: true, name: true } },
     },
     orderBy: options.sort === "oldest" ? { createdAt: "asc" } : options.sort === "name" ? { name: "asc" } : { createdAt: "desc" },
   });
@@ -51,6 +51,7 @@ export async function StoreShowcase({ db, options, currentStoreId }: { db: Busin
   return (
     <ShowcaseCards
       layout={options.layout}
+      card={options.card}
       columns={options.columns}
       filters={options.filters}
       stores={shown.map((s, i) => ({
@@ -59,6 +60,8 @@ export async function StoreShowcase({ db, options, currentStoreId }: { db: Busin
         tagline: s.tagline,
         url: urls[i],
         logo: s.logoFileId ? `/media/${s.logoFileId}` : null,
+        // The store's card picture, else its banner photo.
+        image: s.cardImageFileId ? `/media/${s.cardImageFileId}` : s.heroImageFileId ? `/media/${s.heroImageFileId}` : null,
         accent: s.accentColor,
         group: s.group?.name ?? null,
         status: s.status.label,

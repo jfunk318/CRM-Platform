@@ -12,6 +12,8 @@ export type ShowcaseOptions = {
   columns: number;
   includeClosed: boolean;
   layout: "grid" | "list";
+  /** What a grid card shows: the store's card picture, its logo on its color, or its logo with product photos. */
+  card: "photo" | "logo" | "products";
   /** A search box and group buttons for shoppers. */
   filters: boolean;
 };
@@ -28,7 +30,7 @@ export type PageBlock = { kind: "markdown"; source: string } | { kind: "stores";
 export const SHOWCASE_SORTS = { newest: "Newest", oldest: "Oldest", sales: "Highest sales", name: "Name", closing: "Closing soon" } as const;
 export const ITEM_SORTS = { featured: "Featured first", newest: "Newest", name: "Name", price: "Lowest price" } as const;
 
-export const DEFAULT_SHOWCASE: ShowcaseOptions = { group: null, sort: "newest", limit: 12, columns: 4, includeClosed: false, layout: "grid", filters: false };
+export const DEFAULT_SHOWCASE: ShowcaseOptions = { group: null, sort: "newest", limit: 12, columns: 4, includeClosed: false, layout: "grid", card: "photo", filters: false };
 export const DEFAULT_ITEMS: ItemsOptions = { sort: "featured", limit: 8, columns: 4, featuredOnly: false };
 
 const LINE = /^\s*\[\[(stores|items)([^\]]*)\]\]\s*$/;
@@ -56,6 +58,7 @@ export function parseShowcase(raw: string): ShowcaseOptions {
     columns: clamp(o.columns, 1, 6, DEFAULT_SHOWCASE.columns),
     includeClosed: o.status === "all",
     layout: o.layout === "list" ? "list" : "grid",
+    card: o.card === "logo" || o.card === "products" ? o.card : "photo",
     filters: o.filters === "true",
   };
 }
@@ -99,6 +102,7 @@ export function blockLine(b: Exclude<PageBlock, { kind: "markdown" }>): string {
     if (o.limit !== DEFAULT_SHOWCASE.limit) parts.push(`limit=${o.limit}`);
     if (o.columns !== DEFAULT_SHOWCASE.columns) parts.push(`columns=${o.columns}`);
     if (o.layout !== "grid") parts.push(`layout=${o.layout}`);
+    if (o.card !== DEFAULT_SHOWCASE.card) parts.push(`card=${o.card}`);
     if (o.filters) parts.push("filters");
     if (o.includeClosed) parts.push("status=all");
   } else {

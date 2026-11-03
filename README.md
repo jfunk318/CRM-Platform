@@ -338,8 +338,26 @@ Areas adjusted by hand in the product editor are never moved again.
   site's own items), About (text, points, photo), How it works, Our work
   (uploaded photos, else store item pictures), Reviews, Call to action,
   Contact (address with map link, phone, email, hours, social links) and
-  Free text (Markdown, showcase lines allowed). Until it's saved, the
+  Free text (Markdown, showcase lines allowed). Print-industry
+  infographics: Highlights (a strip of icon promises), Turnaround timeline
+  (day-by-day stages joined by a line, vertical on phones) and Decoration
+  methods (cards comparing best use, minimum, turnaround, cost and 1–5
+  durability/detail bars). Every section also has a **Background**
+  (automatic alternating, plain, tinted, solid color or dark) and its own
+  **color** (blank = the store's accent); cards, buttons and text follow
+  the band (`bandStyle` in `src/lib/store/themes.ts`). Icons cover garments,
+  methods (screen print, embroidery, DTF, vinyl, laser), sizing, deadlines,
+  packing, pickup, schools, teams and fundraisers. The team store showcase
+  has a **card style**: photo cards (the store's **card picture**, uploaded
+  on its Look tab, else its banner photo, else its best product, with its
+  logo, status and color stripe), logo on the store's color, logo with
+  product photos, or a compact list (also `card=` on `[[stores]]` lines).
+  Until it's saved, the
   homepage uses a ready-made set written from the business's name and city.
+  **Affiliate stores** get the same Homepage tab (staff only; no store
+  showcase or logo sections). Until one is saved they keep the classic
+  homepage (banner and featured items); the suggested start is a banner
+  with the closing date, highlights, the shop and "How ordering works".
   **Site details** on the same page: social links (Instagram, Facebook,
   TikTok, X, YouTube, LinkedIn, Pinterest, Google reviews), opening hours,
   the header button (default "Get a quote") and whether the menu links to

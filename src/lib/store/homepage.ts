@@ -13,6 +13,7 @@ export type FieldSpec =
   | { key: string; label: string; type: "toggle"; hint?: string }
   | { key: string; label: string; type: "link"; hint?: string }
   | { key: string; label: string; type: "image"; hint?: string }
+  | { key: string; label: string; type: "color"; hint?: string }
   | { key: string; label: string; type: "list"; item: string; max: number; fields: FieldSpec[] };
 
 export type Link = { label: string; href: string };
@@ -32,8 +33,34 @@ export const ICONS = {
   truck: "Delivery",
   bolt: "Fast turnaround",
   star: "Quality",
+  hoodie: "Hoodie",
+  hat: "Hat",
+  layers: "DTF / transfers",
+  sticker: "Vinyl & stickers",
+  spark: "Laser engraving",
+  ruler: "Sizing",
+  clock: "Turnaround time",
+  calendar: "Order deadline",
+  box: "Packing",
+  check: "Approved / checked",
+  chat: "Talk to us",
+  team: "Team / group",
+  school: "School",
+  tag: "Price / quote",
+  pin: "Local / pickup",
+  leaf: "Eco-friendly",
+  heart: "Fundraiser",
 } as const;
 export type IconKey = keyof typeof ICONS;
+const ICON_OR_NONE = { none: "No icon", ...ICONS };
+
+/** A section's background: "auto" alternates plain and tinted down the page. */
+export const BANDS = { auto: "Automatic", plain: "Plain", tint: "Tinted with the color", accent: "Solid color", dark: "Dark" } as const;
+export type BandKey = keyof typeof BANDS;
+
+/** How stores look in a showcase. */
+export const CARD_STYLES = { photo: "Photo card (the store's card picture)", logo: "Logo on the store's color", products: "Logo with product photos", list: "Compact list" } as const;
+export type CardStyle = keyof typeof CARD_STYLES;
 
 const heading = (placeholder: string): FieldSpec => ({ key: "title", label: "Heading", type: "text", max: 100, placeholder });
 const intro: FieldSpec = { key: "intro", label: "Intro", type: "textarea", max: 400 };
@@ -71,6 +98,7 @@ export const SECTION_KINDS = {
         item: "number",
         max: 6,
         fields: [
+          { key: "icon", label: "Icon", type: "select", options: ICON_OR_NONE },
           { key: "value", label: "Number", type: "text", max: 20, placeholder: "25,000+" },
           { key: "label", label: "Label", type: "text", max: 60, placeholder: "Shirts printed last year" },
         ],
@@ -108,6 +136,7 @@ export const SECTION_KINDS = {
       intro,
       { key: "group", label: "Only this store group", type: "text", max: 60, hint: "Blank = every store shown in showcases" },
       { key: "sort", label: "Order", type: "select", options: { newest: "Newest", sales: "Highest sales", closing: "Closing soon", name: "Name" } },
+      { key: "card", label: "Card style", type: "select", options: CARD_STYLES },
       { key: "limit", label: "Stores", type: "number", min: 2, max: 24 },
       { key: "search", label: "Search box", type: "toggle" },
     ],
@@ -153,6 +182,75 @@ export const SECTION_KINDS = {
     description: "Photos of finished jobs. Without any, your store items' pictures are shown.",
     anchor: "work",
     fields: [heading("Recent work"), intro, { key: "images", label: "Photos", type: "list", item: "photo", max: 12, fields: [{ key: "image", label: "Photo", type: "image" }, { key: "caption", label: "Caption", type: "text", max: 80 }] }],
+  },
+  features: {
+    label: "Highlights",
+    description: "A strip of icons with short promises: fast turnaround, proof before print, local pickup.",
+    anchor: null,
+    fields: [
+      heading(""),
+      {
+        key: "items",
+        label: "Highlights",
+        type: "list",
+        item: "highlight",
+        max: 6,
+        fields: [
+          { key: "icon", label: "Icon", type: "select", options: ICONS },
+          { key: "title", label: "Highlight", type: "text", max: 50, placeholder: "Proof before print" },
+          { key: "text", label: "Small print", type: "text", max: 90 },
+        ],
+      },
+    ],
+  },
+  timeline: {
+    label: "Turnaround timeline",
+    description: "An infographic of an order from artwork to pickup, day by day.",
+    anchor: "turnaround",
+    fields: [
+      heading("From artwork to your door"),
+      intro,
+      {
+        key: "items",
+        label: "Stages",
+        type: "list",
+        item: "stage",
+        max: 7,
+        fields: [
+          { key: "when", label: "When", type: "text", max: 24, placeholder: "Day 1" },
+          { key: "icon", label: "Icon", type: "select", options: ICONS },
+          { key: "title", label: "Stage", type: "text", max: 50 },
+          { key: "text", label: "Description", type: "text", max: 140 },
+        ],
+      },
+      { key: "note", label: "Note below", type: "text", max: 160, placeholder: "Need it sooner? Ask about rush orders." },
+    ],
+  },
+  methods: {
+    label: "Decoration methods",
+    description: "Compare screen printing, embroidery, transfers and more: what each is best for, minimums, turnaround, and rating bars.",
+    anchor: "methods",
+    fields: [
+      heading("Which decoration is right for you?"),
+      intro,
+      {
+        key: "items",
+        label: "Methods",
+        type: "list",
+        item: "method",
+        max: 6,
+        fields: [
+          { key: "icon", label: "Icon", type: "select", options: ICONS },
+          { key: "name", label: "Method", type: "text", max: 40 },
+          { key: "bestFor", label: "Best for", type: "text", max: 80 },
+          { key: "minimum", label: "Minimum", type: "text", max: 30, placeholder: "24 pieces" },
+          { key: "turnaround", label: "Turnaround", type: "text", max: 30, placeholder: "7–10 days" },
+          { key: "cost", label: "Cost", type: "select", options: { "": "Don't show", $: "$ (lowest per piece)", $$: "$$", $$$: "$$$" } },
+          { key: "durability", label: "Durability (1–5)", type: "number", min: 1, max: 5 },
+          { key: "detail", label: "Fine detail & color (1–5)", type: "number", min: 1, max: 5 },
+        ],
+      },
+    ],
   },
   testimonials: {
     label: "Reviews",
@@ -205,6 +303,17 @@ export const isSectionKind = (k: unknown): k is SectionKind => typeof k === "str
 
 /** Sections a homepage may have only once (the rest can repeat). */
 export const SINGLE: SectionKind[] = ["hero", "contact"];
+
+/** Sections that list other stores, for the main site only. */
+const MAIN_ONLY: SectionKind[] = ["logos", "stores"];
+/** The kinds of section a store's homepage can use. */
+export const kindsFor = (storeKind: string | null | undefined): SectionKind[] => (storeKind === "AFFILIATE" ? SECTION_KEYS.filter((k) => !MAIN_ONLY.includes(k)) : SECTION_KEYS);
+
+/** Background and color, which every section has (the banner, just the color). */
+const BAND_FIELD: FieldSpec = { key: "bg", label: "Background", type: "select", options: BANDS };
+const COLOR_FIELD: FieldSpec = { key: "color", label: "Section color", type: "color", hint: "Blank = the store's accent color" };
+/** All of a section's fields: its own, then its background and color. */
+export const fieldsOf = (kind: SectionKind): FieldSpec[] => [...SECTION_KINDS[kind].fields, ...(kind === "hero" ? [] : [BAND_FIELD]), COLOR_FIELD];
 
 // ─── Site-wide details ──────────────────────────────────────────────────
 
@@ -281,6 +390,8 @@ function cleanField(spec: FieldSpec, v: unknown): FieldValue {
       return cleanLink(v);
     case "image":
       return typeof v === "string" && /^[a-z0-9]{10,40}$/i.test(v) ? v : null;
+    case "color":
+      return typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : "";
     case "list":
       return (Array.isArray(v) ? v : [])
         .slice(0, spec.max)
@@ -306,26 +417,27 @@ let counter = 0;
 /** A short id for a new section. */
 export const newSectionId = (kind: string) => `${kind}-${Date.now().toString(36)}${(counter++).toString(36)}`;
 
-/** Saved sections, cleaned: known kinds, their known fields, single sections once, at most 30. */
-export function parseSections(raw: unknown): Section[] {
+/** Saved sections, cleaned: known kinds (that the store may use), their known fields, single sections once, at most 30. */
+export function parseSections(raw: unknown, storeKind?: string | null): Section[] {
   if (!Array.isArray(raw)) return [];
+  const allowed = kindsFor(storeKind);
   const seen = new Set<string>();
   const out: Section[] = [];
   for (const r of raw.slice(0, 30)) {
     const o = (r ?? {}) as Record<string, unknown>;
-    if (!isSectionKind(o.kind)) continue;
+    if (!isSectionKind(o.kind) || !allowed.includes(o.kind)) continue;
     if (SINGLE.includes(o.kind) && out.some((s) => s.kind === o.kind)) continue;
     let id = typeof o.id === "string" && /^[\w-]{1,60}$/.test(o.id) ? o.id : `${o.kind}-${out.length}`;
     if (seen.has(id)) id = `${id}-${out.length}`;
     seen.add(id);
-    out.push({ id, kind: o.kind, on: o.on !== false, data: cleanData(SECTION_KINDS[o.kind].fields, o.data) });
+    out.push({ id, kind: o.kind, on: o.on !== false, data: cleanData(fieldsOf(o.kind), o.data) });
   }
   return out;
 }
 
 /** A new section of a kind, with sensible starting content. */
 export function blankSection(kind: SectionKind, id = newSectionId(kind)): Section {
-  const fields: FieldSpec[] = SECTION_KINDS[kind].fields;
+  const fields = fieldsOf(kind);
   const data = cleanData(fields, STARTERS[kind] ?? {});
   // Lists start with one empty row to fill in (dropped on save if left empty).
   for (const f of fields) if (f.type === "list" && Array.isArray(data[f.key]) && !(data[f.key] as Rows).length) data[f.key] = [blankRow(f.fields)];
@@ -336,7 +448,7 @@ type Rows = Record<string, FieldValue>[];
 
 /** An empty row of a list. */
 export const blankRow = (fields: FieldSpec[]): Record<string, FieldValue> =>
-  Object.fromEntries(fields.map((f) => [f.key, f.type === "select" ? Object.keys(f.options)[0] : f.type === "link" ? { label: "", href: "" } : f.type === "toggle" ? false : f.type === "image" ? null : f.type === "number" ? f.min : f.type === "list" ? [] : ""]));
+  Object.fromEntries(fields.map((f) => [f.key, f.type === "select" ? Object.keys(f.options)[0] : f.type === "link" ? { label: "", href: "" } : f.type === "toggle" ? false : f.type === "image" ? null : f.type === "color" ? "" : f.type === "number" ? f.min : f.type === "list" ? [] : ""]));
 
 /** Uploaded pictures a homepage uses (so the site may serve them). */
 export function sectionImages(sections: Section[]): string[] {
@@ -348,7 +460,7 @@ export function sectionImages(sections: Section[]): string[] {
       if (f.type === "list" && Array.isArray(v)) v.forEach((row) => walk(f.fields, row));
     }
   };
-  for (const s of sections) walk(SECTION_KINDS[s.kind].fields, s.data);
+  for (const s of sections) walk(fieldsOf(s.kind), s.data);
   return ids;
 }
 
@@ -378,7 +490,37 @@ const STARTERS: Partial<Record<SectionKind, Record<string, unknown>>> = {
       { icon: "palette", title: "Design help", text: "Send a sketch or an old logo and we'll get it print-ready." },
     ],
   },
-  stores: { title: "Find your team store", intro: "Teams, schools, clubs and businesses order their gear through their own online store.", sort: "newest", limit: 8, search: true },
+  stores: { title: "Find your team store", intro: "Teams, schools, clubs and businesses order their gear through their own online store.", card: "photo", sort: "newest", limit: 8, search: true },
+  features: {
+    items: [
+      { icon: "bolt", title: "Fast turnaround", text: "Most orders ready in about 10 business days" },
+      { icon: "check", title: "Proof before print", text: "Nothing is printed until you approve it" },
+      { icon: "store", title: "Free team stores", text: "Members order and pay online" },
+      { icon: "pin", title: "Local pickup", text: "Or we deliver" },
+    ],
+  },
+  timeline: {
+    title: "From artwork to your door",
+    intro: "Here's how a typical order runs, from the day you send artwork.",
+    items: [
+      { when: "Day 1", icon: "chat", title: "Order & artwork", text: "Pick garments and send your logo, or ask us to design it." },
+      { when: "Day 2", icon: "check", title: "Proof approved", text: "You approve a mockup before anything is printed." },
+      { when: "Days 3–8", icon: "print", title: "Printed & stitched", text: "Made in our own shop, on our own presses." },
+      { when: "Day 9", icon: "box", title: "Checked & packed", text: "Every piece checked, folded and sorted by name." },
+      { when: "Day 10", icon: "truck", title: "Ready", text: "Pick it up or have it delivered." },
+    ],
+    note: "Need it sooner? Ask about rush orders.",
+  },
+  methods: {
+    title: "Which decoration is right for you?",
+    intro: "Every method has its strengths. Not sure? We'll recommend one with your quote.",
+    items: [
+      { icon: "print", name: "Screen printing", bestFor: "Bold designs and bigger runs", minimum: "24 pieces", turnaround: "7–10 days", cost: "$", durability: 5, detail: 3 },
+      { icon: "needle", name: "Embroidery", bestFor: "Polos, hats and jackets", minimum: "12 pieces", turnaround: "7–10 days", cost: "$$", durability: 5, detail: 3 },
+      { icon: "layers", name: "DTF transfers", bestFor: "Full-color art, small runs", minimum: "1 piece", turnaround: "3–5 days", cost: "$$", durability: 4, detail: 5 },
+      { icon: "sticker", name: "Vinyl", bestFor: "Names, numbers and simple logos", minimum: "1 piece", turnaround: "2–4 days", cost: "$$", durability: 4, detail: 2 },
+    ],
+  },
   shop: { title: "Shop our goods", limit: 8 },
   steps: {
     title: "How it works",
@@ -400,7 +542,7 @@ export function defaultSections(business: { name: string; city?: string | null }
   const where = business.city ? ` in ${business.city}` : "";
   const s = (kind: SectionKind, data: Record<string, unknown> = {}) => {
     const blank = blankSection(kind, kind);
-    return { ...blank, data: cleanData(SECTION_KINDS[kind].fields, { ...(STARTERS[kind] ?? {}), ...data }) };
+    return { ...blank, data: cleanData(fieldsOf(kind), { ...(STARTERS[kind] ?? {}), ...data }) };
   };
   return [
     s("hero", {
@@ -423,6 +565,35 @@ export function defaultSections(business: { name: string; city?: string | null }
   ];
 }
 
-/** A main site's homepage sections: its own, else the built-in set. */
-export const sectionsOf = (store: { homeSections: unknown; tagline: string | null }, business: { name: string; city?: string | null }) =>
-  store.homeSections == null ? defaultSections(business, store.tagline) : parseSections(store.homeSections);
+/** A starting homepage for an affiliate (team, school, business) store. */
+export function affiliateSections(store: { name: string; tagline: string | null }): Section[] {
+  const s = (kind: SectionKind, data: Record<string, unknown> = {}) => ({ ...blankSection(kind, kind), data: cleanData(fieldsOf(kind), { ...(STARTERS[kind] ?? {}), ...data }) });
+  return [
+    s("hero", { headline: store.name, text: store.tagline ?? "", layout: "split", primary: { label: "Shop now", href: "/shop" }, secondary: { label: "", href: "" } }),
+    s("features", {
+      items: [
+        { icon: "calendar", title: "Order by the deadline", text: "Everything is printed together after the store closes" },
+        { icon: "ruler", title: "Check your size", text: "Size charts are on every item" },
+        { icon: "pin", title: "Pickup or delivery", text: "Choose at checkout" },
+      ],
+    }),
+    s("shop", { title: "Shop the collection", limit: 12 }),
+    s("steps", {
+      title: "How ordering works",
+      items: [
+        { title: "Pick your gear", text: "Choose items, sizes and any names or numbers." },
+        { title: "Order before the store closes", text: "Pay online; you'll get an email receipt." },
+        { title: "We print everything together", text: "All orders are made in one batch after the close." },
+        { title: "Pick up or get it delivered", text: "We'll let you know when it's ready." },
+      ],
+    }),
+  ];
+}
+
+/** A store's homepage sections: its own, else the built-in set for the main site or a team store. */
+export const sectionsOf = (store: { homeSections: unknown; tagline: string | null; kind?: string; name?: string }, business: { name: string; city?: string | null }) =>
+  store.homeSections != null
+    ? parseSections(store.homeSections, store.kind)
+    : store.kind === "AFFILIATE"
+      ? affiliateSections({ name: store.name ?? business.name, tagline: store.tagline })
+      : defaultSections(business, store.tagline);
