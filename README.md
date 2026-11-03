@@ -360,7 +360,10 @@ Areas adjusted by hand in the product editor are never moved again.
   **Local / rustic** (warm paper tones, slab-serif headings). A theme sets
   the fonts (Google Fonts), colors, corners, header, homepage banner and
   product cards, and dresses every storefront page including cart,
-  checkout and account forms. Per store: the accent color (or the theme's),
+  checkout and account forms. Per store: a **font** (the theme's pairing, or
+  one family for headings and text: Encode Sans Semi Condensed, Barlow Semi
+  Condensed, Archivo Narrow, Sofia Sans Semi Condensed, Saira Semi Condensed,
+  Montserrat or Inter), the accent color (or the theme's),
   the logo, and the homepage banner (on/off, headline, text, button, and its
   picture). The picture is built-in art drawn in the store's colors (two per
   theme: shapes and flowing lines, speed stripes and a game field, a neon
@@ -604,7 +607,9 @@ The back office's colors live in one place, the top of
 `src/app/globals.css`: plum (`brand-*`) for actions and the current
 selection, ochre (`warn-*`) for notices, an espresso menu with a wheat
 highlight, and, inside the back office (`.admin-ui`), warm stone grays, moss
-greens and rust reds. Change a value there and every admin page follows.
+greens and rust reds. Change a value there and every admin page follows. The
+back office (and customer pages like proofs and invoices) uses **Encode Sans
+Semi Condensed**, loaded in `src/app/layout.tsx`.
 Store themes have their own colors (Storefront settings).
 
 ## Layout

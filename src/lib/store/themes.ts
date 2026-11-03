@@ -148,6 +148,22 @@ export const THEMES: Record<ThemeKey, Theme> = {
 
 export const themeOf = (key: string | null | undefined): ThemeKey => (key && key in THEMES ? (key as ThemeKey) : "minimal");
 
+/**
+ * Fonts a store can use instead of its theme's: one family for headings and
+ * text alike. Encode Sans Semi Condensed is also the back office's font.
+ */
+export const FONTS = {
+  encode: { label: "Encode Sans Semi Condensed", description: "Clean and slightly narrow; the back office's font.", family: "Encode+Sans+Semi+Condensed:wght@400;500;600;700;800", css: "'Encode Sans Semi Condensed', system-ui, sans-serif" },
+  barlow: { label: "Barlow Semi Condensed", description: "Friendly and sporty, from road-sign lettering.", family: "Barlow+Semi+Condensed:wght@400;500;600;700;800", css: "'Barlow Semi Condensed', system-ui, sans-serif" },
+  archivo: { label: "Archivo Narrow", description: "Crisp and businesslike.", family: "Archivo+Narrow:wght@400;500;600;700", css: "'Archivo Narrow', system-ui, sans-serif" },
+  sofia: { label: "Sofia Sans Semi Condensed", description: "Soft, modern and warm.", family: "Sofia+Sans+Semi+Condensed:wght@400;500;600;700;800", css: "'Sofia Sans Semi Condensed', system-ui, sans-serif" },
+  saira: { label: "Saira Semi Condensed", description: "Squared-off and athletic, like jersey lettering.", family: "Saira+Semi+Condensed:wght@400;500;600;700;800", css: "'Saira Semi Condensed', system-ui, sans-serif" },
+  montserrat: { label: "Montserrat", description: "Wide and geometric, with a sign-painter feel.", family: "Montserrat:wght@400;500;600;700;800", css: "'Montserrat', system-ui, sans-serif" },
+  inter: { label: "Inter", description: "Neutral and very readable.", family: "Inter:wght@400;500;600;700;800", css: "'Inter', system-ui, sans-serif" },
+} as const;
+export type FontKey = keyof typeof FONTS;
+export const isFontKey = (k: unknown): k is FontKey => typeof k === "string" && k in FONTS;
+
 const HEX = /^#[0-9a-f]{6}$/i;
 
 /** Black or white text, whichever reads better on `hex`. */
@@ -158,17 +174,19 @@ export function contrastText(hex: string): string {
 }
 
 /** The CSS variables for a store: its theme's, with its own accent color. */
-export function themeStyle(key: string | null | undefined, accentColor: string | null | undefined): Record<string, string> {
+export function themeStyle(key: string | null | undefined, accentColor: string | null | undefined, font?: string | null): Record<string, string> {
   const t = THEMES[themeOf(key)];
   const accent = accentColor && HEX.test(accentColor) ? accentColor : t.accent;
+  const own = isFontKey(font) ? FONTS[font].css : null;
   return {
     ...t.vars,
     "--accent": accent,
     "--accent-contrast": contrastText(accent),
-    "--st-font-heading": t.heading,
-    "--st-font-body": t.body,
+    "--st-font-heading": own ?? t.heading,
+    "--st-font-body": own ?? t.body,
   };
 }
 
-/** The stylesheet URL for a theme's fonts. */
-export const themeFontsUrl = (key: string | null | undefined) => `https://fonts.googleapis.com/css2?${THEMES[themeOf(key)].fonts.map((f) => `family=${f}`).join("&")}&display=swap`;
+/** The stylesheet URL for a store's fonts: its own font, else its theme's. */
+export const themeFontsUrl = (key: string | null | undefined, font?: string | null) =>
+  `https://fonts.googleapis.com/css2?${(isFontKey(font) ? [FONTS[font].family] : THEMES[themeOf(key)].fonts).map((f) => `family=${f}`).join("&")}&display=swap`;

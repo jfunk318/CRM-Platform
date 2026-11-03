@@ -48,10 +48,10 @@ export default async function StoreLayout({ children }: { children: React.ReactN
     ? siteMenu({ pages: top, anchors: new Set(sectionAnchors(sectionsOf(store, business)).values()), hasItems: itemCount > 0, hasStores: storeCount > 0, designer: designer.enabled, site })
     : [];
   return (
-    <div className="storefront flex min-h-screen flex-col overflow-x-clip" data-theme={theme} style={themeStyle(theme, store.accentColor) as React.CSSProperties}>
+    <div className="storefront flex min-h-screen flex-col overflow-x-clip" data-theme={theme} style={themeStyle(theme, store.accentColor, store.font) as React.CSSProperties}>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-      <link rel="stylesheet" href={themeFontsUrl(theme)} precedence="default" />
+      <link rel="stylesheet" href={themeFontsUrl(theme, store.font)} precedence="default" />
       {store.announcement && <div className="bg-[var(--accent)] px-4 py-2 text-center text-sm font-medium text-[var(--accent-contrast)]">{store.announcement}</div>}
       {site ? (
         <SiteHeader store={store} menu={menu} site={site} cartCount={cartCount} signedIn={!!shopper} accounts={settings.accountMode !== "GUEST_ONLY"} />

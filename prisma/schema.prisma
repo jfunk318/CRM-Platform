@@ -1790,6 +1790,8 @@ model Store {
   heroText              String? // defaults to the tagline
   heroButton            String? // defaults to "Shop now"
   heroArt               String? // built-in banner art; null = the theme's, "none" = plain
+  // A font for the whole store (lib/store/themes.ts FONTS); null = the theme's own.
+  font                  String?
   accentColor           String? // "#f59e0b"
   announcement          String? // bar across the top of every page
   footerText            String?

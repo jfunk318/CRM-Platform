@@ -22,4 +22,12 @@ describe("store themes", () => {
     for (const t of Object.values(THEMES)) expect(Object.keys(t.vars).sort()).toEqual(keys);
     expect(themeFontsUrl("rustic")).toBe("https://fonts.googleapis.com/css2?family=Bitter:wght@500;600;700&family=Lora:wght@400;500;600&display=swap");
   });
+
+  it("uses a store's own font for headings and text, with its stylesheet", () => {
+    const v = themeStyle("luxury", null, "encode");
+    expect(v["--st-font-heading"]).toContain("Encode Sans Semi Condensed");
+    expect(v["--st-font-body"]).toBe(v["--st-font-heading"]);
+    expect(themeFontsUrl("luxury", "encode")).toContain("family=Encode+Sans+Semi+Condensed");
+    expect(themeStyle("luxury", null, "comic-sans")["--st-font-heading"]).toContain("Cormorant Garamond");
+  });
 });

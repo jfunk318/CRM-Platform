@@ -4,10 +4,10 @@ import { FilePicker } from "@/components/file-picker";
 import { loadAdminStore } from "@/lib/store/admin";
 import { BannerArt } from "@/components/store/banner-art";
 import { ARTS, artsFor, DEFAULT_ART } from "@/lib/store/banner-art";
-import { THEMES, type ThemeKey, themeOf, themeStyle } from "@/lib/store/themes";
+import { FONTS, type FontKey, THEMES, type ThemeKey, themeOf, themeStyle } from "@/lib/store/themes";
 import { removeFaviconAction, removeHeroAction, removeLogoAction, saveLookAction, uploadFaviconAction, uploadHeroAction, uploadLogoAction } from "../../actions";
 
-const ALL_FONTS = `https://fonts.googleapis.com/css2?${[...new Set(Object.values(THEMES).flatMap((t) => t.fonts))].map((f) => `family=${f}`).join("&")}&display=swap`;
+const ALL_FONTS = `https://fonts.googleapis.com/css2?${[...new Set([...Object.values(THEMES).flatMap((t) => t.fonts), ...Object.values(FONTS).map((f) => f.family)])].map((f) => `family=${f}`).join("&")}&display=swap`;
 
 /** The store's theme, colors, homepage banner and logo, with a live preview. */
 export default async function LookPage({ params }: { params: Promise<{ id: string }> }) {
@@ -31,6 +31,28 @@ export default async function LookPage({ params }: { params: Promise<{ id: strin
                 </div>
               </label>
             ))}
+          </div>
+        </section>
+
+        <section className="card space-y-3">
+          <div>
+            <h2 className="font-semibold">Font</h2>
+            <p className="text-sm text-gray-600">One font for headings and text across the store. &ldquo;Theme&apos;s fonts&rdquo; keeps the pairing that comes with the theme ({THEMES[current].label}).</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="font-picker">
+            {([null, ...Object.keys(FONTS)] as (FontKey | null)[]).map((key) => {
+              const f = key ? FONTS[key] : null;
+              const t = THEMES[current];
+              return (
+                <label key={key ?? "theme"} className="block cursor-pointer rounded-lg border-2 border-gray-200 p-3 hover:border-gray-300 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50/40">
+                  <input type="radio" name="font" value={key ?? ""} defaultChecked={(store.font ?? null) === key} className="sr-only" />
+                  <div className="truncate text-2xl leading-tight font-bold" style={{ fontFamily: f?.css ?? t.heading }}>Team Store Gear</div>
+                  <div className="mt-1 truncate text-sm text-gray-700" style={{ fontFamily: f?.css ?? t.body }}>Hoodies, tees and hats, printed locally</div>
+                  <div className="mt-2 text-xs font-semibold">{f?.label ?? "Theme's fonts"}</div>
+                  <div className="text-xs text-gray-500">{f?.description ?? `${t.heading.split(",")[0].replace(/'/g, "")} with ${t.body.split(",")[0].replace(/'/g, "")}`}</div>
+                </label>
+              );
+            })}
           </div>
         </section>
 

@@ -1,11 +1,13 @@
 import { getRequestBusiness } from "@/lib/business";
 import { PLATFORM_NAME } from "@/lib/platform";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Encode_Sans_Semi_Condensed, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// The back office's (and customer pages') font: slightly narrow, so tables and forms fit more.
+const appSans = Encode_Sans_Semi_Condensed({
+  variable: "--font-app-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 const geistMono = Geist_Mono({
@@ -28,7 +30,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${appSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
       </body>

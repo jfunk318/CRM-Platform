@@ -21,7 +21,7 @@ import { isValidEmail } from "@/lib/email/mailer";
 import { storeUrlHere } from "@/lib/business";
 import { checkStoreSlug, createAffiliateStore, StoreError } from "@/lib/store/stores";
 import { ACCOUNT_MODE_LABELS } from "@/lib/store/settings";
-import { THEMES } from "@/lib/store/themes";
+import { isFontKey, THEMES } from "@/lib/store/themes";
 import { cleanHref, parseSections, parseSite, SOCIALS } from "@/lib/store/homepage";
 import { Prisma } from "@prisma/client";
 
@@ -284,6 +284,8 @@ export async function saveLookAction(_: ActionResult, form: FormData): Promise<A
     if (accent && !/^#[0-9a-f]{6}$/i.test(accent)) throw new FormError("Accent color must look like #d97706");
     const art = optionalText(form, "heroArt");
     if (art && art !== "none" && !isArtKey(art)) throw new FormError("Choose a banner art");
+    const font = optionalText(form, "font");
+    if (font && !isFontKey(font)) throw new FormError("Choose a font");
     await db.store.update({
       where: { id: store.id },
       data: {
@@ -294,6 +296,7 @@ export async function saveLookAction(_: ActionResult, form: FormData): Promise<A
         heroText: optionalText(form, "heroText")?.slice(0, 300) ?? null,
         heroButton: optionalText(form, "heroButton")?.slice(0, 40) ?? null,
         heroArt: art,
+        font,
       },
     });
     refresh();
